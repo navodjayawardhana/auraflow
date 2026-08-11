@@ -1,0 +1,1479 @@
+{
+  "meta": {
+    "synthetic": true,
+    "warning": "SYNTHETIC DEMONSTRATION DATA -- not measured, not for training",
+    "generator": "ml/simulate.py",
+    "generative_model": "two-process (Borbely 1982) + chronotype phase (Roenneberg)",
+    "seed": 7003,
+    "generated_at": "2026-08-11T08:20:11+00:00",
+    "days": 30
+  },
+  "participant": {
+    "label": "demo-user",
+    "chronotype_hours": 0.8,
+    "sleep_need_hours": 8.0,
+    "resting_hr_baseline": 58.0,
+    "stress_reactivity": 0.7
+  },
+  "nights": [
+    {
+      "date": "2026-07-13",
+      "sleep_duration": 7.86,
+      "deep_sleep_min": 94.7,
+      "wake_hour": 7.82,
+      "sleep_debt": 0.14,
+      "resting_hr": 57.9,
+      "stress": 60.8,
+      "is_weekend": false,
+      "is_illness_day": false
+    },
+    {
+      "date": "2026-07-14",
+      "sleep_duration": 6.63,
+      "deep_sleep_min": 65.9,
+      "wake_hour": 8.43,
+      "sleep_debt": 1.51,
+      "resting_hr": 59.9,
+      "stress": 33.2,
+      "is_weekend": false,
+      "is_illness_day": false
+    },
+    {
+      "date": "2026-07-15",
+      "sleep_duration": 8.59,
+      "deep_sleep_min": 83.1,
+      "wake_hour": 7.6,
+      "sleep_debt": 0.92,
+      "resting_hr": 58.3,
+      "stress": 19.3,
+      "is_weekend": false,
+      "is_illness_day": false
+    },
+    {
+      "date": "2026-07-16",
+      "sleep_duration": 7.22,
+      "deep_sleep_min": 84.1,
+      "wake_hour": 7.59,
+      "sleep_debt": 1.4,
+      "resting_hr": 59.8,
+      "stress": 32.0,
+      "is_weekend": false,
+      "is_illness_day": false
+    },
+    {
+      "date": "2026-07-17",
+      "sleep_duration": 7.64,
+      "deep_sleep_min": 79.5,
+      "wake_hour": 8.01,
+      "sleep_debt": 1.76,
+      "resting_hr": 57.8,
+      "stress": 41.4,
+      "is_weekend": false,
+      "is_illness_day": false
+    },
+    {
+      "date": "2026-07-18",
+      "sleep_duration": 9.56,
+      "deep_sleep_min": 118.4,
+      "wake_hour": 8.93,
+      "sleep_debt": 0.2,
+      "resting_hr": 56.5,
+      "stress": 51.6,
+      "is_weekend": true,
+      "is_illness_day": false
+    },
+    {
+      "date": "2026-07-19",
+      "sleep_duration": 10.04,
+      "deep_sleep_min": 100.6,
+      "wake_hour": 9.39,
+      "sleep_debt": 0.0,
+      "resting_hr": 58.8,
+      "stress": 36.4,
+      "is_weekend": true,
+      "is_illness_day": false
+    },
+    {
+      "date": "2026-07-20",
+      "sleep_duration": 7.86,
+      "deep_sleep_min": 100.7,
+      "wake_hour": 7.11,
+      "sleep_debt": 0.14,
+      "resting_hr": 59.2,
+      "stress": 56.6,
+      "is_weekend": false,
+      "is_illness_day": false
+    },
+    {
+      "date": "2026-07-21",
+      "sleep_duration": 6.38,
+      "deep_sleep_min": 65.4,
+      "wake_hour": 7.39,
+      "sleep_debt": 1.76,
+      "resting_hr": 60.4,
+      "stress": 47.3,
+      "is_weekend": false,
+      "is_illness_day": false
+    },
+    {
+      "date": "2026-07-22",
+      "sleep_duration": 7.6,
+      "deep_sleep_min": 83.4,
+      "wake_hour": 8.31,
+      "sleep_debt": 2.16,
+      "resting_hr": 56.6,
+      "stress": 49.8,
+      "is_weekend": false,
+      "is_illness_day": false
+    },
+    {
+      "date": "2026-07-23",
+      "sleep_duration": 8.29,
+      "deep_sleep_min": 67.0,
+      "wake_hour": 7.47,
+      "sleep_debt": 1.86,
+      "resting_hr": 59.7,
+      "stress": 35.5,
+      "is_weekend": false,
+      "is_illness_day": false
+    },
+    {
+      "date": "2026-07-24",
+      "sleep_duration": 9.67,
+      "deep_sleep_min": 95.9,
+      "wake_hour": 7.4,
+      "sleep_debt": 0.05,
+      "resting_hr": 65.9,
+      "stress": 67.7,
+      "is_weekend": false,
+      "is_illness_day": true
+    },
+    {
+      "date": "2026-07-25",
+      "sleep_duration": 8.08,
+      "deep_sleep_min": 104.7,
+      "wake_hour": 8.75,
+      "sleep_debt": 0.0,
+      "resting_hr": 69.1,
+      "stress": 52.6,
+      "is_weekend": true,
+      "is_illness_day": true
+    },
+    {
+      "date": "2026-07-26",
+      "sleep_duration": 7.62,
+      "deep_sleep_min": 82.3,
+      "wake_hour": 9.27,
+      "sleep_debt": 0.38,
+      "resting_hr": 70.2,
+      "stress": 52.0,
+      "is_weekend": true,
+      "is_illness_day": true
+    },
+    {
+      "date": "2026-07-27",
+      "sleep_duration": 7.37,
+      "deep_sleep_min": 69.8,
+      "wake_hour": 8.17,
+      "sleep_debt": 1.02,
+      "resting_hr": 59.1,
+      "stress": 27.4,
+      "is_weekend": false,
+      "is_illness_day": false
+    },
+    {
+      "date": "2026-07-28",
+      "sleep_duration": 7.3,
+      "deep_sleep_min": 62.7,
+      "wake_hour": 7.21,
+      "sleep_debt": 1.71,
+      "resting_hr": 57.9,
+      "stress": 41.7,
+      "is_weekend": false,
+      "is_illness_day": false
+    },
+    {
+      "date": "2026-07-29",
+      "sleep_duration": 8.29,
+      "deep_sleep_min": 115.7,
+      "wake_hour": 7.26,
+      "sleep_debt": 1.43,
+      "resting_hr": 58.1,
+      "stress": 49.7,
+      "is_weekend": false,
+      "is_illness_day": false
+    },
+    {
+      "date": "2026-07-30",
+      "sleep_duration": 7.5,
+      "deep_sleep_min": 70.2,
+      "wake_hour": 7.74,
+      "sleep_debt": 1.78,
+      "resting_hr": 58.2,
+      "stress": 40.0,
+      "is_weekend": false,
+      "is_illness_day": false
+    },
+    {
+      "date": "2026-07-31",
+      "sleep_duration": 8.04,
+      "deep_sleep_min": 90.1,
+      "wake_hour": 7.76,
+      "sleep_debt": 1.74,
+      "resting_hr": 64.5,
+      "stress": 34.2,
+      "is_weekend": false,
+      "is_illness_day": false
+    },
+    {
+      "date": "2026-08-01",
+      "sleep_duration": 8.46,
+      "deep_sleep_min": 99.7,
+      "wake_hour": 8.63,
+      "sleep_debt": 1.26,
+      "resting_hr": 59.1,
+      "stress": 45.1,
+      "is_weekend": true,
+      "is_illness_day": false
+    },
+    {
+      "date": "2026-08-02",
+      "sleep_duration": 9.25,
+      "deep_sleep_min": 116.8,
+      "wake_hour": 8.71,
+      "sleep_debt": 0.0,
+      "resting_hr": 57.3,
+      "stress": 36.7,
+      "is_weekend": true,
+      "is_illness_day": false
+    },
+    {
+      "date": "2026-08-03",
+      "sleep_duration": 7.56,
+      "deep_sleep_min": 67.2,
+      "wake_hour": 7.75,
+      "sleep_debt": 0.44,
+      "resting_hr": 57.1,
+      "stress": 53.9,
+      "is_weekend": false,
+      "is_illness_day": false
+    },
+    {
+      "date": "2026-08-04",
+      "sleep_duration": 7.47,
+      "deep_sleep_min": 101.3,
+      "wake_hour": 7.18,
+      "sleep_debt": 0.97,
+      "resting_hr": 59.9,
+      "stress": 32.5,
+      "is_weekend": false,
+      "is_illness_day": false
+    },
+    {
+      "date": "2026-08-05",
+      "sleep_duration": 6.8,
+      "deep_sleep_min": 64.6,
+      "wake_hour": 8.09,
+      "sleep_debt": 2.17,
+      "resting_hr": 58.8,
+      "stress": 50.9,
+      "is_weekend": false,
+      "is_illness_day": false
+    },
+    {
+      "date": "2026-08-06",
+      "sleep_duration": 7.67,
+      "deep_sleep_min": 96.2,
+      "wake_hour": 7.6,
+      "sleep_debt": 2.5,
+      "resting_hr": 55.9,
+      "stress": 51.1,
+      "is_weekend": false,
+      "is_illness_day": false
+    },
+    {
+      "date": "2026-08-07",
+      "sleep_duration": 6.61,
+      "deep_sleep_min": 66.9,
+      "wake_hour": 7.85,
+      "sleep_debt": 3.89,
+      "resting_hr": 60.3,
+      "stress": 36.3,
+      "is_weekend": false,
+      "is_illness_day": false
+    },
+    {
+      "date": "2026-08-08",
+      "sleep_duration": 8.9,
+      "deep_sleep_min": 82.2,
+      "wake_hour": 9.5,
+      "sleep_debt": 3.0,
+      "resting_hr": 60.5,
+      "stress": 54.1,
+      "is_weekend": true,
+      "is_illness_day": false
+    },
+    {
+      "date": "2026-08-09",
+      "sleep_duration": 6.63,
+      "deep_sleep_min": 37.7,
+      "wake_hour": 8.57,
+      "sleep_debt": 3.91,
+      "resting_hr": 60.1,
+      "stress": 41.2,
+      "is_weekend": true,
+      "is_illness_day": false
+    },
+    {
+      "date": "2026-08-10",
+      "sleep_duration": 8.56,
+      "deep_sleep_min": 62.1,
+      "wake_hour": 8.15,
+      "sleep_debt": 3.35,
+      "resting_hr": 62.1,
+      "stress": 40.2,
+      "is_weekend": false,
+      "is_illness_day": false
+    },
+    {
+      "date": "2026-08-11",
+      "sleep_duration": 9.34,
+      "deep_sleep_min": 87.3,
+      "wake_hour": 7.66,
+      "sleep_debt": 1.74,
+      "resting_hr": 56.7,
+      "stress": 52.8,
+      "is_weekend": false,
+      "is_illness_day": false
+    }
+  ],
+  "tasks": [
+    {
+      "title": "Fix failing tests",
+      "scheduled_at": "2026-07-13T23:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Literature review",
+      "scheduled_at": "2026-07-13T12:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Gym session",
+      "scheduled_at": "2026-07-13T18:00:00+00:00",
+      "completed": false
+    },
+    {
+      "title": "Grocery run",
+      "scheduled_at": "2026-07-13T18:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Read paper",
+      "scheduled_at": "2026-07-13T20:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Call parents",
+      "scheduled_at": "2026-07-14T14:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Refactor sync engine",
+      "scheduled_at": "2026-07-14T10:00:00+00:00",
+      "completed": false
+    },
+    {
+      "title": "Fix failing tests",
+      "scheduled_at": "2026-07-14T17:00:00+00:00",
+      "completed": false
+    },
+    {
+      "title": "Plan next sprint",
+      "scheduled_at": "2026-07-15T11:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Review PRs",
+      "scheduled_at": "2026-07-15T15:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Deep work: ML pipeline",
+      "scheduled_at": "2026-07-15T18:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Call parents",
+      "scheduled_at": "2026-07-15T22:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Call parents",
+      "scheduled_at": "2026-07-16T15:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Refactor sync engine",
+      "scheduled_at": "2026-07-16T14:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Gym session",
+      "scheduled_at": "2026-07-16T21:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Refactor sync engine",
+      "scheduled_at": "2026-07-17T07:00:00+00:00",
+      "completed": false
+    },
+    {
+      "title": "Refactor sync engine",
+      "scheduled_at": "2026-07-17T10:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Read paper",
+      "scheduled_at": "2026-07-18T13:00:00+00:00",
+      "completed": false
+    },
+    {
+      "title": "Review PRs",
+      "scheduled_at": "2026-07-18T09:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Refactor sync engine",
+      "scheduled_at": "2026-07-18T12:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Review PRs",
+      "scheduled_at": "2026-07-18T22:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Refactor sync engine",
+      "scheduled_at": "2026-07-18T14:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Team standup",
+      "scheduled_at": "2026-07-19T09:00:00+00:00",
+      "completed": false
+    },
+    {
+      "title": "Read paper",
+      "scheduled_at": "2026-07-19T21:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Read paper",
+      "scheduled_at": "2026-07-19T15:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Draft API spec",
+      "scheduled_at": "2026-07-19T19:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Team standup",
+      "scheduled_at": "2026-07-20T15:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Gym session",
+      "scheduled_at": "2026-07-20T13:00:00+00:00",
+      "completed": false
+    },
+    {
+      "title": "Refactor sync engine",
+      "scheduled_at": "2026-07-21T10:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Read paper",
+      "scheduled_at": "2026-07-21T23:00:00+00:00",
+      "completed": false
+    },
+    {
+      "title": "Team standup",
+      "scheduled_at": "2026-07-21T08:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Team standup",
+      "scheduled_at": "2026-07-21T13:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Draft API spec",
+      "scheduled_at": "2026-07-22T22:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Gym session",
+      "scheduled_at": "2026-07-22T18:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Team standup",
+      "scheduled_at": "2026-07-22T17:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Literature review",
+      "scheduled_at": "2026-07-22T06:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Grocery run",
+      "scheduled_at": "2026-07-23T16:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Literature review",
+      "scheduled_at": "2026-07-23T20:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Plan next sprint",
+      "scheduled_at": "2026-07-23T14:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Call parents",
+      "scheduled_at": "2026-07-23T14:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Grocery run",
+      "scheduled_at": "2026-07-23T09:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Grocery run",
+      "scheduled_at": "2026-07-24T23:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Call parents",
+      "scheduled_at": "2026-07-24T06:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Refactor sync engine",
+      "scheduled_at": "2026-07-24T06:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Read paper",
+      "scheduled_at": "2026-07-25T14:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Grocery run",
+      "scheduled_at": "2026-07-25T16:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Fix failing tests",
+      "scheduled_at": "2026-07-25T08:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Fix failing tests",
+      "scheduled_at": "2026-07-25T13:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Call parents",
+      "scheduled_at": "2026-07-25T09:00:00+00:00",
+      "completed": false
+    },
+    {
+      "title": "Read paper",
+      "scheduled_at": "2026-07-26T15:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Refactor sync engine",
+      "scheduled_at": "2026-07-26T22:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Fix failing tests",
+      "scheduled_at": "2026-07-26T09:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Call parents",
+      "scheduled_at": "2026-07-26T13:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Draft API spec",
+      "scheduled_at": "2026-07-26T21:00:00+00:00",
+      "completed": false
+    },
+    {
+      "title": "Draft API spec",
+      "scheduled_at": "2026-07-27T07:00:00+00:00",
+      "completed": false
+    },
+    {
+      "title": "Call parents",
+      "scheduled_at": "2026-07-27T21:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Team standup",
+      "scheduled_at": "2026-07-27T08:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Read paper",
+      "scheduled_at": "2026-07-28T17:00:00+00:00",
+      "completed": false
+    },
+    {
+      "title": "Draft API spec",
+      "scheduled_at": "2026-07-28T23:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Deep work: ML pipeline",
+      "scheduled_at": "2026-07-29T17:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Grocery run",
+      "scheduled_at": "2026-07-29T22:00:00+00:00",
+      "completed": false
+    },
+    {
+      "title": "Draft API spec",
+      "scheduled_at": "2026-07-29T14:00:00+00:00",
+      "completed": false
+    },
+    {
+      "title": "Literature review",
+      "scheduled_at": "2026-07-30T16:00:00+00:00",
+      "completed": false
+    },
+    {
+      "title": "Draft API spec",
+      "scheduled_at": "2026-07-30T13:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Plan next sprint",
+      "scheduled_at": "2026-07-30T15:00:00+00:00",
+      "completed": false
+    },
+    {
+      "title": "Refactor sync engine",
+      "scheduled_at": "2026-07-30T20:00:00+00:00",
+      "completed": false
+    },
+    {
+      "title": "Call parents",
+      "scheduled_at": "2026-07-31T08:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Plan next sprint",
+      "scheduled_at": "2026-07-31T10:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Draft API spec",
+      "scheduled_at": "2026-07-31T09:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Deep work: ML pipeline",
+      "scheduled_at": "2026-07-31T23:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Fix failing tests",
+      "scheduled_at": "2026-08-01T09:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Fix failing tests",
+      "scheduled_at": "2026-08-01T15:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Gym session",
+      "scheduled_at": "2026-08-01T19:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Call parents",
+      "scheduled_at": "2026-08-02T09:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Deep work: ML pipeline",
+      "scheduled_at": "2026-08-02T18:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Refactor sync engine",
+      "scheduled_at": "2026-08-03T12:00:00+00:00",
+      "completed": false
+    },
+    {
+      "title": "Literature review",
+      "scheduled_at": "2026-08-03T06:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Call parents",
+      "scheduled_at": "2026-08-03T07:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Literature review",
+      "scheduled_at": "2026-08-03T15:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Team standup",
+      "scheduled_at": "2026-08-04T13:00:00+00:00",
+      "completed": false
+    },
+    {
+      "title": "Draft API spec",
+      "scheduled_at": "2026-08-04T12:00:00+00:00",
+      "completed": false
+    },
+    {
+      "title": "Plan next sprint",
+      "scheduled_at": "2026-08-04T16:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Fix failing tests",
+      "scheduled_at": "2026-08-04T20:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Grocery run",
+      "scheduled_at": "2026-08-05T13:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Deep work: ML pipeline",
+      "scheduled_at": "2026-08-05T15:00:00+00:00",
+      "completed": false
+    },
+    {
+      "title": "Review PRs",
+      "scheduled_at": "2026-08-05T15:00:00+00:00",
+      "completed": false
+    },
+    {
+      "title": "Call parents",
+      "scheduled_at": "2026-08-06T10:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Literature review",
+      "scheduled_at": "2026-08-06T12:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Review PRs",
+      "scheduled_at": "2026-08-06T19:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Draft API spec",
+      "scheduled_at": "2026-08-07T06:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Fix failing tests",
+      "scheduled_at": "2026-08-07T14:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Gym session",
+      "scheduled_at": "2026-08-07T23:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Team standup",
+      "scheduled_at": "2026-08-07T22:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Deep work: ML pipeline",
+      "scheduled_at": "2026-08-07T06:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Grocery run",
+      "scheduled_at": "2026-08-08T21:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Read paper",
+      "scheduled_at": "2026-08-08T15:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Deep work: ML pipeline",
+      "scheduled_at": "2026-08-09T13:00:00+00:00",
+      "completed": false
+    },
+    {
+      "title": "Literature review",
+      "scheduled_at": "2026-08-09T09:00:00+00:00",
+      "completed": false
+    },
+    {
+      "title": "Read paper",
+      "scheduled_at": "2026-08-10T10:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Team standup",
+      "scheduled_at": "2026-08-10T19:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Grocery run",
+      "scheduled_at": "2026-08-10T10:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Plan next sprint",
+      "scheduled_at": "2026-08-10T13:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Deep work: ML pipeline",
+      "scheduled_at": "2026-08-11T17:00:00+00:00",
+      "completed": false
+    },
+    {
+      "title": "Literature review",
+      "scheduled_at": "2026-08-11T11:00:00+00:00",
+      "completed": true
+    },
+    {
+      "title": "Fix failing tests",
+      "scheduled_at": "2026-08-11T08:00:00+00:00",
+      "completed": true
+    }
+  ],
+  "focus_logs": [
+    {
+      "logged_at": "2026-07-13T10:00:00+00:00",
+      "rating": 4,
+      "task_type": "meeting"
+    },
+    {
+      "logged_at": "2026-07-13T13:00:00+00:00",
+      "rating": 3,
+      "task_type": "deep-work"
+    },
+    {
+      "logged_at": "2026-07-13T16:00:00+00:00",
+      "rating": 3,
+      "task_type": "meeting"
+    },
+    {
+      "logged_at": "2026-07-13T20:00:00+00:00",
+      "rating": 2,
+      "task_type": "deep-work"
+    },
+    {
+      "logged_at": "2026-07-14T10:00:00+00:00",
+      "rating": 2,
+      "task_type": "admin"
+    },
+    {
+      "logged_at": "2026-07-14T13:00:00+00:00",
+      "rating": 2,
+      "task_type": "meeting"
+    },
+    {
+      "logged_at": "2026-07-14T16:00:00+00:00",
+      "rating": 2,
+      "task_type": "deep-work"
+    },
+    {
+      "logged_at": "2026-07-14T20:00:00+00:00",
+      "rating": 2,
+      "task_type": "meeting"
+    },
+    {
+      "logged_at": "2026-07-15T10:00:00+00:00",
+      "rating": 4,
+      "task_type": "meeting"
+    },
+    {
+      "logged_at": "2026-07-15T13:00:00+00:00",
+      "rating": 3,
+      "task_type": "meeting"
+    },
+    {
+      "logged_at": "2026-07-15T16:00:00+00:00",
+      "rating": 3,
+      "task_type": "deep-work"
+    },
+    {
+      "logged_at": "2026-07-15T20:00:00+00:00",
+      "rating": 3,
+      "task_type": "rest"
+    },
+    {
+      "logged_at": "2026-07-16T10:00:00+00:00",
+      "rating": 3,
+      "task_type": "deep-work"
+    },
+    {
+      "logged_at": "2026-07-16T13:00:00+00:00",
+      "rating": 3,
+      "task_type": "rest"
+    },
+    {
+      "logged_at": "2026-07-16T16:00:00+00:00",
+      "rating": 2,
+      "task_type": "deep-work"
+    },
+    {
+      "logged_at": "2026-07-16T20:00:00+00:00",
+      "rating": 3,
+      "task_type": "admin"
+    },
+    {
+      "logged_at": "2026-07-17T10:00:00+00:00",
+      "rating": 3,
+      "task_type": "meeting"
+    },
+    {
+      "logged_at": "2026-07-17T13:00:00+00:00",
+      "rating": 3,
+      "task_type": "meeting"
+    },
+    {
+      "logged_at": "2026-07-17T16:00:00+00:00",
+      "rating": 3,
+      "task_type": "meeting"
+    },
+    {
+      "logged_at": "2026-07-17T20:00:00+00:00",
+      "rating": 3,
+      "task_type": "meeting"
+    },
+    {
+      "logged_at": "2026-07-18T10:00:00+00:00",
+      "rating": 4,
+      "task_type": "deep-work"
+    },
+    {
+      "logged_at": "2026-07-18T13:00:00+00:00",
+      "rating": 4,
+      "task_type": "rest"
+    },
+    {
+      "logged_at": "2026-07-18T16:00:00+00:00",
+      "rating": 4,
+      "task_type": "deep-work"
+    },
+    {
+      "logged_at": "2026-07-18T20:00:00+00:00",
+      "rating": 4,
+      "task_type": "admin"
+    },
+    {
+      "logged_at": "2026-07-19T10:00:00+00:00",
+      "rating": 4,
+      "task_type": "meeting"
+    },
+    {
+      "logged_at": "2026-07-19T13:00:00+00:00",
+      "rating": 4,
+      "task_type": "rest"
+    },
+    {
+      "logged_at": "2026-07-19T16:00:00+00:00",
+      "rating": 4,
+      "task_type": "admin"
+    },
+    {
+      "logged_at": "2026-07-19T20:00:00+00:00",
+      "rating": 3,
+      "task_type": "meeting"
+    },
+    {
+      "logged_at": "2026-07-20T10:00:00+00:00",
+      "rating": 3,
+      "task_type": "admin"
+    },
+    {
+      "logged_at": "2026-07-20T13:00:00+00:00",
+      "rating": 4,
+      "task_type": "rest"
+    },
+    {
+      "logged_at": "2026-07-20T16:00:00+00:00",
+      "rating": 3,
+      "task_type": "deep-work"
+    },
+    {
+      "logged_at": "2026-07-20T20:00:00+00:00",
+      "rating": 2,
+      "task_type": "rest"
+    },
+    {
+      "logged_at": "2026-07-21T10:00:00+00:00",
+      "rating": 3,
+      "task_type": "meeting"
+    },
+    {
+      "logged_at": "2026-07-21T13:00:00+00:00",
+      "rating": 3,
+      "task_type": "rest"
+    },
+    {
+      "logged_at": "2026-07-21T16:00:00+00:00",
+      "rating": 3,
+      "task_type": "meeting"
+    },
+    {
+      "logged_at": "2026-07-21T20:00:00+00:00",
+      "rating": 2,
+      "task_type": "rest"
+    },
+    {
+      "logged_at": "2026-07-22T10:00:00+00:00",
+      "rating": 3,
+      "task_type": "deep-work"
+    },
+    {
+      "logged_at": "2026-07-22T13:00:00+00:00",
+      "rating": 3,
+      "task_type": "admin"
+    },
+    {
+      "logged_at": "2026-07-22T16:00:00+00:00",
+      "rating": 3,
+      "task_type": "admin"
+    },
+    {
+      "logged_at": "2026-07-22T20:00:00+00:00",
+      "rating": 2,
+      "task_type": "meeting"
+    },
+    {
+      "logged_at": "2026-07-23T10:00:00+00:00",
+      "rating": 3,
+      "task_type": "meeting"
+    },
+    {
+      "logged_at": "2026-07-23T13:00:00+00:00",
+      "rating": 3,
+      "task_type": "rest"
+    },
+    {
+      "logged_at": "2026-07-23T16:00:00+00:00",
+      "rating": 3,
+      "task_type": "admin"
+    },
+    {
+      "logged_at": "2026-07-23T20:00:00+00:00",
+      "rating": 2,
+      "task_type": "deep-work"
+    },
+    {
+      "logged_at": "2026-07-24T10:00:00+00:00",
+      "rating": 3,
+      "task_type": "meeting"
+    },
+    {
+      "logged_at": "2026-07-24T13:00:00+00:00",
+      "rating": 3,
+      "task_type": "rest"
+    },
+    {
+      "logged_at": "2026-07-24T16:00:00+00:00",
+      "rating": 2,
+      "task_type": "meeting"
+    },
+    {
+      "logged_at": "2026-07-24T20:00:00+00:00",
+      "rating": 2,
+      "task_type": "admin"
+    },
+    {
+      "logged_at": "2026-07-25T10:00:00+00:00",
+      "rating": 3,
+      "task_type": "rest"
+    },
+    {
+      "logged_at": "2026-07-25T13:00:00+00:00",
+      "rating": 3,
+      "task_type": "meeting"
+    },
+    {
+      "logged_at": "2026-07-25T16:00:00+00:00",
+      "rating": 3,
+      "task_type": "rest"
+    },
+    {
+      "logged_at": "2026-07-25T20:00:00+00:00",
+      "rating": 2,
+      "task_type": "admin"
+    },
+    {
+      "logged_at": "2026-07-26T10:00:00+00:00",
+      "rating": 3,
+      "task_type": "rest"
+    },
+    {
+      "logged_at": "2026-07-26T13:00:00+00:00",
+      "rating": 2,
+      "task_type": "admin"
+    },
+    {
+      "logged_at": "2026-07-26T16:00:00+00:00",
+      "rating": 2,
+      "task_type": "rest"
+    },
+    {
+      "logged_at": "2026-07-26T20:00:00+00:00",
+      "rating": 1,
+      "task_type": "meeting"
+    },
+    {
+      "logged_at": "2026-07-27T10:00:00+00:00",
+      "rating": 3,
+      "task_type": "admin"
+    },
+    {
+      "logged_at": "2026-07-27T13:00:00+00:00",
+      "rating": 3,
+      "task_type": "rest"
+    },
+    {
+      "logged_at": "2026-07-27T16:00:00+00:00",
+      "rating": 2,
+      "task_type": "meeting"
+    },
+    {
+      "logged_at": "2026-07-27T20:00:00+00:00",
+      "rating": 2,
+      "task_type": "meeting"
+    },
+    {
+      "logged_at": "2026-07-28T10:00:00+00:00",
+      "rating": 3,
+      "task_type": "meeting"
+    },
+    {
+      "logged_at": "2026-07-28T13:00:00+00:00",
+      "rating": 2,
+      "task_type": "rest"
+    },
+    {
+      "logged_at": "2026-07-28T16:00:00+00:00",
+      "rating": 2,
+      "task_type": "rest"
+    },
+    {
+      "logged_at": "2026-07-28T20:00:00+00:00",
+      "rating": 2,
+      "task_type": "rest"
+    },
+    {
+      "logged_at": "2026-07-29T10:00:00+00:00",
+      "rating": 3,
+      "task_type": "meeting"
+    },
+    {
+      "logged_at": "2026-07-29T13:00:00+00:00",
+      "rating": 4,
+      "task_type": "meeting"
+    },
+    {
+      "logged_at": "2026-07-29T16:00:00+00:00",
+      "rating": 4,
+      "task_type": "rest"
+    },
+    {
+      "logged_at": "2026-07-29T20:00:00+00:00",
+      "rating": 3,
+      "task_type": "meeting"
+    },
+    {
+      "logged_at": "2026-07-30T10:00:00+00:00",
+      "rating": 3,
+      "task_type": "rest"
+    },
+    {
+      "logged_at": "2026-07-30T13:00:00+00:00",
+      "rating": 3,
+      "task_type": "admin"
+    },
+    {
+      "logged_at": "2026-07-30T16:00:00+00:00",
+      "rating": 2,
+      "task_type": "meeting"
+    },
+    {
+      "logged_at": "2026-07-30T20:00:00+00:00",
+      "rating": 2,
+      "task_type": "admin"
+    },
+    {
+      "logged_at": "2026-07-31T10:00:00+00:00",
+      "rating": 3,
+      "task_type": "meeting"
+    },
+    {
+      "logged_at": "2026-07-31T13:00:00+00:00",
+      "rating": 3,
+      "task_type": "deep-work"
+    },
+    {
+      "logged_at": "2026-07-31T16:00:00+00:00",
+      "rating": 3,
+      "task_type": "rest"
+    },
+    {
+      "logged_at": "2026-07-31T20:00:00+00:00",
+      "rating": 2,
+      "task_type": "meeting"
+    },
+    {
+      "logged_at": "2026-08-01T10:00:00+00:00",
+      "rating": 4,
+      "task_type": "meeting"
+    },
+    {
+      "logged_at": "2026-08-01T13:00:00+00:00",
+      "rating": 3,
+      "task_type": "meeting"
+    },
+    {
+      "logged_at": "2026-08-01T16:00:00+00:00",
+      "rating": 4,
+      "task_type": "rest"
+    },
+    {
+      "logged_at": "2026-08-01T20:00:00+00:00",
+      "rating": 3,
+      "task_type": "meeting"
+    },
+    {
+      "logged_at": "2026-08-02T10:00:00+00:00",
+      "rating": 5,
+      "task_type": "deep-work"
+    },
+    {
+      "logged_at": "2026-08-02T13:00:00+00:00",
+      "rating": 4,
+      "task_type": "admin"
+    },
+    {
+      "logged_at": "2026-08-02T16:00:00+00:00",
+      "rating": 4,
+      "task_type": "meeting"
+    },
+    {
+      "logged_at": "2026-08-02T20:00:00+00:00",
+      "rating": 3,
+      "task_type": "rest"
+    },
+    {
+      "logged_at": "2026-08-03T10:00:00+00:00",
+      "rating": 4,
+      "task_type": "admin"
+    },
+    {
+      "logged_at": "2026-08-03T13:00:00+00:00",
+      "rating": 3,
+      "task_type": "admin"
+    },
+    {
+      "logged_at": "2026-08-03T16:00:00+00:00",
+      "rating": 2,
+      "task_type": "rest"
+    },
+    {
+      "logged_at": "2026-08-03T20:00:00+00:00",
+      "rating": 2,
+      "task_type": "admin"
+    },
+    {
+      "logged_at": "2026-08-04T10:00:00+00:00",
+      "rating": 3,
+      "task_type": "deep-work"
+    },
+    {
+      "logged_at": "2026-08-04T13:00:00+00:00",
+      "rating": 4,
+      "task_type": "rest"
+    },
+    {
+      "logged_at": "2026-08-04T16:00:00+00:00",
+      "rating": 3,
+      "task_type": "meeting"
+    },
+    {
+      "logged_at": "2026-08-04T20:00:00+00:00",
+      "rating": 2,
+      "task_type": "admin"
+    },
+    {
+      "logged_at": "2026-08-05T10:00:00+00:00",
+      "rating": 2,
+      "task_type": "admin"
+    },
+    {
+      "logged_at": "2026-08-05T13:00:00+00:00",
+      "rating": 3,
+      "task_type": "meeting"
+    },
+    {
+      "logged_at": "2026-08-05T16:00:00+00:00",
+      "rating": 3,
+      "task_type": "deep-work"
+    },
+    {
+      "logged_at": "2026-08-05T20:00:00+00:00",
+      "rating": 1,
+      "task_type": "rest"
+    },
+    {
+      "logged_at": "2026-08-06T10:00:00+00:00",
+      "rating": 3,
+      "task_type": "admin"
+    },
+    {
+      "logged_at": "2026-08-06T13:00:00+00:00",
+      "rating": 3,
+      "task_type": "admin"
+    },
+    {
+      "logged_at": "2026-08-06T16:00:00+00:00",
+      "rating": 3,
+      "task_type": "deep-work"
+    },
+    {
+      "logged_at": "2026-08-06T20:00:00+00:00",
+      "rating": 2,
+      "task_type": "rest"
+    },
+    {
+      "logged_at": "2026-08-07T10:00:00+00:00",
+      "rating": 3,
+      "task_type": "meeting"
+    },
+    {
+      "logged_at": "2026-08-07T13:00:00+00:00",
+      "rating": 3,
+      "task_type": "deep-work"
+    },
+    {
+      "logged_at": "2026-08-07T16:00:00+00:00",
+      "rating": 2,
+      "task_type": "admin"
+    },
+    {
+      "logged_at": "2026-08-07T20:00:00+00:00",
+      "rating": 2,
+      "task_type": "admin"
+    },
+    {
+      "logged_at": "2026-08-08T10:00:00+00:00",
+      "rating": 3,
+      "task_type": "meeting"
+    },
+    {
+      "logged_at": "2026-08-08T13:00:00+00:00",
+      "rating": 3,
+      "task_type": "rest"
+    },
+    {
+      "logged_at": "2026-08-08T16:00:00+00:00",
+      "rating": 3,
+      "task_type": "rest"
+    },
+    {
+      "logged_at": "2026-08-08T20:00:00+00:00",
+      "rating": 2,
+      "task_type": "meeting"
+    },
+    {
+      "logged_at": "2026-08-09T10:00:00+00:00",
+      "rating": 2,
+      "task_type": "deep-work"
+    },
+    {
+      "logged_at": "2026-08-09T13:00:00+00:00",
+      "rating": 2,
+      "task_type": "rest"
+    },
+    {
+      "logged_at": "2026-08-09T16:00:00+00:00",
+      "rating": 2,
+      "task_type": "meeting"
+    },
+    {
+      "logged_at": "2026-08-09T20:00:00+00:00",
+      "rating": 1,
+      "task_type": "admin"
+    },
+    {
+      "logged_at": "2026-08-10T10:00:00+00:00",
+      "rating": 2,
+      "task_type": "rest"
+    },
+    {
+      "logged_at": "2026-08-10T13:00:00+00:00",
+      "rating": 3,
+      "task_type": "rest"
+    },
+    {
+      "logged_at": "2026-08-10T16:00:00+00:00",
+      "rating": 2,
+      "task_type": "rest"
+    },
+    {
+      "logged_at": "2026-08-10T20:00:00+00:00",
+      "rating": 2,
+      "task_type": "admin"
+    },
+    {
+      "logged_at": "2026-08-11T10:00:00+00:00",
+      "rating": 3,
+      "task_type": "admin"
+    },
+    {
+      "logged_at": "2026-08-11T13:00:00+00:00",
+      "rating": 3,
+      "task_type": "admin"
+    },
+    {
+      "logged_at": "2026-08-11T16:00:00+00:00",
+      "rating": 3,
+      "task_type": "admin"
+    },
+    {
+      "logged_at": "2026-08-11T20:00:00+00:00",
+      "rating": 3,
+      "task_type": "meeting"
+    }
+  ]
+}
