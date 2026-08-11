@@ -131,48 +131,99 @@ so a reviewer can confirm the model was trained on the same bytes.
 **Neither dataset contains a column called "focus."** AuraFlow's target variable is
 therefore **derived**, and the derivation is a modelling decision that must be declared.
 
-### 4.1 Derivation
+### 4.1 What the data actually contains
 
-Defined once, in `ml/labels.py`, and imported everywhere else — there is deliberately no
-second place where a label can be constructed:
+The plan assumed LifeSnaps carried a graded alertness rating. **It does not.** Inspection
+of `hourly_fitbit_sema_df_unprocessed.csv` (159,508 rows, 71 participants) found:
 
-```
-LifeSnaps :  focus_proxy  <-  SEMA3 momentary alertness / mood items, normalised to 1-5
-PMData    :  focus_proxy  <-  6 - fatigue        (1-5 scale, inverted)
-                              cross-checked against `readiness`
-```
+| | |
+|---|---|
+| Label format | **Seven mutually exclusive mood categories**, one-hot. No row carries more than one. |
+| Categories | `ALERT` · `HAPPY` · `NEUTRAL` · `RESTED/RELAXED` · `SAD` · `TENSE/ANXIOUS` · `TIRED` |
+| Coverage | **5,029 rows — 3.15%** of hourly rows; 63 of 71 participants |
+| Per participant | median 65 labelled rows; only 23 participants exceed 100 |
+| `ALERT` frequency | **344 selections** — the second-rarest category |
 
-### 4.2 Justification
+There is no intensity scale of any kind. A regression target on 1–5 is not available,
+so **the task is classification, not regression** — the alternative the plan already
+allowed for (confusion matrix + F1 rather than MAE/RMSE/R²).
 
-Sustained attention is not directly observable in either cohort. Momentary **alertness**
-is the closest construct that is: it is measured contemporaneously rather than recalled,
-it is captured on a validated instrument, and in the attention literature it is treated
-as a precondition for sustained focus. Inverted fatigue is a conventional stand-in for
-the same underlying state and gives an independently-collected second view of it.
+### 4.2 Choosing the target — the finding that mattered
 
-### 4.3 What this costs — construct validity
+Four binary constructions were compared under 5-fold participant-wise cross-validation
+(`ml/notebooks/01_gate_label_signal.py`). **The choice of target moved performance far
+more than the choice of model:**
 
-**`focus_proxy` is not focus.** Alertness and fatigue are correlates of the capacity to
-concentrate, not measurements of concentration. A model that predicts `focus_proxy` well
-predicts *self-reported alertness* well; whether that translates into better real-world
-scheduling is a separate question that this data cannot answer.
+| Target | Axis | n | Best ROC-AUC |
+|---|---|---|---|
+| **`energy` — ALERT+HAPPY vs TIRED+SAD** | **activation** | 2,356 | **0.654 ± 0.028** |
+| `not-tired` — everything vs TIRED | activation | 4,976 | 0.629 ± 0.024 |
+| `valence` — pleasant vs unpleasant | valence | 4,976 | 0.568 ± 0.025 |
+| `strict` — ALERT+RESTED vs TIRED+TENSE | mixed | 3,206 | 0.553 ± 0.027 |
 
-The report must state this plainly in §5.4 rather than let "focus" pass unqualified.
-Suggested wording:
+The first construction attempted — `strict`, which looked the most obviously
+"focus-like" — performed **worst of the four**, at essentially chance.
 
-> *The target variable is a proxy. Alertness is not focus, but it is the closest
-> validated momentary construct available in an openly licensed wearable dataset, and it
-> is measured contemporaneously rather than recalled. The model should be read as
-> predicting self-reported alertness, and the scheduling feature built on it as acting on
-> that proxy.*
+**Why the activation axis wins is the interesting part.** Under Russell's circumplex
+model, affect decomposes into *valence* (pleasant–unpleasant) and *arousal*
+(activated–deactivated). Wearables measure the physiological correlates of arousal —
+heart rate, HRV, sleep pressure, movement. They have no privileged access to valence.
+A target aligned to the arousal axis is therefore the one the sensors can reach, and the
+`valence` result (0.568, near chance) is the same finding stated negatively.
 
-### 4.4 Fallback
+This is worth reporting as a result in its own right, not buried as a preprocessing
+detail.
 
-If exploratory analysis shows the LifeSnaps EMA-derived label carries no signal the
-baselines cannot already capture, **PMData's `fatigue`/`readiness` becomes the primary
-label** — its 1–5 scale is cleaner and its semantics are closer to the target — with
-LifeSnaps demoted to validation. This decision point sits before any model training, and
-its outcome is recorded in `ml/notebooks/01-eda.ipynb`.
+### 4.3 Feature-set and model findings
+
+| Feature set | ROC-AUC (`energy` target) |
+|---|---|
+| time-only (hour, day of week, weekend) | 0.609 |
+| biometric (sleep, resting HR, HRV, stress, steps…) | 0.611 |
+| **biometric + context** (`WORK/SCHOOL`, `HOME`, `GYM`…) | **0.654** |
+
+**Context contributes more than the biometrics do.** Adding location context lifts AUC by
+0.043 while the entire biometric block adds 0.002 over time alone. AuraFlow already plans
+geofencing (W10.12), so context is available at inference time — but the report should
+not claim the wearable signals are carrying the model when they are not.
+
+**Logistic regression beat gradient boosting in almost every configuration.** With ~2,356
+rows across 45 participants, the boosted trees overfit. Two consequences: the honest one
+is that a linear model is the appropriate choice at this sample size; the useful one is
+that a logistic regression exports to `coefficients.json` and runs in TypeScript, making
+the sub-50 ms on-device inference requirement trivial and removing the need for TFLite
+on this model.
+
+### 4.4 What this costs — construct validity
+
+**The target is not focus.** It is a binary contrast between self-selected momentary mood
+categories, grouped along an activation axis. Alertness and tiredness are correlates of
+the capacity to concentrate, not measurements of concentration.
+
+**And the signal is modest.** ROC-AUC 0.654 sits just above the conventional 0.60 floor
+for a usable model and far below anything that would justify confident language. The
+report must state the number and its spread, not describe the model as "accurate."
+
+Suggested §5.4 wording:
+
+> *The target is a derived binary proxy: momentary mood categories grouped along the
+> activation axis of Russell's circumplex. It is not a measurement of focus. The model
+> discriminates focus-favourable from focus-unfavourable hours at ROC-AUC 0.654 ± 0.028
+> under participant-wise cross-validation — above chance and above the conventional
+> deployment floor, but modest. Notably, location context contributes more than the
+> wearable-derived features, which qualifies the premise that biometric sensing is the
+> primary route to this prediction.*
+
+### 4.5 Why PMData cannot serve as the fallback
+
+The plan named PMData's 1–5 `fatigue`/`readiness` as the fallback target. It is **not a
+drop-in replacement**: PMData's self-report is **daily**, so it cannot support an
+hour-of-day model at all — and predicting *when in the day* to work is AuraFlow's central
+claim. PMData's role is therefore narrower than planned: validation of the **daily**
+Recovery Score component, where `readiness` is a directly labelled comparator, rather
+than cross-validation of the hourly scheduling model.
+
+*(To be confirmed against the archive when PMData is downloaded.)*
 
 ---
 
@@ -180,19 +231,37 @@ its outcome is recorded in `ml/notebooks/01-eda.ipynb`.
 
 Derived in `ml/build_features.py`:
 
-| Feature | Source |
-|---|---|
-| `hour_of_day`, `day_of_week` | timestamp |
-| `sleep_duration`, `deep_sleep_min` | nightly sleep stages |
-| `resting_hr` | daily resting heart rate |
-| `resting_hr_delta_7d` | `resting_hr` minus its trailing 7-day mean — the illness/strain signal |
-| `stress` | device stress score |
-| `steps_last_3h` | rolling step count |
-| `task_density` | **simulated** — see §6 |
+Two source files, joined on `(id, date)`. The hourly file carries the label, time and
+activity; **all sleep, resting-HR and stress fields exist only in the daily file.**
 
-> **Concrete field names are filled in from the extracted archives during ingest.** They
-> are deliberately not guessed here; this table is updated against the real schema once
-> `ml/ingest_lifesnaps.py` runs, so the report never cites a column that does not exist.
+| Feature | Source column | Coverage after join |
+|---|---|---|
+| `hour_of_day`, `day_of_week`, `is_weekend` | hourly `hour`, `date` | 100% |
+| `steps`, `bpm`, `calories` | hourly | ~100% |
+| context one-hots (`WORK/SCHOOL`, `HOME`, `GYM`, …) | hourly | 100% |
+| `sleep_hours` | daily `sleep_duration` | 80% |
+| `resting_hr` | daily | 88% |
+| `resting_hr_delta_7d` | derived — `resting_hr` minus its trailing 7-day mean, per participant | 88% |
+| `stress_score` | daily | **48%** |
+| `sleep_deep_ratio`, `sleep_rem_ratio`, `sleep_efficiency` | daily | 75% |
+| `nremhr`, `rmssd`, `spo2` | daily | 53% / 53% / 17% |
+| `task_density` | **simulated** — see §6 | — |
+
+### Data-quality corrections
+
+Three issues found on inspection that would misrepresent the data if left unstated:
+
+1. **`sleep_duration` is in milliseconds**, not minutes or hours (median 27.5 M ms ≈ 7.63 h).
+2. **125 nights are physiologically implausible** — the range runs from 1.0 h to 20.7 h.
+   These are dropped rather than clipped: clipping would invent a plausible value where
+   none was measured.
+3. **`sleep_deep_ratio` is not a fraction.** Its median is 0.986 and its maximum 4.31,
+   with 1,567 values above 1. It is a ratio between sleep stages, not a proportion of
+   total sleep. **It must not be described as "percentage of deep sleep" in the report.**
+
+`stress_score` is retained despite 48% coverage because dropping incomplete rows would
+cut the usable set from 4,012 rows / 57 participants to 2,098 / 29. It is imputed, and
+the imputation is reported.
 
 **Leakage control.** Splits are grouped by participant, so no individual appears in both
 training and test — without this, the model can memorise a person rather than learn a
@@ -275,19 +344,29 @@ higher-risk pathway.
 
 ## 9. Limitations — the §5.4 list
 
-1. **Construct validity.** The target is a proxy for focus, not focus (§4.3).
-2. **Population mismatch.** Neither cohort was recruited as knowledge workers; the
+1. **Construct validity.** The target is a binary contrast between self-selected mood
+   categories grouped along an activation axis. It is not a measurement of focus (§4.4).
+2. **Modest discrimination.** ROC-AUC 0.654 ± 0.028 — above the conventional 0.60 floor,
+   but the model is a weak predictor and must be described as one.
+3. **The biometrics contribute little.** Location context adds 0.043 AUC; the entire
+   biometric block adds 0.002 over time-of-day alone (§4.3). This qualifies the project's
+   premise that wearable sensing is the primary route to the prediction — a finding that
+   belongs in the evaluation, not a detail to omit.
+4. **Sparse labels.** Only 3.15% of hourly rows carry a label; the usable set is ~2,400
+   rows across 45 participants, with a median of 65 labelled rows per person.
+5. **Population mismatch.** Neither cohort was recruited as knowledge workers; the
    scheduling use case assumes that population.
-3. **Device mismatch.** Models are trained on Fitbit-derived signals and deployed against
+6. **Device mismatch.** Models are trained on Fitbit-derived signals and deployed against
    Health Connect data. Vendors compute sleep stages and stress differently, so
    calibration error at deployment is expected and unquantified.
-4. **No first-party validation.** Nothing confirms the model transfers to the author's
+7. **No first-party validation.** Nothing confirms the model transfers to the author's
    own Huawei device — precisely because §2 made that data unobtainable.
-5. **`task_density` is simulated**, so any result resting mainly on that feature is weaker
+8. **`task_density` is simulated**, so any result resting mainly on that feature is weaker
    than one resting on measured signals.
-6. **Retrospective evaluation is not a trial.** E1 measures agreement with past behaviour,
+9. **Retrospective evaluation is not a trial.** E1 measures agreement with past behaviour,
    not whether following the recommendation would have improved anything.
-7. **Licence asymmetry.** The validation cohort cannot support commercial claims (§3.2).
+10. **Licence asymmetry.** The validation cohort cannot support commercial claims (§3.2),
+    and it cannot validate the hourly model at all (§4.5).
 
 ---
 
@@ -296,3 +375,4 @@ higher-risk pathway.
 | Date | Change |
 |---|---|
 | 2026-08-11 | Created. Pivot from first-party Huawei collection to LifeSnaps + PMData; licences verified; simulator scope and training wall defined. |
+| 2026-08-11 | LifeSnaps archive retrieved and inspected. §4 rewritten against the real schema: no 1–5 alertness scale exists, so the task becomes classification. Target selected empirically (`energy`, ROC-AUC 0.654 ± 0.028); the originally-planned construction scored worst of four. §5 gains real coverage figures and three data-quality corrections. §4.5 records that PMData cannot serve as the planned fallback. |
