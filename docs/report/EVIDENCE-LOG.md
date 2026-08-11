@@ -571,6 +571,66 @@ hours were lived, then labelled. Someone told to work at 10:00 might have felt d
 
 ---
 
+## E-014 · PMData retrieved — the planned fallback does not exist
+
+**Archive:** `pmdata.zip`, 1.35 GB (3.25 GB unpacked, 913 files), 16 participants,
+2019-11-01 → 2020-03-30. OSF builds the archive on demand so no checksum is published;
+SHA-256 pinned on first download in `data/raw/PROVENANCE.json`.
+
+### Finding 1 — the self-report is daily, confirmed by count
+
+| | |
+|---|---|
+| `pmsys/wellness.csv` rows | **1,747** across 16 participants |
+| Participant-days with **exactly one** entry | **1,712 of 1,730 = 99.0%** |
+| Two entries / three entries | 16 / 1 |
+| Median days per participant | 103 |
+
+Submission timestamps span all 24 hours, but that records *when the person filled the
+form*, not what it describes. **There is one observation per day.**
+
+**Consequence:** PMData **cannot support an hour-of-day model**, which is AuraFlow's central
+claim. The fallback the plan relied on — *"if the LifeSnaps label carries no signal, switch
+to PMData `fatigue`/`readiness`"* — **would not have worked**. Had Gate 0.9 failed, the
+project would have needed a different response entirely.
+
+Worth stating plainly in §5: a documented contingency turned out to be unavailable, and it
+was only discovered by checking. The gate passing (E-006) is what made this survivable.
+
+### Finding 2 — a correction to the project's own documentation
+
+The plan described PMData's wellness fields as **1–5 scales**. Measured:
+
+| Field | Actual scale |
+|---|---|
+| `readiness` | **0–10** |
+| `fatigue`, `mood`, `stress`, `sleep_quality`, `soreness` | **0–5** |
+| `sleep_duration_h` | 0–12 (self-reported) |
+
+Any comparison against a differently-scaled target must normalise explicitly. Recorded
+because an unnoticed scale mismatch produces a plausible-looking but wrong number.
+
+### Finding 3 — what PMData is still good for
+
+Per participant the archive carries Fitbit `heart_rate.json` (~120 MB each),
+`sleep.json`, `resting_heart_rate.json`, `steps`, `calories`, `distance`, `sleep_score.csv`
+— alongside `wellness.csv`, `srpe.csv` and `injury.csv`.
+
+**1,747 labelled days with `readiness` (0–10) against Fitbit sleep and resting HR is a
+sound dataset for the daily Recovery Score** (W8.13). That is a genuinely different model
+from the hourly scheduler, and a second contribution rather than a consolation prize.
+
+### Consequence for E3 — evidence reduced
+
+The planned cross-dataset generalisation test cannot be run on the hourly model. **E3 is
+re-scoped to the daily Recovery Score.** The hourly model's only generalisation evidence is
+participant-wise cross-validation within LifeSnaps — cross-cohort transfer is **untested**,
+and that is a real reduction that belongs in the limitations list (now item 11).
+
+**→ §3.4 · §5.4 limitations · §7 evaluation design**
+
+---
+
 ## Open items
 
 | | Item | Owner |
@@ -578,8 +638,8 @@ hours were lived, then labelled. Someone told to work at 10:00 might have felt d
 | 🔴 | **P0.6** Moodle deadline confirm + reverse-plan | Navod |
 | 🟠 | **P0.8** BLE screenshots + `0x180A` device values (E-002) | Navod |
 | 🔴 | **W1.1–W1.3** user survey — responses need ~1 week, start early | Navod |
-| 🟠 | PMData download + confirm daily granularity (E-008) | code |
 | 🟠 | ADR-0006 `ReplayHealthProvider` (E-009) | code |
+| 🟠 | E3 re-scoped — daily Recovery Score vs PMData `readiness` (E-014) | code |
 | 🔴 | **Location prediction** from calendar + geofence history — worth +0.067 P@1 (E-013) | code |
 | 🟢 | Threshold tuning — recall 0.536 at 0.5 (E-012) | code |
 | 🟢 | `resting_hr` positive coefficient — investigate confound (E-012) | code |
@@ -592,3 +652,5 @@ hours were lived, then labelled. Someone told to work at 10:00 might have felt d
 |---|---|
 | 2026-08-11 | E-001 … E-011 — repository, data pivot, Gate 0.9, ingest pipeline |
 | 2026-08-11 | E-012 — model trained; logistic 0.656 beats MLP 0.626 and all baselines; collinearity corrected; `resting_hr_delta_7d` baseline fixed |
+| 2026-08-11 | E-013 — E1 policy evaluation: P@1 0.600 without context vs 0.578 fixed-09:00 and 0.447 base rate; observed-context result 0.667 flagged as an upper bound |
+| 2026-08-11 | E-014 — PMData retrieved; self-report confirmed daily (99.0%), so the planned fallback does not exist and E3 is re-scoped; scale documentation corrected |

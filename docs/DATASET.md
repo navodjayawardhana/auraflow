@@ -90,14 +90,28 @@ per day — the same shape as the 4×/day self-report the original design called
 | **Repository** | OSF, https://osf.io/vx4bk/ · mirror: https://datasets.simula.no/pmdata/ |
 | **Licence** | **CC BY-NC 4.0** — attribution, **non-commercial only** |
 | **Participants** | 16 |
-| **Duration** | 5 months |
+| **Duration** | 5 months — 2019-11-01 to 2020-03-30 |
 | **Device** | Fitbit Versa 2 + PMSys self-report app |
+| **Archive** | `pmdata.zip`, 1.35 GB (3.25 GB unpacked, 913 files); OSF builds it on demand, so SHA-256 is pinned on first download rather than published |
 
-**Why this cohort.** PMData records subjective wellness on **1–5 scales** — fatigue,
-mood, readiness, stress, sleep quality — which is exactly the response scale AuraFlow's
-focus rating uses. That makes it a meaningful independent test of whether a model
-trained on LifeSnaps transfers, rather than a second sample of the same distribution.
-`readiness` additionally provides a ground-truth comparator for the Recovery Score.
+**Verified on retrieval (2026-08-11).** `pmsys/wellness.csv`, 16 participants,
+**1,747 rows**, median 103 days per participant.
+
+| Field | Scale |
+|---|---|
+| `readiness` | **0–10** |
+| `fatigue`, `mood`, `stress`, `sleep_quality`, `soreness` | **0–5** |
+| `sleep_duration_h` | 0–12 (self-reported hours) |
+
+> ⚠️ **Correction.** The project plan described these as 1–5 scales. They are not:
+> `readiness` is 0–10 and the rest are 0–5. Any comparison against a differently-scaled
+> target must normalise explicitly rather than assume alignment.
+
+**Why this cohort.** It is an independent test of whether findings transfer, rather than a
+second sample of the same distribution: different device generation, different cohort,
+different self-report instrument, and collected two years earlier. `readiness` provides a
+directly labelled ground-truth comparator for the **daily Recovery Score** — see §4.5 for
+why its role is narrower than the plan assumed.
 
 > ⚠️ **Licence constraint that reaches the report.** The NC clause forbids commercial
 > use. The report proposes a monetisation model (§1, business value). Those two must not
@@ -214,16 +228,30 @@ Suggested §5.4 wording:
 > wearable-derived features, which qualifies the premise that biometric sensing is the
 > primary route to this prediction.*
 
-### 4.5 Why PMData cannot serve as the fallback
+### 4.5 Why PMData cannot serve as the fallback — confirmed
 
-The plan named PMData's 1–5 `fatigue`/`readiness` as the fallback target. It is **not a
-drop-in replacement**: PMData's self-report is **daily**, so it cannot support an
-hour-of-day model at all — and predicting *when in the day* to work is AuraFlow's central
-claim. PMData's role is therefore narrower than planned: validation of the **daily**
-Recovery Score component, where `readiness` is a directly labelled comparator, rather
-than cross-validation of the hourly scheduling model.
+The plan named PMData's `fatigue`/`readiness` as the fallback target if the LifeSnaps label
+failed. **It is not a drop-in replacement, and the archive confirms why.**
 
-*(To be confirmed against the archive when PMData is downloaded.)*
+**Measured, not assumed (2026-08-11):** of 1,747 participant-days in `wellness.csv`,
+**99.0% carry exactly one entry** (1,712 of 1,730 participant-days; 16 have two, one has
+three). Submission timestamps are spread across all 24 hours, but that reflects *when the
+person filled the form*, not what it describes — there is still only one observation per day.
+
+**PMData's self-report is therefore daily, and cannot support an hour-of-day model at all.**
+Predicting *when in the day* to work is AuraFlow's central claim, so the fallback the plan
+relied on does not exist. Had the LifeSnaps label failed the gate (§4.2), the project would
+have needed a different response — not this cohort.
+
+**Its actual role is narrower and still useful:** validation of the **daily Recovery Score**,
+where `readiness` (0–10) is a directly labelled comparator against Fitbit sleep and resting
+heart rate. 1,747 labelled days across 16 participants is a reasonable dataset for that
+component — it is simply a different model from the hourly scheduler.
+
+**Consequence for E3.** The planned cross-dataset generalisation test (§7) cannot be run on
+the hourly model. E3 is therefore scoped to the daily recovery component, and the hourly
+model's generalisation rests on participant-wise cross-validation within LifeSnaps alone.
+**This is a genuine reduction in evidence and must be stated as one.**
 
 ---
 
@@ -312,7 +340,7 @@ measures replace it:
 |---|---|---|
 | **E1** | **Retrospective policy evaluation.** On held-out participants: does the hour the model recommends coincide with that person's actually-best-focus hour? Hit-rate @1/@3, against random and fixed-9am baselines. | Effectiveness — on real human data |
 | **E2** | **SUS (n=5) + task completion times + heuristic walkthrough.** Requires no wearable; unchanged from the original plan. | Usability |
-| **E3** | **Cross-dataset generalisation.** LifeSnaps-trained model evaluated on PMData. Degradation is expected and acceptable — reporting the number is the point. | ML rigour |
+| **E3** | **Cross-dataset generalisation — scoped down.** PMData's self-report is daily (§4.5), so the hourly model cannot be tested on it. E3 now covers the **daily Recovery Score** against PMData `readiness`. The hourly model's generalisation evidence is participant-wise cross-validation within LifeSnaps only. | ML rigour |
 
 The performance, security and compatibility evaluation blocks are unaffected.
 
@@ -365,8 +393,14 @@ higher-risk pathway.
    than one resting on measured signals.
 9. **Retrospective evaluation is not a trial.** E1 measures agreement with past behaviour,
    not whether following the recommendation would have improved anything.
-10. **Licence asymmetry.** The validation cohort cannot support commercial claims (§3.2),
-    and it cannot validate the hourly model at all (§4.5).
+10. **Licence asymmetry.** The validation cohort cannot support commercial claims (§3.2).
+11. **No cross-dataset validation of the hourly model.** PMData is daily-only (§4.5), so
+    the scheduling model's only generalisation evidence is participant-wise
+    cross-validation within a single cohort. Cross-cohort transfer is untested.
+12. **Recommendation quality depends on observed location.** The policy evaluation scores
+    0.667 P@1 with observed context but 0.600 without it, against 0.578 for a fixed-09:00
+    heuristic. A deployed system must *predict* location rather than observe it, so 0.600
+    is the defensible figure and the margin over trivial advice is small.
 
 ---
 
