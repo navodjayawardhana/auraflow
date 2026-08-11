@@ -5,12 +5,16 @@ import pandas as pd
 import pytest
 
 from baselines import (
-    HourOfDayBaseline,
-    MeanBaseline,
-    PersonalMeanBaseline,
+    TARGET,
+    HourOfDay,
+    MajorityClass,
+    Metrics,
+    PersonalRate,
+    confusion,
     evaluate,
     report,
     run_all,
+    verdict,
 )
 
 
@@ -20,94 +24,127 @@ def data() -> pd.DataFrame:
     rng = np.random.default_rng(0)
     rows = []
     for person in range(10):
-        for day in range(20):
+        for _ in range(20):
             for hour in range(6, 23):
-                rhythm = 3.0 + 1.2 * np.cos((hour - 12) / 24 * 2 * np.pi)
+                # Positive rate peaks late morning, troughs late evening.
+                rate = 0.5 + 0.3 * np.cos((hour - 11) / 24 * 2 * np.pi)
                 rows.append(
                     {
                         "participant": f"p{person:02d}",
                         "hour_of_day": hour,
-                        "focus_proxy": float(np.clip(rhythm + rng.normal(0, 0.3), 1, 5)),
+                        TARGET: int(rng.random() < rate),
                     }
                 )
     return pd.DataFrame(rows)
 
 
-def test_perfect_prediction_scores_zero_error():
-    truth = np.array([1.0, 3.0, 5.0])
-    metrics = evaluate(truth, truth)
-    assert metrics.mae == 0.0
-    assert metrics.rmse == 0.0
-    assert metrics.r2 == pytest.approx(1.0)
+def test_perfect_probabilities_score_perfectly():
+    truth = np.array([0, 0, 1, 1])
+    metrics = evaluate(truth, np.array([0.01, 0.02, 0.98, 0.99]))
+    assert metrics.roc_auc == pytest.approx(1.0)
+    assert metrics.f1 == pytest.approx(1.0)
 
 
-def test_r2_is_zero_rather_than_undefined_when_truth_is_constant():
-    """A constant test target would otherwise divide by zero and poison the table."""
-    metrics = evaluate(np.full(5, 3.0), np.full(5, 2.5))
-    assert metrics.r2 == 0.0
-    assert metrics.mae == pytest.approx(0.5)
+def test_auc_is_chance_rather_than_undefined_for_a_single_class_fold():
+    """An unlucky CV fold must not crash the loop."""
+    metrics = evaluate(np.ones(5, dtype=int), np.full(5, 0.7))
+    assert metrics.roc_auc == 0.5
 
 
-def test_mean_baseline_predicts_the_training_mean(data):
-    model = MeanBaseline().fit(data)
-    predictions = model.predict(data)
-    assert np.allclose(predictions, data.focus_proxy.mean())
+def test_majority_baseline_predicts_the_training_base_rate(data):
+    model = MajorityClass().fit(data)
+    assert np.allclose(model.predict_proba(data), data[TARGET].mean())
 
 
-def test_hour_baseline_beats_the_mean_when_a_rhythm_exists(data):
+def test_majority_baseline_scores_chance_auc(data):
+    """A constant prediction cannot rank anything, so AUC must be 0.5."""
+    assert MajorityClass().fit(data).score(data).roc_auc == pytest.approx(0.5)
+
+
+def test_hour_baseline_beats_chance_when_a_rhythm_exists(data):
     """If it does not, the hour feature is worthless and the app's premise is wrong."""
     train = data[data.participant < "p07"]
     test = data[data.participant >= "p07"]
-
-    mean_mae = MeanBaseline().fit(train).score(test).mae
-    hour_mae = HourOfDayBaseline().fit(train).score(test).mae
-
-    assert hour_mae < mean_mae
+    assert HourOfDay().fit(train).score(test).roc_auc > 0.55
 
 
 def test_hour_baseline_falls_back_for_an_unseen_hour(data):
     """An unseen hour must not produce NaN, which would silently void every metric."""
     train = data[data.hour_of_day < 20]
-    model = HourOfDayBaseline().fit(train)
-
-    predictions = model.predict(pd.DataFrame({"hour_of_day": [3, 22]}))
+    predictions = HourOfDay().fit(train).predict_proba(
+        pd.DataFrame({"hour_of_day": [3, 22]})
+    )
     assert not np.isnan(predictions).any()
-    assert np.allclose(predictions, train.focus_proxy.mean())
+    assert np.allclose(predictions, train[TARGET].mean())
 
 
-def test_personal_mean_falls_back_for_an_unseen_participant(data):
-    """The group split guarantees unseen people in test -- this is the normal case."""
+def test_personal_rate_falls_back_for_an_unseen_participant(data):
+    """Under the group split every test participant is unseen -- the normal case."""
     train = data[data.participant < "p05"]
-    model = PersonalMeanBaseline().fit(train)
-
-    predictions = model.predict(pd.DataFrame({"participant": ["p09", "unknown"]}))
+    predictions = PersonalRate().fit(train).predict_proba(
+        pd.DataFrame({"participant": ["p09", "unknown"]})
+    )
     assert not np.isnan(predictions).any()
 
 
 def test_run_all_returns_every_baseline(data):
     table = run_all(data, data)
-    assert set(table.model) == {"mean", "hour-of-day", "personal-mean"}
-    assert table.MAE.notna().all()
+    assert set(table.model) == {"base-rate", "hour-of-day", "personal-rate"}
+    assert table["ROC-AUC"].notna().all()
 
 
-def test_report_flags_a_model_that_does_not_beat_the_baselines(data):
-    """The failure case has to be stated, not quietly omitted."""
-    from baselines import Metrics
-
-    weak = Metrics(mae=99.0, rmse=99.0, r2=-9.0)
-    text = report(data, data, weak)
-    assert "does NOT beat" in text
+# --- verdict: the wording under pressure to be omitted --------------------------
 
 
-def test_report_calls_a_marginal_win_marginal(data):
-    from baselines import Metrics
+def test_verdict_states_plainly_when_the_model_loses():
+    assert "does NOT beat" in verdict(model_auc=0.58, best_baseline_auc=0.61)
 
-    best = run_all(data, data).MAE.min()
-    barely = Metrics(mae=best - 0.01, rmse=0.5, r2=0.5)
-    assert "marginal" in report(data, data, barely)
+
+def test_verdict_calls_a_noise_level_win_noise():
+    assert "within fold-to-fold noise" in verdict(model_auc=0.655, best_baseline_auc=0.650)
+
+
+def test_verdict_flags_a_win_that_is_still_below_the_deployment_floor():
+    text = verdict(model_auc=0.57, best_baseline_auc=0.52)
+    assert "below" in text and "floor" in text
+
+
+def test_verdict_reports_a_genuine_win_without_hedging():
+    text = verdict(model_auc=0.72, best_baseline_auc=0.61)
+    assert "beats the best baseline" in text
+    assert "NOT" not in text
+
+
+def test_report_includes_the_model_row_and_the_verdict(data):
+    # Disjoint participants, as the real pipeline uses. Scoring baselines on their own
+    # training rows lets personal-rate memorise each participant and inflates it past
+    # anything a held-out model could reach.
+    train = data[data.participant < "p07"]
+    test = data[data.participant >= "p07"]
+
+    text = report(train, test, Metrics(0.85, 0.8, 0.8, 0.8, 0.8), model_name="MLP")
+    assert "MLP" in text
+    assert "hour-of-day" in text
+    assert "beats the best baseline" in text
+
+
+def test_personal_rate_is_no_better_than_chance_under_a_participant_split(data):
+    """Every test participant is unseen, so it collapses to the global base rate.
+
+    Worth pinning: if this ever rises, participants are leaking across the split.
+    """
+    train = data[data.participant < "p07"]
+    test = data[data.participant >= "p07"]
+    assert PersonalRate().fit(train).score(test).roc_auc == pytest.approx(0.5)
 
 
 def test_report_without_a_model_lists_baselines_only(data):
     text = report(data, data)
     assert "hour-of-day" in text
-    assert "MLP" not in text
+    assert "beats" not in text
+
+
+def test_confusion_matrix_counts_are_correct():
+    text = confusion(np.array([0, 0, 1, 1]), np.array([0.1, 0.9, 0.2, 0.8]))
+    # one TN, one FP, one FN, one TP
+    assert "     1      1" in text

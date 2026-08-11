@@ -36,9 +36,22 @@ OUTPUT = PROCESSED / "lifesnaps_model_frame.parquet"
 MIN_SLEEP_HOURS, MAX_SLEEP_HOURS = 3.0, 12.0
 MILLISECONDS_PER_HOUR = 3_600_000
 
-TIME_FEATURES = ["hour_of_day", "day_of_week", "is_weekend"]
+#: Time is encoded cyclically rather than as raw integers.
+#:
+#: A linear model reading `hour_of_day` as 0-23 treats 23:00 and 00:00 as 23 units apart
+#: when they are adjacent, and can only fit a monotonic trend across the day -- but the
+#: circadian pattern is a rhythm, not a slope. sin/cos of the hour restores both the
+#: wrap-around and the ability to represent a peak. The same applies to day of week,
+#: where the integer coding (Mon=0 ... Sun=6) is otherwise arbitrary.
+#:
+#: `hour_of_day` and `day_of_week` remain in the frame as identity columns -- the
+#: hour-of-day baseline needs the raw value -- but are not model features.
+TIME_FEATURES = ["hour_sin", "hour_cos", "dow_sin", "dow_cos", "is_weekend"]
 
-ACTIVITY_FEATURES = ["steps", "bpm", "calories", "distance"]
+#: `distance` is excluded: it correlates with `steps` at r = 0.986 (VIF 42 and 40).
+#: Fitting both gave them large, near-equal, opposite coefficients -- an artefact of
+#: collinearity that is unstable and impossible to interpret or defend.
+ACTIVITY_FEATURES = ["steps", "bpm", "calories"]
 
 #: Derived per participant rather than used raw. Absolute resting HR mostly encodes
 #: fitness, which is a between-person difference the group split deliberately withholds;
@@ -49,9 +62,29 @@ RECOVERY_FEATURES = [
     "nremhr", "rmssd", "spo2",
 ]
 
-FEATURE_COLUMNS = TIME_FEATURES + ACTIVITY_FEATURES + RECOVERY_FEATURES + CONTEXT_COLUMNS
+#: One context column is held out as the reference category. The eight one-hots form a
+#: complete set summing to 1, which is perfectly collinear with the intercept -- the
+#: dummy-variable trap. All eight had infinite VIF. `OTHER` is the natural reference:
+#: every other coefficient then reads as "relative to an unclassified location".
+CONTEXT_REFERENCE = "OTHER"
+CONTEXT_FEATURES = [c for c in CONTEXT_COLUMNS if c != CONTEXT_REFERENCE]
 
-IDENTITY_COLUMNS = ["participant", "timestamp", "date", "mood", TARGET, ORIGIN_COLUMN]
+FEATURE_COLUMNS = TIME_FEATURES + ACTIVITY_FEATURES + RECOVERY_FEATURES + CONTEXT_FEATURES
+
+IDENTITY_COLUMNS = [
+    "participant", "timestamp", "date", "mood", TARGET, ORIGIN_COLUMN,
+    "hour_of_day", "day_of_week", CONTEXT_REFERENCE,
+]
+
+
+def add_cyclical_time(frame: pd.DataFrame) -> pd.DataFrame:
+    """Encode hour and weekday as points on a circle, preserving adjacency."""
+    out = frame.copy()
+    out["hour_sin"] = np.sin(2 * np.pi * out["hour_of_day"] / 24)
+    out["hour_cos"] = np.cos(2 * np.pi * out["hour_of_day"] / 24)
+    out["dow_sin"] = np.sin(2 * np.pi * out["day_of_week"] / 7)
+    out["dow_cos"] = np.cos(2 * np.pi * out["day_of_week"] / 7)
+    return out
 
 
 def clean_sleep(daily: pd.DataFrame) -> pd.DataFrame:
@@ -66,15 +99,22 @@ def clean_sleep(daily: pd.DataFrame) -> pd.DataFrame:
 
 
 def add_resting_hr_delta(daily: pd.DataFrame) -> pd.DataFrame:
-    """Resting HR relative to each participant's own trailing 7-day mean.
+    """Resting HR relative to the mean of the participant's *preceding* seven days.
 
-    This is the illness and accumulated-strain signal the Recovery Score depends on. It
-    needs at least two prior nights, so the first day or two of each participant is NaN
-    by construction rather than by accident.
+    This is the illness and accumulated-strain signal the Recovery Score depends on.
+
+    The baseline deliberately excludes the current day (`shift(1)`). Including it would
+    let the reading being tested pull its own reference: a single elevated day is damped
+    by a factor of 6/7, and across a multi-day illness the baseline climbs with the
+    symptom until the anomaly disappears into it. Excluding it makes this a genuine
+    "today against my recent normal" score.
+
+    A baseline needs at least two prior nights, so the first days of each participant are
+    NaN by construction rather than by accident.
     """
     out = daily.sort_values(["participant", "date"]).copy()
     trailing = out.groupby("participant")["resting_hr"].transform(
-        lambda series: series.rolling(7, min_periods=2).mean()
+        lambda series: series.shift(1).rolling(7, min_periods=2).mean()
     )
     out["resting_hr_delta_7d"] = out["resting_hr"] - trailing
     return out
@@ -97,6 +137,8 @@ def build(min_rows_per_participant: int = 10) -> pd.DataFrame:
     for column in CONTEXT_COLUMNS:
         if column in merged.columns:
             merged[column] = merged[column].fillna(0).astype(int)
+
+    merged = add_cyclical_time(merged)
 
     available = [c for c in FEATURE_COLUMNS if c in merged.columns]
     frame = merged[[c for c in IDENTITY_COLUMNS if c in merged.columns] + available].copy()

@@ -20,7 +20,8 @@
 | §4.2 Design — architecture, patterns | E-009 (Adapter, 3rd impl) | ◐ partial |
 | §4.6 Security — across lifecycle | E-001 (secrets excluded from VCS) | ◐ partial |
 | §5.1 Evaluation — functional testing | E-010 (41 automated tests) | ◐ partial |
-| §5.4 Evaluation — **ML results + threats to validity** | **E-005, E-006, E-007, E-008** | ✅ ready |
+| §5.2 Evaluation — performance NFR | E-012 (inference budget) | ◐ partial |
+| §5.4 Evaluation — **ML results + threats to validity** | **E-005, E-006, E-007, E-008, E-012** | ✅ ready |
 | §6 Conclusion — future work | E-006 (context > biometrics) | ◐ partial |
 | **Appendix A** — reproducibility | E-011 | ✅ ready |
 | **Appendix B** — simulator generative rules | E-004 | ✅ ready |
@@ -362,6 +363,137 @@ span 2021-04-22 → 2022-01-16.
 
 ---
 
+## E-012 · Model trained and evaluated against baselines
+
+**Method:** 5-fold participant-wise cross-validation is the **headline estimate** — every
+participant held out exactly once, so the number does not depend on who landed in one test
+split. A separate held-out split provides the confusion matrix and the shipped model
+(pooling a confusion matrix across folds would mix five different models).
+
+### Headline result — §5.4 table
+
+| Model | ROC-AUC | ± | F1 | Accuracy | Precision | Recall |
+|---|---|---|---|---|---|---|
+| **logistic regression** | **0.656** | 0.027 | 0.543 | 0.618 | 0.620 | 0.503 |
+| MLP (16, 8) | 0.626 | 0.038 | 0.526 | 0.596 | 0.588 | 0.490 |
+| hour-of-day lookup *(baseline)* | 0.599 | 0.039 | 0.443 | 0.572 | 0.588 | 0.374 |
+| base rate *(baseline)* | 0.500 | 0.000 | 0.000 | 0.530 | 0.000 | 0.000 |
+| personal rate *(baseline)* | 0.500 | 0.000 | 0.000 | 0.530 | 0.000 | 0.000 |
+
+**Logistic regression beats the best baseline by 0.057 AUC.**
+
+**The MLP lost.** 0.626 vs 0.656 — it beats the baseline by 0.026 but is beaten by the
+linear model. This is reported rather than dropped: the plan proposed a neural network, it
+was tried, and ~2,400 rows across 45 participants do not support one. The same thing
+happened to gradient boosting at the gate stage (E-006). **Consistent evidence that sample
+size, not model capacity, is the binding constraint.**
+
+**`personal-rate` scoring exactly 0.500 is a leakage check that passed** — under a
+participant-wise split every test participant is unseen, so a per-person lookup *must*
+collapse to the base rate. Any value above 0.5 would mean participants were crossing the
+split.
+
+### Held-out participants (n = 440 rows, 9 unseen people)
+
+`AUC 0.674 · F1 0.583 · accuracy 0.659 · precision 0.640 · recall 0.536`
+
+```
+                 predicted
+                 not-ready  ready
+actual not-ready      185     59
+       ready           91    105
+```
+
+**Recall 0.536 is the weak spot** — the model misses 91 of 196 genuinely focus-ready hours
+at the default 0.5 threshold. For a scheduling assistant, a missed good hour is a cheaper
+error than a recommended bad one, so the threshold is defensible, but the asymmetry should
+be stated rather than left for a reader to compute.
+
+### What the model learned — interpretable output for §4/§5
+
+```
+learned circadian peak    09:26
+learned circadian trough  21:26
+amplitude (standardised)  0.364
+```
+
+Recovered by decoding the two cyclical hour coefficients back into a single sinusoid. A
+mid-morning peak is consistent with the chronobiology literature, which is a useful
+external check: the model was not told this, it was fitted.
+
+**Strongest standardised coefficients:**
+
+| Feature | Coefficient | |
+|---|---|---|
+| `ENTERTAINMENT` | +0.376 | → ready |
+| `HOME` | −0.340 | → not ready |
+| `hour_cos` / `hour_sin` | −0.285 / +0.226 | circadian phase |
+| `sleep_rem_ratio` | +0.223 | → ready |
+| `OUTDOORS` | +0.220 | → ready |
+| `resting_hr` | +0.212 | → ready |
+| `WORK/SCHOOL` | −0.170 | → not ready |
+
+**Two things to state honestly in the report:**
+- **Location dominates again.** Four of the top eight are context, consistent with E-006.
+  `WORK/SCHOOL` being *negative* is a notable finding in its own right.
+- **`resting_hr` positive is physiologically counter-intuitive.** Higher resting heart rate
+  predicting readiness is likely confounded with time-of-day and activity. **Do not
+  interpret this coefficient causally** — flag it as a limitation.
+
+### Collinearity correction — before/after
+
+The first run produced an uninterpretable coefficient table. Diagnosed and fixed:
+
+| Problem | Evidence | Fix |
+|---|---|---|
+| `steps` ↔ `distance` | **r = 0.986**, VIF **42 / 40**; coefficients −0.839 / +0.823 (near-equal, opposite) | dropped `distance` |
+| All 8 context one-hots | **VIF = ∞** — complete set summing to 1, collinear with the intercept (dummy-variable trap) | `OTHER` held out as reference |
+| `hour_of_day` as integer | 23:00 and 00:00 treated as 23 units apart; a linear model cannot fit a rhythm | **cyclical sin/cos encoding** |
+| `day_of_week` ↔ `is_weekend` | r = 0.783 | cyclical encoding + `is_weekend` |
+
+| | Before | After |
+|---|---|---|
+| logistic AUC (CV) | 0.654 | **0.656** |
+| MLP AUC (CV) | 0.613 | **0.626** |
+| Held-out F1 | 0.524 | **0.583** |
+| Held-out recall | 0.449 | **0.536** |
+| Largest coefficient | 0.839 *(artefact)* | 0.376 *(real)* |
+
+AUC barely moved; **interpretability and recall moved a lot**. Worth reporting: the fix
+was not about the headline metric.
+
+### A correctness fix found by a test
+
+`resting_hr_delta_7d` originally computed its baseline with `rolling(7)` **including the
+current day**. A test expecting a clean +10 deviation returned 8.57, exposing it. Including
+today lets the reading pull its own reference: a single elevated day is damped by 6/7, and
+across a multi-day illness the baseline climbs with the symptom until the anomaly vanishes
+into it. Now uses `shift(1)` — today against the *preceding* seven days.
+
+**This matters beyond this feature:** the illness-warning feature (W8.13) depends entirely
+on this signal.
+
+### Deployment artefact
+
+`ml/artifacts/focus_model_coefficients.json` — **2,433 bytes**, tracked in git so the exact
+deployed coefficients are tied to the commit that produced them.
+
+The **whole pipeline** is exported (imputer medians, scaler mean/std, coefficients,
+intercept), not just the coefficients — without the transform parameters the device cannot
+reproduce what the model was fitted on and would silently score garbage.
+
+```
+z = Σ coefficients[i] × (x[i] − mean[i]) / std[i] + intercept
+p = 1 / (1 + exp(−z))
+```
+
+**No TFLite needed for this model.** The < 50 ms NFR (W1.9) is met by orders of magnitude.
+TensorFlow is still required for MoveNet (W10.2), which is a different model.
+
+**→ §5.4 headline result · §4.2 model choice · §5.2 performance NFR · Appendix C**
+
+---
+
 ## Open items
 
 | | Item | Owner |
@@ -369,9 +501,11 @@ span 2021-04-22 → 2022-01-16.
 | 🔴 | **P0.6** Moodle deadline confirm + reverse-plan | Navod |
 | 🟠 | **P0.8** BLE screenshots + `0x180A` device values (E-002) | Navod |
 | 🔴 | **W1.1–W1.3** user survey — responses need ~1 week, start early | Navod |
-| 🔴 | `train.py` — MLP vs logistic, reported against baselines | code |
 | 🟠 | PMData download + confirm daily granularity (E-008) | code |
 | 🟠 | ADR-0006 `ReplayHealthProvider` (E-009) | code |
+| 🟠 | E1 retrospective policy evaluation — hit-rate @1/@3 (E-008) | code |
+| 🟢 | Threshold tuning — recall 0.536 at 0.5 (E-012) | code |
+| 🟢 | `resting_hr` positive coefficient — investigate confound (E-012) | code |
 
 ---
 
@@ -380,3 +514,4 @@ span 2021-04-22 → 2022-01-16.
 | Date | Entries |
 |---|---|
 | 2026-08-11 | E-001 … E-011 — repository, data pivot, Gate 0.9, ingest pipeline |
+| 2026-08-11 | E-012 — model trained; logistic 0.656 beats MLP 0.626 and all baselines; collinearity corrected; `resting_hr_delta_7d` baseline fixed |
