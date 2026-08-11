@@ -631,6 +631,102 @@ and that is a real reduction that belongs in the limitations list (now item 11).
 
 ---
 
+## E-015 · E3 — Recovery Score validated against self-reported readiness
+
+**Why rule-based, not trained** (W8.13): it must be explainable to a user asking *"why is
+my recovery 48?"*, must work on day one before any personal history exists, and must run
+on device as pure arithmetic. Whether the rules are any *good* is a separate claim, and
+this tests it against PMData's `readiness` (0–10, self-reported daily, 1,729 days,
+16 participants) — a direct measurement of the construct the score estimates.
+
+Spearman **per participant, then averaged**: pooling across people would mostly measure
+differences in how individuals use the scale (one person's 6 is another's 8).
+
+### Result
+
+| Predictor | mean ρ | median ρ |
+|---|---|---|
+| **Recovery Score (established days)** | **0.123** | 0.084 |
+| resting-HR z alone (inverted) | 0.123 | 0.073 |
+| Fitbit's own sleep score | 0.119 | 0.044 |
+| ridge regression, fitted *(upper bound)* | 0.080 | 0.079 |
+| Recovery Score *(all days, mixed)* | 0.063 | 0.051 |
+| sleep hours alone | 0.042 | 0.047 |
+| component: architecture | 0.040 | 0.058 |
+| component: duration | 0.036 | 0.032 |
+
+**Final position:** ties resting-HR-z-alone and Fitbit's commercial score; beats the fitted
+ridge (+0.043) and sleep duration alone (+0.081).
+
+### ⚠️ The caveat that must lead
+
+**The best predictor in this table reaches ρ = 0.123.** That is a weak correlation by any
+standard. The ranking says which signal is *least bad*, **not** that any of them predicts
+self-reported readiness well. Nothing here supports describing the Recovery Score as
+accurate.
+
+### How it got there — two corrections, both from evidence
+
+**Correction 1 — the original weights were wrong.** The first design used
+duration 0.40 / architecture 0.25 / autonomic 0.35, weighting sleep highest because it is
+what a user can act on. It scored **ρ 0.068 — worse than simply inverting the resting-HR
+z-score (0.123)**. Sleep duration and architecture were *diluting* the one component that
+worked.
+
+Weights were then grid-searched **on training participants and scored on participants the
+search never saw**. Doing it against the same numbers would have guaranteed an improvement
+and meant nothing.
+
+| Fold | Chosen weights | Held-out ρ |
+|---|---|---|
+| 1–5 | **duration 0.0 / architecture 0.0 / autonomic 1.0** *(all five, unanimously)* | 0.157, 0.108, 0.288, 0.048, 0.018 |
+
+**All five folds independently chose autonomic-only.** Unanimity is what makes this a
+finding rather than one lucky split. Mean held-out ρ 0.124 vs 0.068.
+
+**Correction 2 — re-weighting alone made it *worse* (0.068 → 0.063), which exposed a
+design flaw.** The score renormalises over whichever components are present, so on the
+**29.8% of days with no resting-HR baseline** it silently became a sleep-only score on the
+same 0–100 scale. Two different measurements were sharing one column, making a
+participant's day-to-day *ranking* incoherent.
+
+Fixed by flagging those days `is_provisional` and excluding them from the headline score:
+**0.063 → 0.123**. The app shows them as provisional rather than hiding them.
+
+After both corrections the held-out weight search gains **+0.001** — the design is now at
+the ceiling these features allow.
+
+### Illness detector (resting-HR z > 1.5)
+
+| | |
+|---|---|
+| Days flagged | 158 of 1,214 with an established baseline (**13.0%**) |
+| Mean readiness, flagged days | **4.58** |
+| Mean readiness, normal days | **5.05** |
+| Difference | **−0.47** |
+
+**Readiness is a proxy for illness, not a diagnosis.** A lower mean on flagged days is
+*consistent with* the detector working; it is not proof that it detects illness, and the
+report must not claim otherwise. No ground-truth illness labels exist in this cohort.
+
+### The thesis this supports
+
+Three independent analyses now point the same way:
+
+| Evidence | Finding |
+|---|---|
+| **E-006** | Biometrics add **+0.002** AUC over time-of-day alone |
+| **E-013** | Removing observed location drops the advantage over trivial advice from +0.089 to **+0.022** |
+| **E-015** | Best wearable-derived predictor of self-reported readiness reaches **ρ 0.123** |
+
+**Wearable-derived signals are weak predictors of subjective state in these cohorts.**
+That is a more interesting and more defensible thesis than "the app works well" — and it
+is what the evidence supports. §5 and §6 should be built on it rather than around it.
+
+**→ §5.4 (E3 result) · §4.2 (why rule-based) · §6 future work · Appendix C**
+
+---
+
 ## Open items
 
 | | Item | Owner |
@@ -639,7 +735,7 @@ and that is a real reduction that belongs in the limitations list (now item 11).
 | 🟠 | **P0.8** BLE screenshots + `0x180A` device values (E-002) | Navod |
 | 🔴 | **W1.1–W1.3** user survey — responses need ~1 week, start early | Navod |
 | 🟠 | ADR-0006 `ReplayHealthProvider` (E-009) | code |
-| 🟠 | E3 re-scoped — daily Recovery Score vs PMData `readiness` (E-014) | code |
+| 🟠 | Port `recovery.py` rules to TypeScript for on-device use (W8.13) | code |
 | 🔴 | **Location prediction** from calendar + geofence history — worth +0.067 P@1 (E-013) | code |
 | 🟢 | Threshold tuning — recall 0.536 at 0.5 (E-012) | code |
 | 🟢 | `resting_hr` positive coefficient — investigate confound (E-012) | code |
@@ -654,3 +750,4 @@ and that is a real reduction that belongs in the limitations list (now item 11).
 | 2026-08-11 | E-012 — model trained; logistic 0.656 beats MLP 0.626 and all baselines; collinearity corrected; `resting_hr_delta_7d` baseline fixed |
 | 2026-08-11 | E-013 — E1 policy evaluation: P@1 0.600 without context vs 0.578 fixed-09:00 and 0.447 base rate; observed-context result 0.667 flagged as an upper bound |
 | 2026-08-11 | E-014 — PMData retrieved; self-report confirmed daily (99.0%), so the planned fallback does not exist and E3 is re-scoped; scale documentation corrected |
+| 2026-08-11 | E-015 — E3 complete. Recovery Score validated at ρ 0.123 after two evidence-driven corrections (weights re-derived held-out; provisional-day flaw fixed). Ties Fitbit's own score, beats fitted ridge. Absolute correlation weak — supports the "wearables weakly predict subjective state" thesis |
