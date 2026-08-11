@@ -21,6 +21,7 @@
 | §4.6 Security — across lifecycle | E-001 (secrets excluded from VCS) | ◐ partial |
 | §5.1 Evaluation — functional testing | E-010 (41 automated tests) | ◐ partial |
 | §5.2 Evaluation — performance NFR | E-012 (inference budget) | ◐ partial |
+| §5.3 Evaluation — **effectiveness** | **E-013** | ✅ ready |
 | §5.4 Evaluation — **ML results + threats to validity** | **E-005, E-006, E-007, E-008, E-012** | ✅ ready |
 | §6 Conclusion — future work | E-006 (context > biometrics) | ◐ partial |
 | **Appendix A** — reproducibility | E-011 | ✅ ready |
@@ -494,6 +495,82 @@ TensorFlow is still required for MoveNet (W10.2), which is a different model.
 
 ---
 
+## E-013 · E1 — retrospective policy evaluation *(the effectiveness axis)*
+
+**Why this and not AUC.** ROC-AUC says the model can rank hours. It does not say whether
+*acting* on that ranking would help — which is what the brief's **effectiveness** axis
+asks. This is what replaces the lost within-subject before/after study.
+
+**Question, posed as a user would:** *"The app tells me my best k hours. If I had worked in
+those hours, would they actually have been good ones?"*
+
+**Method:** for each participant the model has never seen, rank that person's labelled
+hours by predicted readiness, take the top k, measure what fraction were genuinely
+focus-ready — **precision@k**. Every participant held out exactly once (GroupKFold, all 45).
+Averaged **per participant**, not pooled over rows: pooling would let the people with the
+most labelled hours dominate, and the claim is about what the app does for an individual.
+
+### Result — §5 table
+
+**Mean personal base rate: 0.447** (what random recommendation achieves)
+
+| Policy | P@1 | P@3 | P@5 |
+|---|---|---|---|
+| **AuraFlow model** *(with observed context)* | **0.667** | 0.652 | 0.653 |
+| **AuraFlow model** *(time + biometrics only)* | **0.600** | 0.593 | 0.578 |
+| fixed 09:00 — *"just work in the morning"* | 0.578 | 0.556 | 0.542 |
+| population hour lookup | 0.533 | 0.519 | 0.493 |
+| random | 0.489 | 0.444 | 0.462 |
+
+### ⚠️ The sensitivity analysis that changes the headline
+
+The model's strongest features are location one-hots recording where the person **was** at
+that hour. To recommend *tomorrow at 10:00*, a real app must **predict** location, not
+observe it. Scoring with observed context therefore flatters the deployed system.
+
+Measured, rather than assumed:
+
+| | P@1 | Margin over fixed-09:00 |
+|---|---|---|
+| With observed context | 0.667 | **+0.089** |
+| **Without context** | **0.600** | **+0.022** |
+| Cost of not knowing location | **−0.067** | |
+
+**Removing observed context cuts the model's advantage over the trivial heuristic from
+0.089 to 0.022.** The report must **lead with 0.600**, not 0.667, unless location
+prediction is separately validated.
+
+**What survives, stated fairly:**
+- Against a person's own base rate, the conservative model still gains **+0.153**
+  (0.600 vs 0.447) — a real, useful improvement.
+- Against *"just work in the morning"*, the conservative margin is **+0.022**, which is
+  within the range that could be noise. **The app must not claim to beat generic advice
+  on this evidence alone.**
+
+This is consistent with E-006 (biometrics add +0.002 AUC over time alone). Two independent
+analyses point the same way: **time-of-day and location carry this model; the wearable
+signals contribute little.**
+
+### Consequences for the project
+
+1. **Location prediction becomes a real feature, not a nice-to-have.** The +0.067 is
+   recoverable if the app predicts location from calendar and geofence history. This is a
+   concrete design justification for geofencing (W10.12) and a specific §6 future-work item.
+2. **Framing for §5:** *"AuraFlow's recommendations were focus-favourable 60% of the time
+   against a 45% base rate, using only time and wearable signals. Observed location context
+   raises this to 67%, but a deployed system must predict location rather than observe it,
+   so 60% is the defensible figure."*
+
+### What this does not show
+
+**Agreement with past behaviour, not causal improvement.** Nobody followed this advice; the
+hours were lived, then labelled. Someone told to work at 10:00 might have felt different
+*because* they were told. Only a prospective trial answers that.
+
+**→ §5.3 effectiveness (headline) · §6 future work · §4 geofencing justification · Appendix C**
+
+---
+
 ## Open items
 
 | | Item | Owner |
@@ -503,7 +580,7 @@ TensorFlow is still required for MoveNet (W10.2), which is a different model.
 | 🔴 | **W1.1–W1.3** user survey — responses need ~1 week, start early | Navod |
 | 🟠 | PMData download + confirm daily granularity (E-008) | code |
 | 🟠 | ADR-0006 `ReplayHealthProvider` (E-009) | code |
-| 🟠 | E1 retrospective policy evaluation — hit-rate @1/@3 (E-008) | code |
+| 🔴 | **Location prediction** from calendar + geofence history — worth +0.067 P@1 (E-013) | code |
 | 🟢 | Threshold tuning — recall 0.536 at 0.5 (E-012) | code |
 | 🟢 | `resting_hr` positive coefficient — investigate confound (E-012) | code |
 
