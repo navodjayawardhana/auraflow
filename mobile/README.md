@@ -41,6 +41,30 @@ cd ../api && php artisan serve
 > Android emulators reach the host at `10.0.2.2`; a physical device needs your LAN
 > address. `src/constants/api-config.ts` guesses per platform if the variable is unset.
 
+### Running on a physical phone
+
+Three things have to line up, and each fails differently:
+
+```bash
+# 1. Bind the API to all interfaces. The default is 127.0.0.1, which the phone cannot reach.
+cd ../api && php artisan serve --host=0.0.0.0 --port=8000
+
+# 2. Point the app at this machine's LAN address, not localhost.
+#    .env.local:  EXPO_PUBLIC_API_URL=http://192.168.1.x:8000
+
+# 3. Start Metro on the LAN (the default).
+npm start
+```
+
+If the phone loads the app but every request fails, it is almost always (1) or the
+Windows firewall blocking port 8000 for private networks.
+
+**`--tunnel` does not help here.** It exposes *Metro* through ngrok so a phone on another
+network can download the bundle — it does not expose the API. With a tunnel the host
+inferred by `api-config.ts` becomes an ngrok address, and `http://…ngrok.io:8000` is not
+serving anything. Use a tunnel only when the device cannot reach this machine at all, and
+then tunnel the API separately and set `EXPO_PUBLIC_API_URL` to that URL.
+
 ## Layout
 
 ```
@@ -62,16 +86,27 @@ sources of routing decisions race.
 
 ## Expo Go vs a development build
 
-Everything here runs in **Expo Go** today. The AR work does not: `react-native-vision-camera`
-and `react-native-fast-tflite` are native modules, so from that point on the project needs
-a **development build**:
+Everything here runs in **Expo Go** today — but use the right command:
 
 ```bash
-npx expo install expo-dev-client
+npm run start:go     # Expo Go
+npm start            # development build
+```
+
+> **`npm start` alone will not work with Expo Go.** `expo-dev-client` is installed (the AR
+> work needs it), and its presence makes `expo start` default to development-build mode.
+> Scanning that QR with Expo Go fails. In a running session, pressing **`s`** switches
+> between the two without restarting.
+
+`expo-dev-client` is installed now rather than later because
+`react-native-vision-camera` and `react-native-fast-tflite` are native modules that Expo
+Go cannot load at all. When the AR work starts:
+
+```bash
 npx expo run:android
 ```
 
-The camera also does not work in an emulator at all — AR needs a physical device.
+The camera also does not work in an emulator — AR needs a physical device.
 
 ## Tokens
 
