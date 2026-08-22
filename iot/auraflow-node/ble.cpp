@@ -57,11 +57,14 @@ class ServerCallbacks : public BLEServerCallbacks {
  */
 class LampCallbacks : public BLECharacteristicCallbacks {
   void onWrite(BLECharacteristic* characteristic) override {
-    const std::string value = characteristic->getValue();
-    if (value.empty()) return;
+    // Arduino String, not std::string: the ESP32 core changed this return type in 3.x,
+    // and the old signature is what kept this sketch from building against the installed
+    // core at all. Taking whatever getValue() hands back keeps it building across both.
+    const String value = characteristic->getValue();
+    if (value.isEmpty()) return;
 
     JsonDocument doc;
-    if (deserializeJson(doc, value) != DeserializationError::Ok) return;
+    if (deserializeJson(doc, value.c_str()) != DeserializationError::Ok) return;
 
     // Light::parseMode is the same validator the MQTT path uses, so an unknown mode is
     // rejected identically over either transport rather than each having its own idea.
@@ -145,7 +148,11 @@ void publishBiometrics(const BioReading& reading) {
   if (chrHeartRate != nullptr && reading.heartRateValid) {
     uint8_t frame[2];
     frame[0] = 0b00000110;  // uint8 value, contact supported, contact detected
-    frame[1] = (uint8_t)constrain(reading.heartRate, 0, 255);
+    // The standard characteristic carries a whole number, so the decimal the node now
+    // resolves is rounded away here and survives only on the JSON path. That is the
+    // right trade: a generic heart-rate app reading this service is the independent
+    // check that the value is right, and it can only read the standard layout.
+    frame[1] = (uint8_t)constrain(lroundf(reading.heartRate), 0L, 255L);
     chrHeartRate->setValue(frame, sizeof(frame));
     chrHeartRate->notify();
   }
@@ -156,12 +163,18 @@ void publishBiometrics(const BioReading& reading) {
   if (chrVitals != nullptr) {
     String json = "{\"finger\":";
     json += reading.fingerPresent ? "true" : "false";
+    json += ",\"settled\":";
+    json += reading.settled ? "true" : "false";
     json += ",\"ir_mean\":";
     json += reading.irMean;
 
     if (reading.heartRateValid) {
       json += ",\"hr_bpm\":";
-      json += reading.heartRate;
+      json += String(reading.heartRate, 1);
+    }
+    if (reading.heartRateMaximValid) {
+      json += ",\"hr_bpm_maxim\":";
+      json += reading.heartRateMaxim;
     }
     if (reading.spo2Valid) {
       json += ",\"spo2_pct\":";
@@ -170,6 +183,8 @@ void publishBiometrics(const BioReading& reading) {
 
     json += ",\"hr_valid\":";
     json += reading.heartRateValid ? "true" : "false";
+    json += ",\"hr_maxim_valid\":";
+    json += reading.heartRateMaximValid ? "true" : "false";
     json += ",\"spo2_valid\":";
     json += reading.spo2Valid ? "true" : "false";
     json += ",\"uptime_s\":";

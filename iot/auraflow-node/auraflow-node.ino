@@ -69,6 +69,7 @@ bool          haveBio          = false;
 bool          lastFingerState  = false;
 unsigned long lastDeviceMs     = 0;
 unsigned long lastBioMs        = 0;
+unsigned long lastIdleLogMs    = 0;
 unsigned long lastReconnectMs  = 0;
 
 // ---------------------------------------------------------------- publishing
@@ -105,6 +106,13 @@ void publishDevice() {
   doc["light_mode"]     = Light::nameOf(Light::mode());
   doc["pulse_sensor"]   = Sensors::pulseSensorPresent();
 
+  // The measured sample rate, not the nominal 25 Hz. Drifting from it is the earliest
+  // visible sign the loop is falling behind the sensor, and `dropped_samples` is what
+  // that has already cost — both belong on the health topic rather than in a serial log
+  // nobody is watching during a demo.
+  doc["sample_rate_hz"]  = round(Sensors::sampleRateHz() * 100) / 100.0;
+  doc["dropped_samples"] = Sensors::droppedSamples();
+
   // MAX30102 on-die temperature: a diagnostic that shows the LEDs warming, NOT
   // a skin or body temperature. Named so it cannot be mistaken for one, and
   // skipped entirely while a finger is on the sensor — see sensors.h.
@@ -129,12 +137,21 @@ void publishDevice() {
 void publishBiometrics(const BioReading& b) {
   JsonDocument doc;
   doc["finger"]  = b.fingerPresent;
+  doc["settled"] = b.settled;                // finger down long enough to mean anything
   doc["ir_mean"] = b.irMean;                 // contact quality
-  if (b.heartRateValid) doc["hr_bpm"] = b.heartRate;
-  if (b.spo2Valid)      doc["spo2_pct"] = b.spo2;
-  doc["hr_valid"]   = b.heartRateValid;
-  doc["spo2_valid"] = b.spo2Valid;
-  doc["uptime_s"]   = millis() / 1000;
+
+  // Two rates from one signal. `hr_bpm` is the beat-interval estimate and the one any
+  // consumer should read; `hr_bpm_maxim` is the reference algorithm, kept alongside it
+  // so the evaluation can measure them against each other as well as against the watch.
+  // One decimal, because the whole reason for the second estimator is that the first
+  // cannot express a value between its steps.
+  if (b.heartRateValid)      doc["hr_bpm"] = round(b.heartRate * 10) / 10.0;
+  if (b.heartRateMaximValid) doc["hr_bpm_maxim"] = b.heartRateMaxim;
+  if (b.spo2Valid)           doc["spo2_pct"] = b.spo2;
+  doc["hr_valid"]       = b.heartRateValid;
+  doc["hr_maxim_valid"] = b.heartRateMaximValid;
+  doc["spo2_valid"]     = b.spo2Valid;
+  doc["uptime_s"]       = millis() / 1000;
 #if SIMULATE_BIO
   doc["simulated"] = true;
 #endif
@@ -144,9 +161,21 @@ void publishBiometrics(const BioReading& b) {
   mqtt.publish(topicBio.c_str(), (const uint8_t*)buf, n, false);
 
   if (b.fingerPresent) {
-    Serial.printf("[bio] hr=%ld(%d) spo2=%ld(%d) ir=%lu\n",
-                  (long)b.heartRate, b.heartRateValid,
-                  (long)b.spo2, b.spo2Valid, (unsigned long)b.irMean);
+    // The detector's internals ride along on the serial line only. Tuning the gate or the
+    // refractory from the published rate alone is guesswork — what matters is the swing
+    // it measured, the DC that swing has to clear, and how many intervals it has kept.
+    float swing, dc, medianMs, loMs, hiMs;
+    int intervals;
+    Sensors::beatDebug(swing, dc, intervals, medianMs, loMs, hiMs);
+
+    Serial.printf(
+        "[bio] hr=%.1f(%d) maxim=%ld(%d) spo2=%ld(%d) ir=%lu "
+        "swing=%.0f gate=%.0f n=%d med=%.0f lo=%.0f hi=%.0f %s\n",
+        b.heartRate, b.heartRateValid,
+        (long)b.heartRateMaxim, b.heartRateMaximValid,
+        (long)b.spo2, b.spo2Valid, (unsigned long)b.irMean,
+        swing, dc * BEAT_MIN_PERFUSION, intervals, medianMs, loMs, hiMs,
+        b.settled ? "" : "settling");
   }
 }
 
@@ -271,10 +300,20 @@ void setup() {
   mqtt.setCallback(onMessage);
   mqtt.setBufferSize(512);
   mqtt.setKeepAlive(30);
+  // The default socket timeout is 15 seconds and connect() blocks for all of it. The
+  // sensor driver buffers 160 ms, so one failed attempt at the default would cost the
+  // best part of four hundred samples. Four seconds still clears a slow DNS lookup.
+  mqtt.setSocketTimeout(4);
   connectMqtt();
 }
 
 void loop() {
+  // Drained three times a pass: here, after the MQTT block, and after BLE. The driver
+  // holds four samples — 160 ms — and either of those sections can exceed that on a slow
+  // network or during a reconnect. Draining around them rather than only after keeps the
+  // gap inside the budget in the cases that would otherwise lose signal silently.
+  Sensors::update();
+
   if (!mqtt.connected()) {
     if (millis() - lastReconnectMs > RECONNECT_MS) {
       lastReconnectMs = millis();
@@ -309,6 +348,15 @@ void loop() {
         publishBiometrics(lastBio);
       }
     }
+
+    // Serial only, and only while idle. An empty sensor publishes nothing — correctly,
+    // there is nothing to say — but that leaves the log silent in exactly the case where
+    // someone is asking why nothing is happening. The IR level answers it outright.
+    if (haveBio && !lastBio.fingerPresent && millis() - lastIdleLogMs > IDLE_LOG_MS) {
+      lastIdleLogMs = millis();
+      Serial.printf("[bio] no finger — ir=%lu (contact floor %lu)\n",
+                    (unsigned long)lastBio.irMean, (unsigned long)FINGER_IR_FLOOR);
+    }
   }
 
   Sensors::update();
@@ -326,6 +374,7 @@ void loop() {
   handleButton();
   Light::update();
   Ble::update();
+  Sensors::update();
 
   // A phone can drive the lamp over BLE too, so the remote state topic has to hear about
   // it rather than reporting a change it cannot explain.

@@ -6,7 +6,7 @@ import { PpgTrace } from '@/components/ppg-trace';
 import { Font, GradientAxis, Radius, Shadows } from '@/constants/design';
 import { AuraColors } from '@/constants/theme';
 import { useIot } from '@/context/iot-context';
-import { usableHeartRate, usableSpo2 } from '@/services/iot-payloads';
+import { isSettling, usableHeartRate, usableSpo2 } from '@/services/iot-payloads';
 
 /** Below this the optical signal is mostly noise, whatever the algorithm reports. */
 const WEAK_SIGNAL_IR = 100_000;
@@ -42,15 +42,29 @@ export function LiveBiometricsCard() {
   const hasFinger = biometrics?.finger === true;
   const weakSignal = hasFinger && (biometrics?.ir_mean ?? 0) < WEAK_SIGNAL_IR;
 
+  // Contact made, but the node's analysis window is not yet full of it. Worth its own
+  // state: it looks identical to a failing reading and has the opposite fix — wait,
+  // rather than adjust anything.
+  const isMeasuring = isSettling(biometrics);
+
   // Stale readings are greyed and relabelled rather than left looking current. A vital
   // sign is the one number where "probably still true" is not good enough.
   const isLive = hasFinger && !isBiometricsStale && heartRate !== null;
+
+  // Whole bpm on the card. The node resolves a decimal and the payload keeps it, because
+  // the agreement analysis needs the resolution — but a tenth of a beat per minute
+  // flickering on a glanceable number is noise wearing the costume of precision.
+  const displayBpm = heartRate === null ? null : Math.round(heartRate);
 
   function footer() {
     if (status === 'connecting') return 'Connecting to your node…';
     if (!isDeviceOnline) return 'Node offline — power it and check its Wi-Fi';
     if (!hasFinger) return 'Rest a finger on the MAX30102 pad';
     if (isBiometricsStale) return 'Waiting for a fresh reading';
+    // Ahead of the weak-signal hint deliberately: telling someone to press harder while
+    // the node is still filling its window would have them fidgeting through the one
+    // stretch that has to stay still.
+    if (isMeasuring) return 'Measuring — hold still for a few seconds';
     if (heartRate === null) return weakSignal ? 'Press a little more firmly' : 'Finding your pulse';
     return 'Finger on sensor · updating every 1.5s';
   }
@@ -61,7 +75,7 @@ export function LiveBiometricsCard() {
       accessibilityLiveRegion="polite"
       accessibilityLabel={
         isLive
-          ? `Heart rate ${heartRate} beats per minute${spo2 !== null ? `, oxygen saturation ${spo2} percent` : ''}`
+          ? `Heart rate ${displayBpm} beats per minute${spo2 !== null ? `, oxygen saturation ${spo2} percent` : ''}`
           : 'Waiting for a reading from the sensor'
       }>
       <LinearGradient
@@ -89,7 +103,7 @@ export function LiveBiometricsCard() {
               size={22}
               color={isLive ? '#fda4af' : 'rgba(255,255,255,0.35)'}
             />
-            <Text style={[styles.primary, !isLive && styles.dimmed]}>{heartRate ?? '—'}</Text>
+            <Text style={[styles.primary, !isLive && styles.dimmed]}>{displayBpm ?? '—'}</Text>
           </View>
           <Text style={styles.unit}>BPM</Text>
         </View>

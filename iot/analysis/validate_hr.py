@@ -13,8 +13,21 @@ This is a *comparative agreement* analysis, not a clinical validation. Neither
 device is a medical reference; the watch is a convenience comparator. Say that
 in the report.
 
+The node publishes two heart rates from the same signal, and both are analysed here.
+
+    hr_bpm        beat intervals timed against the node's measured sample clock. This
+                  is the estimator the app displays.
+    hr_bpm_maxim  Maxim's reference algorithm. It divides a whole number of samples by a
+                  whole number of beats and divides that into 1500, so at rest it can
+                  only return 60, 62, 65, 68, 71, 75, 78, 83, 88, 93 or 100 bpm. Kept
+                  because it is the published, citable method — and because the size of
+                  its quantisation is itself a result worth reporting.
+
+Reporting both against the same watch samples turns "we changed the algorithm" into a
+measured comparison. `--estimators` narrows it if one column is missing.
+
 Inputs (CSV, exported from MySQL — see the queries in the README)
-    node_hr.csv   recorded_at,hr_bpm
+    node_hr.csv   recorded_at,hr_bpm[,hr_bpm_maxim]
     watch_hr.csv  recorded_at,hr_bpm
 
 Usage
@@ -35,15 +48,59 @@ from scipy import stats
 OUT_DIR = Path(__file__).parent / "figures"
 
 
-def load(path: Path, label: str) -> pd.DataFrame:
+#: Node columns to analyse, in the order they are reported.
+ESTIMATORS = {
+    "beat": "hr_bpm",
+    "maxim": "hr_bpm_maxim",
+}
+
+
+def plausible(series: pd.Series) -> pd.Series:
+    """Physiologically implausible rows are sensor artefacts, not data."""
+    return (series > 30) & (series < 220)
+
+
+def load_watch(path: Path) -> pd.DataFrame:
     df = pd.read_csv(path, parse_dates=["recorded_at"])
     df = df.dropna(subset=["hr_bpm"]).sort_values("recorded_at")
     df["hr_bpm"] = df["hr_bpm"].astype(float)
-    # Physiologically implausible rows are sensor artefacts, not data.
-    df = df[(df["hr_bpm"] > 30) & (df["hr_bpm"] < 220)]
-    print(f"{label:>5}: {len(df):4d} samples  "
+    df = df[plausible(df["hr_bpm"])]
+    print(f"watch: {len(df):4d} samples  "
           f"{df.recorded_at.min()} -> {df.recorded_at.max()}")
-    return df.rename(columns={"hr_bpm": label})
+    return df.rename(columns={"hr_bpm": "watch"})
+
+
+def load_node(path: Path, wanted: list[str]) -> dict[str, pd.DataFrame]:
+    """One frame per estimator, each already filtered to its own usable rows.
+
+    Split rather than kept as one wide frame because the estimators do not fail
+    together: Maxim's can lose its lock on a window the beat timer reads fine, and
+    dropping a row from both would quietly shrink the better estimator's sample to
+    match the worse one.
+    """
+    raw = pd.read_csv(path, parse_dates=["recorded_at"]).sort_values("recorded_at")
+
+    frames: dict[str, pd.DataFrame] = {}
+    for name in wanted:
+        column = ESTIMATORS[name]
+        if column not in raw.columns:
+            print(f"{name:>5}: column '{column}' absent - skipped")
+            continue
+
+        df = raw.dropna(subset=[column])[["recorded_at", column]].copy()
+        df[column] = df[column].astype(float)
+        df = df[plausible(df[column])]
+
+        if df.empty:
+            print(f"{name:>5}:    0 usable samples - skipped")
+            continue
+
+        print(f"{name:>5}: {len(df):4d} samples  "
+              f"{df.recorded_at.min()} -> {df.recorded_at.max()}  "
+              f"{df[column].nunique()} distinct values")
+        frames[name] = df.rename(columns={column: "node"})
+
+    return frames
 
 
 def pair(node: pd.DataFrame, watch: pd.DataFrame, tolerance_s: int) -> pd.DataFrame:
@@ -63,7 +120,7 @@ def pair(node: pd.DataFrame, watch: pd.DataFrame, tolerance_s: int) -> pd.DataFr
     return paired
 
 
-def report(paired: pd.DataFrame) -> dict:
+def report(paired: pd.DataFrame, name: str) -> dict:
     a = paired["node"].to_numpy()
     b = paired["watch"].to_numpy()
 
@@ -86,7 +143,7 @@ def report(paired: pd.DataFrame) -> dict:
         "within_10bpm_pct": 100 * (np.abs(diff) <= 10).mean(),
     }
 
-    print("\n--- agreement -------------------------------------------------")
+    print(f"\n--- agreement: {name} vs watch " + "-" * (32 - len(name)))
     print(f"n                 = {metrics['n']}")
     print(f"Pearson r         = {r:.3f}  (p = {p:.2e})")
     print(f"MAE               = {metrics['mae_bpm']:.2f} bpm")
@@ -106,11 +163,11 @@ def report(paired: pd.DataFrame) -> dict:
     ax.plot([lo, hi], [lo, hi], linestyle="--", linewidth=1)
     ax.set_xlabel("Huawei Watch Fit (bpm)")
     ax.set_ylabel("MAX30102 node (bpm)")
-    ax.set_title(f"HR agreement — r = {r:.3f}, n = {len(paired)}")
+    ax.set_title(f"HR agreement, {name} — r = {r:.3f}, n = {len(paired)}")
     ax.set_xlim(lo, hi)
     ax.set_ylim(lo, hi)
     fig.tight_layout()
-    fig.savefig(OUT_DIR / "hr_scatter.png", dpi=200)
+    fig.savefig(OUT_DIR / f"hr_scatter_{name}.png", dpi=200)
 
     # Bland-Altman
     fig, ax = plt.subplots(figsize=(6.5, 4.5))
@@ -121,12 +178,47 @@ def report(paired: pd.DataFrame) -> dict:
     ax.annotate(f"bias {bias:+.1f}", (mean.max(), bias), ha="right", va="bottom")
     ax.set_xlabel("Mean of the two measurements (bpm)")
     ax.set_ylabel("Node - Watch (bpm)")
-    ax.set_title("Bland-Altman")
+    ax.set_title(f"Bland-Altman, {name}")
     fig.tight_layout()
-    fig.savefig(OUT_DIR / "hr_bland_altman.png", dpi=200)
+    fig.savefig(OUT_DIR / f"hr_bland_altman_{name}.png", dpi=200)
 
     print(f"figures written to {OUT_DIR}")
     return metrics
+
+
+def compare_estimators(frames: dict[str, pd.DataFrame], tolerance_s: int) -> None:
+    """The node against itself.
+
+    The watch comparison says whether the node is right; this says how much the two
+    estimators actually differ, which is the part a reader cannot get from two separate
+    agreement tables. A large spread here with similar watch agreement means the watch
+    is too coarse a comparator to separate them, and that is worth saying plainly.
+    """
+    if len(frames) < 2:
+        return
+
+    beat, maxim = frames["beat"], frames["maxim"]
+    both = pd.merge_asof(
+        beat.rename(columns={"node": "beat"}),
+        maxim.rename(columns={"node": "maxim"}),
+        on="recorded_at",
+        direction="nearest",
+        tolerance=pd.Timedelta(seconds=tolerance_s),
+    ).dropna()
+
+    if len(both) < 20:
+        print(f"\nonly {len(both)} rows carry both estimators - skipping the "
+              "estimator-to-estimator comparison")
+        return
+
+    diff = both["beat"].to_numpy() - both["maxim"].to_numpy()
+    print("\n--- beat vs maxim, same signal ---------------------------------")
+    print(f"n                 = {len(both)}")
+    print(f"MAE               = {np.abs(diff).mean():.2f} bpm")
+    print(f"Bias (beat-maxim) = {diff.mean():+.2f} bpm")
+    print(f"Distinct values   = {both['beat'].nunique()} beat / "
+          f"{both['maxim'].nunique()} maxim")
+    print("---------------------------------------------------------------")
 
 
 def main() -> None:
@@ -135,19 +227,35 @@ def main() -> None:
     ap.add_argument("watch_csv", type=Path)
     ap.add_argument("--tolerance", type=int, default=10,
                     help="max seconds between a node and watch sample to pair them")
+    ap.add_argument("--estimators", nargs="+", choices=sorted(ESTIMATORS),
+                    default=sorted(ESTIMATORS),
+                    help="node columns to analyse (default: both)")
     args = ap.parse_args()
 
-    node = load(args.node_csv, "node")
-    watch = load(args.watch_csv, "watch")
-    paired = pair(node, watch, args.tolerance)
+    frames = load_node(args.node_csv, args.estimators)
+    if not frames:
+        raise SystemExit("no usable node estimator columns — nothing to compare")
 
-    if len(paired) < 20:
-        raise SystemExit(
-            f"only {len(paired)} paired samples — collect more before reporting. "
-            "Aim for 3 sessions x 5 min at rest, plus one after light exercise."
-        )
+    watch = load_watch(args.watch_csv)
 
-    report(paired)
+    reported = 0
+    for name, node in frames.items():
+        paired = pair(node, watch, args.tolerance)
+
+        # Per estimator rather than up front: one of them losing its lock through a
+        # session is a result, not a reason to abandon the other one's analysis.
+        if len(paired) < 20:
+            print(f"only {len(paired)} paired samples for {name} - not reported. "
+                  "Aim for 3 sessions x 5 min at rest, plus one after light exercise.")
+            continue
+
+        report(paired, name)
+        reported += 1
+
+    compare_estimators(frames, args.tolerance)
+
+    if reported == 0:
+        raise SystemExit("no estimator had enough paired samples to report")
 
 
 if __name__ == "__main__":
