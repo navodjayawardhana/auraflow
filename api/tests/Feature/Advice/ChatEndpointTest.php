@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Advice;
 
+use App\Models\ChatConversation;
 use App\Models\ChatMessage;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -27,6 +28,25 @@ class ChatEndpointTest extends TestCase
         ]);
     }
 
+    /** Messages only exist inside a conversation now, so a fixture has to build one. */
+    private function conversationFor(User $user): ChatConversation
+    {
+        return ChatConversation::query()->create([
+            'user_id' => $user->id,
+            'last_activity_at' => now(),
+        ]);
+    }
+
+    private function messageIn(ChatConversation $conversation, string $body): void
+    {
+        ChatMessage::query()->create([
+            'user_id' => $conversation->user_id,
+            'conversation_id' => $conversation->id,
+            'role' => ChatMessage::ROLE_USER,
+            'body' => $body,
+        ]);
+    }
+
     // --- Access ---
 
     public function test_should_reject_an_unauthenticated_read(): void
@@ -46,11 +66,7 @@ class ChatEndpointTest extends TestCase
         $mine = User::factory()->create();
         $theirs = User::factory()->create();
 
-        ChatMessage::query()->create([
-            'user_id' => $theirs->id,
-            'role' => ChatMessage::ROLE_USER,
-            'body' => 'something private',
-        ]);
+        $this->messageIn($this->conversationFor($theirs), 'something private');
 
         $this->actingAs($mine, 'sanctum')
             ->getJson('/api/v1/chat')
@@ -64,11 +80,7 @@ class ChatEndpointTest extends TestCase
         $theirs = User::factory()->create();
 
         foreach ([$mine, $theirs] as $user) {
-            ChatMessage::query()->create([
-                'user_id' => $user->id,
-                'role' => ChatMessage::ROLE_USER,
-                'body' => 'hello',
-            ]);
+            $this->messageIn($this->conversationFor($user), 'hello');
         }
 
         $this->actingAs($mine, 'sanctum')->deleteJson('/api/v1/chat')->assertNoContent();
@@ -160,12 +172,10 @@ class ChatEndpointTest extends TestCase
     {
         $user = User::factory()->create();
 
+        $conversation = $this->conversationFor($user);
+
         foreach (['first', 'second', 'third'] as $body) {
-            ChatMessage::query()->create([
-                'user_id' => $user->id,
-                'role' => ChatMessage::ROLE_USER,
-                'body' => $body,
-            ]);
+            $this->messageIn($conversation, $body);
         }
 
         $this->actingAs($user, 'sanctum')

@@ -1,11 +1,18 @@
 import { apiDelete, apiGet, apiPost } from '@/services/api-client';
 
+/**
+ * Three kinds of claim, kept apart because they are not equally trustworthy: a figure
+ * someone else measured, a figure the user typed, and a figure a vision model guessed from
+ * a photograph with no scale in it.
+ */
+export type MealSource = 'lookup' | 'estimate' | 'photo';
+
 export interface MealEntry {
   id: number;
   name: string;
   kcal: number;
-  /** Where the figure came from — the UI renders the two differently. */
-  source: 'lookup' | 'estimate';
+  /** Where the figure came from — the UI renders each of the three differently. */
+  source: MealSource;
   barcode: string | null;
   protein_g: number | null;
   carbs_g: number | null;
@@ -37,7 +44,7 @@ export interface FoodProduct {
 export interface LogMealInput {
   name: string;
   kcal: number;
-  source: 'lookup' | 'estimate';
+  source: MealSource;
   barcode?: string;
   protein_g?: number;
   carbs_g?: number;

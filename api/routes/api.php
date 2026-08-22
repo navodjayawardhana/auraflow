@@ -85,10 +85,24 @@ Route::prefix('v1')->group(function () {
         Route::delete('/meals/{meal}', [MealController::class, 'destroy'])
             ->whereNumber('meal')
             ->name('meals.destroy');
+        // Photo recognition. Throttled hardest of anything here: every call is a paid
+        // model call carrying a megabyte of image, and the flow behind it is one tap. The
+        // limit itself is configuration -- see the 'meal-photo' limiter in AppServiceProvider.
+        Route::post('/meals/estimate-from-photo', [MealController::class, 'estimate'])
+            ->middleware('throttle:meal-photo')
+            ->name('meals.estimate');
+
         Route::get('/foods/{barcode}', [MealController::class, 'lookup'])
             ->where('barcode', '\d{6,14}')
             ->middleware('throttle:60,1')
             ->name('foods.lookup');
+
+        // The history list, and "new chat". Neither reaches the model, so neither is
+        // throttled alongside the paid /chat write.
+        Route::get('/chat/conversations', [ChatController::class, 'conversations'])
+            ->name('chat.conversations.index');
+        Route::post('/chat/conversations', [ChatController::class, 'newConversation'])
+            ->name('chat.conversations.store');
 
         Route::get('/chat', [ChatController::class, 'index'])->name('chat.index');
         Route::post('/chat', [ChatController::class, 'store'])

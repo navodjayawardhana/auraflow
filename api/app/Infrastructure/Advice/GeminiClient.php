@@ -35,6 +35,21 @@ final class GeminiClient
      */
     private const THINKING_LEVEL = 'low';
 
+    private const TIMEOUT_SECONDS = 25;
+
+    /** One retry. Provider blips are transient far more often than they are permanent. */
+    private const ATTEMPTS = 2;
+
+    /**
+     * A photograph is megabytes rather than kilobytes, so both numbers above are wrong for
+     * it in opposite directions: one attempt legitimately takes longer, and re-sending the
+     * whole image after a timeout turns a slow request into a minute of silence on a phone
+     * whose owner is standing there holding it. One attempt, with room to finish.
+     */
+    private const IMAGE_TIMEOUT_SECONDS = 45;
+
+    private const IMAGE_ATTEMPTS = 1;
+
     /**
      * A multi-turn exchange.
      *
@@ -62,10 +77,46 @@ final class GeminiClient
     }
 
     /**
-     * @param  list<array{role: string, parts: list<array{text: string}>}>  $contents
+     * One image and one question about it.
+     *
+     * Here rather than in a second client because the provider, the key and the failure
+     * vocabulary are the same; only the shape of the part differs. The bytes are passed
+     * inline and never written to disk — the app has no reason to keep a photograph of
+     * someone's dinner, and a stored image is a liability the feature does not need.
+     *
+     * @param  string  $imageBytes  Raw, not base64 — encoding is this method's business.
      */
-    private function call(string $systemInstruction, array $contents): string
-    {
+    public function describeImage(
+        string $systemInstruction,
+        string $userPrompt,
+        string $imageBytes,
+        string $mimeType,
+    ): string {
+        return $this->call(
+            $systemInstruction,
+            [[
+                'role' => 'user',
+                'parts' => [
+                    // Text first: the model follows an instruction that precedes the image
+                    // more reliably than one that trails it.
+                    ['text' => $userPrompt],
+                    ['inlineData' => ['mimeType' => $mimeType, 'data' => base64_encode($imageBytes)]],
+                ],
+            ]],
+            self::IMAGE_TIMEOUT_SECONDS,
+            self::IMAGE_ATTEMPTS,
+        );
+    }
+
+    /**
+     * @param  list<array{role: string, parts: list<array<string, mixed>>}>  $contents
+     */
+    private function call(
+        string $systemInstruction,
+        array $contents,
+        int $timeoutSeconds = self::TIMEOUT_SECONDS,
+        int $attempts = self::ATTEMPTS,
+    ): string {
         $apiKey = config('services.gemini.key');
 
         if (blank($apiKey)) {
@@ -78,8 +129,8 @@ final class GeminiClient
             config('services.gemini.model'),
         );
 
-        $response = Http::timeout(25)
-            ->retry(2, 500)
+        $response = Http::timeout($timeoutSeconds)
+            ->retry($attempts, 500)
             ->withHeaders(['x-goog-api-key' => $apiKey])
             ->post($url, [
                 'systemInstruction' => [

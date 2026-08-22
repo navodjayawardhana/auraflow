@@ -28,27 +28,39 @@ function timeOf(iso: string): string {
   return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 }
 
+/**
+ * How each kind of figure introduces itself.
+ *
+ * A photo estimate gets its own row rather than borrowing the user's: they own a number
+ * they typed, and they do not own one a model read off a picture with no scale in it.
+ */
+const Provenance = {
+  lookup: { icon: 'check-circle', tone: IconTones.success, label: 'Open Food Facts' },
+  estimate: { icon: 'edit-3', tone: IconTones.caution, label: 'your estimate' },
+  photo: { icon: 'camera', tone: IconTones.stage, label: 'from a photo, checked by you' },
+} as const;
+
 function MealRow({ meal, onRemove }: { meal: MealEntry; onRemove: () => void }) {
-  const isLookup = meal.source === 'lookup';
-  const badge = isLookup ? IconTones.success : IconTones.caution;
+  const provenance = Provenance[meal.source];
+  const isMeasured = meal.source === 'lookup';
 
   return (
     <View style={styles.mealRow}>
-      <View style={[styles.mealIcon, { backgroundColor: badge.bg }]}>
-        <Feather name={isLookup ? 'check-circle' : 'edit-3'} size={16} color={badge.color} />
+      <View style={[styles.mealIcon, { backgroundColor: provenance.tone.bg }]}>
+        <Feather name={provenance.icon} size={16} color={provenance.tone.color} />
       </View>
 
       <View style={styles.mealText}>
         <Text style={Type.rowTitle}>{meal.name}</Text>
         {/* Provenance on every row: a looked-up figure and a guess are different claims. */}
         <Text style={Type.caption}>
-          {isLookup ? 'Open Food Facts' : 'your estimate'} · {timeOf(meal.eaten_at)}
+          {provenance.label} · {timeOf(meal.eaten_at)}
           {meal.portion_g ? ` · ${meal.portion_g} g` : ''}
         </Text>
       </View>
 
       <View style={styles.mealValue}>
-        {!isLookup ? <Text style={styles.approx}>≈</Text> : null}
+        {!isMeasured ? <Text style={styles.approx}>≈</Text> : null}
         <Text style={styles.mealKcal}>{meal.kcal}</Text>
         <Text style={Type.caption}>kcal</Text>
       </View>
