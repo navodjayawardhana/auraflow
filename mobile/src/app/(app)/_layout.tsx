@@ -54,6 +54,20 @@ const ACTIONS: QuickAction[] = [
   },
 ];
 
+/**
+ * Screens the floating bar must not be drawn over.
+ *
+ * Two reasons, one outcome. `move` is a full-bleed camera, and the bar and its ＋ would sit
+ * on top of the user's own feet — the part of the frame the rep counter depends on seeing.
+ * The other three anchor something to the bottom edge themselves: a Save bar on the two
+ * logging screens, a composer on the assistant. A floating bar over a Save button is not a
+ * navigation aid, it is a hidden control.
+ *
+ * All four are `href: null` and reached by `router.push`, so they are already places you
+ * leave by their own close button rather than by switching tab.
+ */
+const SCREENS_WITHOUT_NAV_BAR = new Set(['move', 'log-night', 'log-meal', 'assistant']);
+
 export default function AppLayout() {
   return (
     <IotProvider>
@@ -68,13 +82,11 @@ function AppShell() {
   const [activeKey, setActiveKey] = useState('index');
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
-  // The movement session is a full-bleed camera. The floating bar and its ＋ are drawn
-  // above every screen in this group, and over a viewfinder they would sit on top of the
-  // user's own feet — the part of the frame the rep counter depends on seeing.
-  // Compared as a plain string: expo-router's generated route union is only refreshed
-  // when the dev server runs, so narrowing against it here would break the typecheck on
-  // any machine that has not started the app since this screen was added.
-  const isImmersive = (segments as string[])[segments.length - 1] === 'move';
+  // Compared as a plain string: expo-router's generated route union is only refreshed when
+  // the dev server runs, so narrowing against it here would break the typecheck on any
+  // machine that has not started the app since a screen was added.
+  const route = (segments as string[])[segments.length - 1] ?? '';
+  const hidesNavBar = SCREENS_WITHOUT_NAV_BAR.has(route);
 
   function select(key: string) {
     setActiveKey(key);
@@ -118,7 +130,7 @@ function AppShell() {
         <Tabs.Screen name="move" options={{ href: null }} />
       </Tabs>
 
-      {isImmersive ? null : (
+      {hidesNavBar ? null : (
         <NavBar
           items={TABS}
           activeKey={activeKey}

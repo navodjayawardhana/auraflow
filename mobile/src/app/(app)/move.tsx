@@ -101,6 +101,22 @@ export default function MoveScreen() {
     }
   }
 
+  if (!session.isPoseAvailable) {
+    return (
+      <View style={[styles.screen, styles.centred, { paddingTop: insets.top }]}>
+        <View style={styles.permissionCard}>
+          <Text style={Type.cardTitle}>Not available in Expo Go</Text>
+          <Text style={Type.prose}>
+            Counting squats runs a pose model on the phone itself, and that needs a native
+            runtime Expo Go does not carry. Open AuraFlow from the development build and the
+            session works — nothing else on this screen changes.
+          </Text>
+          <PrimaryButton label="Go back" onPress={() => router.back()} />
+        </View>
+      </View>
+    );
+  }
+
   if (permission === null) return <View style={styles.screen} />;
 
   if (!permission.granted) {

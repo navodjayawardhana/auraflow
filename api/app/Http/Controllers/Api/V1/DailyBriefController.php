@@ -21,10 +21,7 @@ final class DailyBriefController extends Controller
     {
         $userId = $request->user()->id;
 
-        $brief = DailyBrief::query()
-            ->where('user_id', $userId)
-            ->whereDate('brief_for', $date)
-            ->first();
+        $brief = $this->findFor($userId, $date);
 
         if ($brief === null) {
             $brief = DailyBrief::query()->create([
@@ -55,13 +52,43 @@ final class DailyBriefController extends Controller
     {
         $userId = $request->user()->id;
 
-        DailyBrief::query()->updateOrCreate(
-            ['user_id' => $userId, 'brief_for' => $date],
-            ['status' => DailyBrief::STATUS_PENDING, 'failure_reason' => null],
-        );
+        $brief = $this->findFor($userId, $date);
+
+        if ($brief === null) {
+            DailyBrief::query()->create([
+                'user_id' => $userId,
+                'brief_for' => $date,
+                'status' => DailyBrief::STATUS_PENDING,
+            ]);
+        } else {
+            $brief->update([
+                'status' => DailyBrief::STATUS_PENDING,
+                'failure_reason' => null,
+            ]);
+        }
 
         GenerateDailyBrief::dispatch($userId, $date);
 
         return response()->json(['data' => ['date' => $date, 'status' => DailyBrief::STATUS_PENDING]], 202);
+    }
+
+    /**
+     * The one way to find a day's briefing, shared rather than written out twice.
+     *
+     * `whereDate` and not plain equality. The `brief_for` cast writes a date as
+     * `Y-m-d 00:00:00`, so `where('brief_for', '2026-08-22')` matches the stored row on no
+     * day at all -- it then inserts, and the unique index on (user_id, brief_for) rejects
+     * it. `refresh()` did exactly that through `updateOrCreate`, whose match clause does
+     * not pass through the cast, and every regenerate returned a 500.
+     *
+     * The same mistake broke `health_snapshots` idempotency once already. Two copies of a
+     * lookup is how one of them drifts, so there is now one.
+     */
+    private function findFor(int $userId, string $date): ?DailyBrief
+    {
+        return DailyBrief::query()
+            ->where('user_id', $userId)
+            ->whereDate('brief_for', $date)
+            ->first();
     }
 }

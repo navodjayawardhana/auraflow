@@ -1,6 +1,5 @@
 import type { CameraView } from 'expo-camera';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { models, usePoseEstimation } from 'react-native-executorch';
 
 import {
   completedShallowRep,
@@ -9,6 +8,68 @@ import {
   type Landmarks,
   type RepCounterState,
 } from '@/ml/rep-counter';
+
+/**
+ * Reported as the session's `error` when the pose runtime is not in the build.
+ *
+ * Named rather than inlined for the same reason `BLE_UNAVAILABLE` is: it is the one pose
+ * failure whose fix is a different binary rather than a different camera, light level or
+ * stance, and saying so is the difference between a bug report and a rebuild.
+ */
+const POSE_UNAVAILABLE =
+  'The movement coach needs a development build — the pose runtime is not available in Expo Go.';
+
+/** The part of `usePoseEstimation` this file uses. */
+interface PoseEstimation {
+  isReady: boolean;
+  downloadProgress: number;
+  error: unknown;
+  forward: (uri: string, options: { inputSize: number }) => Promise<unknown[]>;
+}
+
+/**
+ * Required rather than imported, because `react-native-executorch` throws from its own
+ * module body when the native runtime is absent — which is what Expo Go is. A static
+ * import would take the whole app down at startup rather than this one screen, since
+ * expo-router loads every route module to build the route tree, so the crash arrives
+ * before anyone has navigated anywhere near a squat.
+ *
+ * `react-native-ble-plx` gets away with a static import because it defers its throw to
+ * `new BleManager()`. This one does not, so the guard has to sit at the import.
+ */
+function loadPoseHook(): (() => PoseEstimation) | null {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const executorch = require('react-native-executorch');
+
+    return () =>
+      executorch.usePoseEstimation({ model: executorch.models.pose_estimation.yolo26n() });
+  } catch {
+    return null;
+  }
+}
+
+const usePoseEstimation = loadPoseHook();
+
+/**
+ * Stable identity on purpose: the capture effect lists `pose` in its dependencies, and a
+ * fresh object every render would restart it on every render.
+ */
+const unavailablePose: PoseEstimation = {
+  isReady: false,
+  downloadProgress: 0,
+  error: POSE_UNAVAILABLE,
+  forward: async () => [],
+};
+
+/**
+ * Resolved once at module load, so the hook below always calls exactly one hook from one
+ * binding — a conditional call inside the component would be the rules-of-hooks
+ * violation this indirection exists to avoid.
+ */
+const usePose: () => PoseEstimation = usePoseEstimation ?? (() => unavailablePose);
+
+const isPoseAvailable = usePoseEstimation !== null;
 
 /**
  * Runs the camera → pose → rep-counter loop for one movement session.
@@ -34,6 +95,11 @@ export type SessionPhase = 'loading' | 'ready' | 'running' | 'finished';
 
 export interface SquatSession {
   phase: SessionPhase;
+  /**
+   * False in Expo Go, where the pose runtime's native module is absent. The screen shows
+   * its own state for this rather than a camera preview that could never count a rep.
+   */
+  isPoseAvailable: boolean;
   /** 0–1 while the pose model downloads on first use. */
   downloadProgress: number;
   error: string | null;
@@ -57,7 +123,7 @@ interface Options {
 }
 
 export function useSquatSession({ camera, onShallowRep }: Options): SquatSession {
-  const pose = usePoseEstimation({ model: models.pose_estimation.yolo26n() });
+  const pose = usePose();
 
   const [phase, setPhase] = useState<SessionPhase>('loading');
   const [counter, setCounter] = useState<RepCounterState>(initialRepCounterState);
@@ -162,8 +228,13 @@ export function useSquatSession({ camera, onShallowRep }: Options): SquatSession
 
   return {
     phase,
+    isPoseAvailable,
     downloadProgress: pose.downloadProgress,
-    error: pose.error === null ? null : 'The pose model could not be loaded.',
+    error: !isPoseAvailable
+      ? POSE_UNAVAILABLE
+      : pose.error === null
+        ? null
+        : 'The pose model could not be loaded.',
     counter,
     landmarks,
     frameSize,
