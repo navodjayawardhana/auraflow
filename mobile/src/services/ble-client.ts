@@ -26,13 +26,34 @@ const CHR_VITALS = 'a17a0001-5f1e-4b2c-9d3a-6c8e21f0b100';
 const CHR_LAMP = 'a17a0002-5f1e-4b2c-9d3a-6c8e21f0b100';
 
 /**
+ * The message every path below reports when the BLE native module is not in the build.
+ *
+ * Worth naming rather than inlining: it is the one BLE failure whose fix is a different
+ * binary rather than a different radio state, so a caller that wants to special-case it
+ * can compare against this instead of matching on the library's wording.
+ */
+export const BLE_UNAVAILABLE =
+  'Bluetooth needs a development build — it is not available in Expo Go.';
+
+/**
  * Created lazily. Constructing a BleManager turns the radio on, which is a rude thing to
  * do at import time on a screen that may never scan.
+ *
+ * It also throws outright when the native module is absent, which is what Expo Go gives
+ * you. The library's own text there is about `pod install` and rebuilding — true for a
+ * developer, useless to a user — so it is translated here.
  */
 let manager: BleManager | null = null;
 
 function bleManager(): BleManager {
-  if (manager === null) manager = new BleManager();
+  if (manager === null) {
+    try {
+      manager = new BleManager();
+    } catch {
+      throw new Error(BLE_UNAVAILABLE);
+    }
+  }
+
   return manager;
 }
 
@@ -92,7 +113,20 @@ export function scan(
 ): () => void {
   const seen = new Set<string>();
 
-  bleManager().startDeviceScan([SVC_HEART_RATE], { allowDuplicates: false }, (error, device) => {
+  // Acquired up front, and deliberately not inside the teardown too. A missing native
+  // module throws from the constructor — synchronously, before any scan exists — so it
+  // would escape `onError` and reach the caller as an exception from a plain event
+  // handler. Routing it here leaves callers with one failure path rather than a
+  // try/catch around this call *and* an error callback.
+  let radio: BleManager;
+  try {
+    radio = bleManager();
+  } catch (error) {
+    onError?.(error instanceof Error ? error.message : BLE_UNAVAILABLE);
+    return () => {};
+  }
+
+  radio.startDeviceScan([SVC_HEART_RATE], { allowDuplicates: false }, (error, device) => {
     if (error !== null) {
       onError?.(error.message);
       return;
@@ -104,7 +138,7 @@ export function scan(
     onFound({ id: device.id, name: device.name ?? device.localName ?? 'Unnamed node' });
   });
 
-  return () => bleManager().stopDeviceScan();
+  return () => radio.stopDeviceScan();
 }
 
 export async function connect(
@@ -179,16 +213,22 @@ export async function connect(
 
 /** Bluetooth can be off, unauthorised, or simply unsupported — three different fixes. */
 export async function radioState(): Promise<'ready' | 'off' | 'unauthorised' | 'unsupported'> {
-  const state = await bleManager().state();
+  try {
+    const state = await bleManager().state();
 
-  switch (state) {
-    case 'PoweredOn':
-      return 'ready';
-    case 'PoweredOff':
-      return 'off';
-    case 'Unauthorized':
-      return 'unauthorised';
-    default:
-      return 'unsupported';
+    switch (state) {
+      case 'PoweredOn':
+        return 'ready';
+      case 'PoweredOff':
+        return 'off';
+      case 'Unauthorized':
+        return 'unauthorised';
+      default:
+        return 'unsupported';
+    }
+  } catch {
+    // Unlinked rather than unavailable, but from a caller's point of view they are the
+    // same answer: this build cannot talk to the radio, and no setting will change that.
+    return 'unsupported';
   }
 }

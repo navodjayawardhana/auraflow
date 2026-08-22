@@ -67,3 +67,6 @@ desktop.ini
 .idea/
 .vscode/
 !.vscode/extensions.json
+
+# Built app binaries — 289 MB of ExecuTorch, fetched from EAS rather than versioned.
+/build/

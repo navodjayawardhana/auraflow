@@ -278,7 +278,24 @@ usual two.
    lamp.
 4. No COM port in Device Manager → install the **CP2102** or **CH340** driver,
    depending on the USB chip on your board.
-5. Upload, Serial Monitor at **115200**.
+5. **Tools → Partition Scheme → `Huge APP (3MB No OTA/1MB SPIFFS)`.** Not
+   optional. WiFi and BLE are both linked in, and the binary is about 1.73 MB —
+   the default scheme allows 1.31 MB, so the build fails at the link step with
+   `text section exceeds available space in board`. That reads like a code
+   problem and is not one.
+6. Upload, Serial Monitor at **115200**.
+
+### From the command line
+
+The same build without the IDE, which is also how CI would do it:
+
+```bash
+arduino-cli compile --fqbn esp32:esp32:esp32:PartitionScheme=huge_app iot/auraflow-node
+arduino-cli upload  --fqbn esp32:esp32:esp32:PartitionScheme=huge_app -p COM8 iot/auraflow-node
+```
+
+`arduino-cli` reads the same `Arduino15` data directory the IDE installs into, so
+the cores and libraries above are found without installing anything twice.
 
 ```
 [AuraFlow] IoT wellbeing node
@@ -294,14 +311,28 @@ The sketch targets both Arduino-ESP32 cores: `light.cpp` picks the 3.x pin-based
 LEDC API or the 2.x channel-based one at compile time, so whichever board
 package is already installed will build.
 
+### Reading the log when nothing seems to happen
+
+With no finger on the sensor the node publishes nothing — correctly, there is
+nothing to report — which leaves the log silent in exactly the situation where
+someone is asking why. So it prints the idle IR level every five seconds:
+
+```
+[bio] no finger — ir=1223 (contact floor 50000)
+```
+
+Around **1,200** is an empty sensor working normally. A finger reads six figures.
+Anything in between is contact too light to measure. If the number never moves
+when you touch the pad, the fault is wiring or the sensor, not the algorithm.
+
 ## 6. Topics
 
 | Topic | Direction | Payload |
 |---|---|---|
 | `auraflow/<id>/light/set` | app → device | `{"mode":"focus","brightness":85}` |
 | `auraflow/<id>/light/state` | device → app | `{"mode":"focus","brightness":85,"source":"button","rssi":-52,"uptime_s":410}` *(retained)* |
-| `auraflow/<id>/telemetry/device` | device → app | `{"rssi":-52,"ip":"192.168.1.42","uptime_s":410,"heap_free_b":198340,"light_mode":"focus","pulse_sensor":true,...}` every 30 s |
-| `auraflow/<id>/telemetry/biometrics` | device → app | `{"finger":true,"hr_bpm":72,"spo2_pct":97,...}` every 5 s while a finger is on |
+| `auraflow/<id>/telemetry/device` | device → app | `{"rssi":-52,"ip":"192.168.1.42","uptime_s":410,"heap_free_b":198340,"light_mode":"focus","pulse_sensor":true,"sample_rate_hz":24.97,"dropped_samples":0,...}` every 30 s |
+| `auraflow/<id>/telemetry/biometrics` | device → app | `{"finger":true,"settled":true,"hr_bpm":72.4,"hr_bpm_maxim":71,"spo2_pct":97,...}` every 1.5 s while a finger is on |
 | `auraflow/<id>/status` | device → app | `online` / `offline` *(retained, Last-Will)* |
 
 > **`telemetry/environment` is gone.** It was renamed to `telemetry/device` and
@@ -316,6 +347,48 @@ app can show "measuring…" without waiting out the interval.
 `sensor_die_temp_c` appears on the device topic only when a reading was possible:
 it is skipped while a finger is on the sensor, because the one-shot conversion
 blocks long enough to punch a hole in the 25 Hz sample stream.
+
+### `settled`, and why a reading can be flagged valid and still be wrong
+
+The analysis window is four seconds long. For the first two of those after a
+finger goes down the buffer is still half no-finger data with a step edge through
+the middle of it, and Maxim's peak finder locks onto that edge and returns a rate
+inside the plausible range — so it arrives flagged valid, looking exactly like a
+real measurement. The same happens in reverse as the finger comes off.
+
+`settled` is false until contact has been unbroken for a whole window. **Ignore
+every vital on a frame where it is false**, whatever the validity flags say. The
+app's `usableHeartRate()` and `usableSpo2()` already do; anything reading the
+broker directly has to as well.
+
+### Two heart rates
+
+| Field | Method | Use it for |
+|---|---|---|
+| `hr_bpm` | Beat intervals timed against the node's measured sample clock, median filtered | Display, and anything downstream |
+| `hr_bpm_maxim` | Maxim's reference algorithm, slew-limited | The evaluation only |
+
+They are published side by side because the reference algorithm divides a whole
+number of samples by a whole number of beats and divides that into 1500 — so at
+rest it can only ever return 60, 62, 65, 68, 71, 75, 78, 83, 88, 93 or 100 bpm.
+It cannot express 73. `iot/analysis/validate_hr.py` reports both against the
+watch and against each other; the count of distinct values it prints per
+estimator is the quantisation, measured rather than argued.
+
+### `sample_rate_hz` and `dropped_samples`
+
+The SparkFun driver keeps a ring of four samples of its own, and `check()` wraps
+its head over the oldest entries without `available()` being able to tell. Four
+samples is 160 ms, so any loop iteration longer than that loses signal silently —
+and because the rate is a sample count divided into a constant, a window missing
+samples reads as a **faster heart** rather than as an error.
+
+The node now detects that gap, discards the window rather than stitching one
+across it, and publishes what it has cost. `sample_rate_hz` should sit within a
+few hundredths of 25.00; `dropped_samples` climbing during a session means the
+loop is stalling and the session is thin. Both are worth a screenshot for the
+evaluation — they are the evidence that the readings were taken under a sound
+time base rather than merely assumed to be.
 
 ## 7. Test without the app
 
@@ -335,6 +408,11 @@ mosquitto_pub -h broker.hivemq.com -t 'auraflow/auraflow-desk-01/light/set' \
 - [ ] `"source":"button"` state message — the bidirectional-control proof
 - [ ] `status: offline` after pulling power — Last-Will / resilience
 - [ ] Photo of the OLED showing live HR + SpO₂ and the lamp bar, **no `SIM` tag**
+- [ ] `telemetry/device` frame with `sample_rate_hz` near 25.00 and
+      `dropped_samples: 0` over a full session — the time base the heart rates
+      were measured against, rather than the 25 Hz the code assumes
+- [ ] `validate_hr.py` output showing the distinct-value count for each
+      estimator: the quantisation of the reference algorithm as a measurement
 - [ ] Short video of the lamp: `focus` → `break` → `alert`, so the modes read as
       distinguishable without colour. This is the evidence that the WS2812
       substitution still satisfies "IoT actuator", so do not skip it.
