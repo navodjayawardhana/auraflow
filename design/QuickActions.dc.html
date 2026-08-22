@@ -1,0 +1,106 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;800&display=swap">
+  <style>
+    body { margin: 0; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #0052ff; } a:hover { color: #0041cc; }
+    .num { font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  </style>
+</helmet>
+
+<div style="width: 390px; height: 844px; background: #f8fafc; position: relative; overflow: hidden; color: #0f172a;">
+
+  <!-- Today, dimmed behind the sheet -->
+  <div style="position: absolute; inset: 0; background: linear-gradient(158deg, #0b2f8f 0%, #0052ff 46%, #00a5db 100%); height: 404px;"></div>
+  <div style="position: absolute; top: 378px; left: 0; right: 0; bottom: 0; background: #f8fafc; border-radius: 30px 30px 0 0;"></div>
+  <div style="position: absolute; inset: 0; background: rgba(8,22,54,0.55);"></div>
+
+  <!-- ── The action sheet: where AR and meal logging live ── -->
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; background: #ffffff; border-radius: 30px 30px 0 0; padding: 12px 20px 30px; box-shadow: 0 -18px 50px rgba(8,22,54,0.35); display: flex; flex-direction: column; gap: 16px;">
+
+    <div style="width: 38px; height: 4px; border-radius: 999px; background: #cbd5e1; margin: 0 auto 2px;"></div>
+
+    <div style="display: flex; flex-direction: column; gap: 3px;">
+      <span style="font-size: 20px; font-weight: 800; letter-spacing: -0.4px;">What are you logging?</span>
+      <span style="font-size: 12px; color: #475569;">Everything here writes to today, and queues if you're offline.</span>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+
+      <!-- The movement session is the AR feature's home in the IA -->
+      <div style="display: flex; align-items: center; gap: 14px; padding: 16px; border-radius: 20px; background: linear-gradient(120deg, #0052ff 0%, #00b4db 100%); box-shadow: 0 12px 28px rgba(0,82,255,0.32);">
+        <span style="width: 46px; height: 46px; border-radius: 16px; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <svg viewBox="0 0 24 24" style="width: 22px; height: 22px;" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+        </span>
+        <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 3px;">
+          <div style="display: flex; align-items: center; gap: 7px;">
+            <span style="font-size: 15px; font-weight: 800; color: #ffffff;">Movement session</span>
+            <span style="height: 18px; padding: 0 7px; border-radius: 999px; background: rgba(255,255,255,0.24); display: flex; align-items: center; font-size: 9px; font-weight: 700; letter-spacing: 0.6px; color: #ffffff;">AR</span>
+          </div>
+          <span style="font-size: 11px; line-height: 16px; color: rgba(255,255,255,0.84);">Camera counts your reps · recovery 75, you're clear for a full set</span>
+        </div>
+        <svg viewBox="0 0 24 24" style="width: 18px; height: 18px; flex-shrink: 0;" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 14px; padding: 16px; border-radius: 20px; background: #f8fafc;">
+        <span style="width: 46px; height: 46px; border-radius: 16px; background: #0f9d5814; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <svg viewBox="0 0 24 24" style="width: 21px; height: 21px;" fill="none" stroke="#0f9d58" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h1a2 2 0 0 0 2-2V2"></path><line x1="5.5" y1="2" x2="5.5" y2="11"></line><line x1="5.5" y1="11" x2="5.5" y2="22"></line><path d="M17 2c-1.7 1.4-2.5 3.5-2.5 6 0 2 .8 3.6 2.5 4v10"></path></svg>
+        </span>
+        <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 3px;">
+          <span style="font-size: 15px; font-weight: 800;">Log a meal</span>
+          <span style="font-size: 11px; line-height: 16px; color: #475569;">Scan a barcode or search Open Food Facts</span>
+        </div>
+        <svg viewBox="0 0 24 24" style="width: 18px; height: 18px; flex-shrink: 0;" fill="none" stroke="#94a3b8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 14px; padding: 16px; border-radius: 20px; background: #f8fafc;">
+        <span style="width: 46px; height: 46px; border-radius: 16px; background: #8b5cf614; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <svg viewBox="0 0 24 24" style="width: 21px; height: 21px;" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+        </span>
+        <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 3px;">
+          <span style="font-size: 15px; font-weight: 800;">Log last night</span>
+          <span style="font-size: 11px; line-height: 16px; color: #475569;">Hours slept and resting heart rate</span>
+        </div>
+        <svg viewBox="0 0 24 24" style="width: 18px; height: 18px; flex-shrink: 0;" fill="none" stroke="#94a3b8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 14px; padding: 16px; border-radius: 20px; background: #f8fafc;">
+        <span style="width: 46px; height: 46px; border-radius: 16px; background: #0083b014; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <svg viewBox="0 0 24 24" style="width: 21px; height: 21px;" fill="none" stroke="#0083b0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path></svg>
+        </span>
+        <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 3px;">
+          <span style="font-size: 15px; font-weight: 800;">Add water</span>
+          <span style="font-size: 11px; line-height: 16px; color: #475569;">250 ml · 1,250 of 2,000 so far</span>
+        </div>
+        <svg viewBox="0 0 24 24" style="width: 18px; height: 18px; flex-shrink: 0;" fill="none" stroke="#94a3b8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+      </div>
+    </div>
+
+    <!-- the ＋ rotates into a close affordance while the sheet is open -->
+    <div style="display: flex; justify-content: center; padding-top: 2px;">
+      <div style="width: 56px; height: 56px; border-radius: 20px; background: #0f172a; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 24px rgba(15,23,42,0.3);">
+        <svg viewBox="0 0 24 24" style="width: 22px; height: 22px;" fill="none" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{
+  "$preview": {"width": 390, "height": 844}
+}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

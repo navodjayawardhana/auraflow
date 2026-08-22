@@ -36,6 +36,18 @@ final class EloquentDailyHealthSnapshotRepository implements DailyHealthSnapshot
         return $models->map(DailyHealthSnapshotMapper::toDomain(...))->all();
     }
 
+    public function findRange(UserId $userId, DateTimeImmutable $from, DateTimeImmutable $to): array
+    {
+        $models = EloquentHealthSnapshot::query()
+            ->where('user_id', $userId->toString())
+            ->whereDate('recorded_on', '>=', $from->format('Y-m-d'))
+            ->whereDate('recorded_on', '<=', $to->format('Y-m-d'))
+            ->orderBy('recorded_on')
+            ->get();
+
+        return $models->map(DailyHealthSnapshotMapper::toDomain(...))->all();
+    }
+
     public function save(DailyHealthSnapshot $snapshot): void
     {
         $attributes = DailyHealthSnapshotMapper::toEloquentAttributes($snapshot);
@@ -43,12 +55,34 @@ final class EloquentDailyHealthSnapshotRepository implements DailyHealthSnapshot
         // Idempotent by (user, day): a device re-syncing the same night must update the
         // row rather than add a second one. Duplicates would silently corrupt every
         // trailing baseline computed from these rows.
-        EloquentHealthSnapshot::query()->updateOrCreate(
-            [
-                'user_id' => $attributes['user_id'],
-                'recorded_on' => $attributes['recorded_on'],
-            ],
-            $attributes,
-        );
+        //
+        // Matched with whereDate rather than updateOrCreate's equality: `recorded_on` is
+        // cast to a date, so the stored value carries a time component that a plain
+        // 'Y-m-d' comparison misses -- the lookup would never match, the insert would
+        // run, and the unique index would reject it.
+        $existing = EloquentHealthSnapshot::query()
+            ->where('user_id', $attributes['user_id'])
+            ->whereDate('recorded_on', $attributes['recorded_on'])
+            ->first();
+
+        if ($existing !== null) {
+            // Merge, don't replace. The day's signals arrive from different places at
+            // different times -- a night's sleep once in the morning, a water total a
+            // dozen times through the day, a step count on its own -- and each write
+            // carries only what it knows. Filling the row wholesale would let a water
+            // tap null out the sleep that produced today's recovery score.
+            //
+            // "Absent" therefore means "leave alone" rather than "clear". Clearing a
+            // value is not currently expressible, and until something needs to, adding a
+            // way would only be a sharper edge to cut on.
+            $existing->fill(array_filter(
+                $attributes,
+                static fn ($value) => $value !== null,
+            ))->save();
+
+            return;
+        }
+
+        EloquentHealthSnapshot::query()->create($attributes);
     }
 }

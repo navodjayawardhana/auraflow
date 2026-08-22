@@ -1,0 +1,204 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;800&display=swap">
+  <style>
+    body { margin: 0; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #0052ff; } a:hover { color: #0041cc; }
+    .num { font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+    .card { background: #ffffff; border-radius: 22px; box-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 10px 26px rgba(15,23,42,0.07); }
+  </style>
+</helmet>
+
+<div style="width: 390px; height: 844px; background: #f8fafc; position: relative; overflow: hidden; color: #0f172a;">
+
+  <div style="position: absolute; top: 0; left: 0; right: 0; height: 100px; background: linear-gradient(150deg, #0b2f8f 0%, #0052ff 100%); padding: 58px 20px 0; display: flex; align-items: center; justify-content: space-between; z-index: 2;">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <svg viewBox="77 37 266 266" style="width: 20px; height: 20px;">
+        <path d="M 90 230 C 130 230 155 210 185 100 C 198 50 215 50 228 100 C 242 165 195 195 160 185 C 220 185 245 185 265 240 C 285 280 305 240 330 200" fill="none" stroke="#ffffff" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"></path>
+      </svg>
+      <span style="font-size: 15px; font-weight: 800; color: #ffffff;">Today</span>
+    </div>
+    <div style="display: flex; align-items: baseline; gap: 5px;">
+      <span class="num" style="font-size: 18px; font-weight: 800; color: #ffffff;">75</span>
+      <span style="font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase; color: rgba(255,255,255,0.62);">Recovery</span>
+    </div>
+  </div>
+
+  <div style="position: absolute; top: 100px; left: 0; right: 0; bottom: 100px; padding: 16px 20px 0; display: flex; flex-direction: column; gap: 14px; overflow: hidden;">
+
+    <!-- ── Daily brief, written by the model overnight ────── -->
+    <div class="card" style="padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="width: 30px; height: 30px; border-radius: 10px; background: linear-gradient(135deg, #0052ff 0%, #00b4db 100%); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <svg viewBox="0 0 24 24" style="width: 15px; height: 15px;" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z"></path></svg>
+        </span>
+        <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 1px;">
+          <span style="font-size: 15px; font-weight: 800; line-height: 1.2;">Your brief</span>
+          <span style="font-size: 10px; color: #475569;">written 06:12 · Gemini</span>
+        </div>
+        <span style="height: 22px; padding: 0 9px; border-radius: 999px; background: #f1f5f9; display: flex; align-items: center; font-size: 10px; font-weight: 600; color: #475569;">Ready</span>
+      </div>
+
+      <p style="margin: 0; font-size: 13px; line-height: 20px; color: #334155; text-wrap: pretty;">You slept 9h 20m — your longest this week — and your resting heart rate came back down to 56.7, just under your baseline. That combination is why today scores 75 rather than the 61 you saw on Tuesday.</p>
+      <p style="margin: 0; font-size: 13px; line-height: 20px; color: #334155; text-wrap: pretty;">Your steps are tracking a little behind yesterday at this hour, and water is at 1,250 of 2,000 ml.</p>
+
+      <div style="display: flex; align-items: center; gap: 6px; padding-top: 2px;">
+        <svg viewBox="0 0 24 24" style="width: 12px; height: 12px; flex-shrink: 0;" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+        <span style="font-size: 10px; line-height: 15px; color: #475569;">Written from your own figures. Not medical advice.</span>
+      </div>
+    </div>
+
+    <!-- ── Sleep ─────────────────────────────────────────── -->
+    <div class="card" style="padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="width: 30px; height: 30px; border-radius: 10px; background: #8b5cf614; display: flex; align-items: center; justify-content: center;">
+            <svg viewBox="0 0 24 24" style="width: 15px; height: 15px;" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+          </span>
+          <span style="font-size: 15px; font-weight: 800;">Last night</span>
+        </div>
+        <span class="num" style="font-size: 15px; font-weight: 800;">9h 20m</span>
+      </div>
+
+      <div style="display: flex; height: 14px; border-radius: 999px; overflow: hidden; gap: 2px;">
+        <span style="flex-grow: 87; background: #0052ff;"></span>
+        <span style="flex-grow: 112; background: #8b5cf6;"></span>
+        <span style="flex-grow: 361; background: #e2e8f0;"></span>
+      </div>
+
+      <div style="display: flex; gap: 16px;">
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <span style="width: 8px; height: 8px; border-radius: 999px; background: #0052ff;"></span>
+          <span style="font-size: 11px; color: #475569;">Deep <span class="num" style="color: #0f172a; font-weight: 700;">1h 27m</span></span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <span style="width: 8px; height: 8px; border-radius: 999px; background: #8b5cf6;"></span>
+          <span style="font-size: 11px; color: #475569;">REM <span class="num" style="color: #0f172a; font-weight: 700;">1h 52m</span></span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <span style="width: 8px; height: 8px; border-radius: 999px; background: #cbd5e1;"></span>
+          <span style="font-size: 11px; color: #475569;">Light <span class="num" style="color: #0f172a; font-weight: 700;">6h 1m</span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Focus forecast ────────────────────────────────── -->
+    <div class="card" style="padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="width: 30px; height: 30px; border-radius: 10px; background: #0052ff14; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <svg viewBox="0 0 24 24" style="width: 15px; height: 15px;" fill="none" stroke="#0052ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"></rect><rect x="9" y="9" width="6" height="6" rx="1"></rect><line x1="9" y1="1.5" x2="9" y2="4"></line><line x1="15" y1="1.5" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="22.5"></line><line x1="15" y1="20" x2="15" y2="22.5"></line><line x1="20" y1="9" x2="22.5" y2="9"></line><line x1="20" y1="15" x2="22.5" y2="15"></line><line x1="1.5" y1="9" x2="4" y2="9"></line><line x1="1.5" y1="15" x2="4" y2="15"></line></svg>
+        </span>
+        <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 1px;">
+          <span style="font-size: 15px; font-weight: 800; line-height: 1.2;">Focus forecast</span>
+          <span style="font-size: 10px; color: #475569;">experimental · runs on this device</span>
+        </div>
+      </div>
+
+      <div style="position: relative; height: 86px;">
+        <div style="position: absolute; top: 0; bottom: 16px; left: 10.6%; width: 17.6%; border-radius: 10px; background: rgba(0,82,255,0.07); border: 1px dashed rgba(0,82,255,0.32);"></div>
+        <div style="position: relative; height: 100%; display: flex; align-items: flex-end; gap: 3px;">
+          <sc-for list="{{hours}}" as="h" hint-placeholder-count="17">
+            <div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; justify-content: flex-end;">
+              <div style="width: 100%; border-radius: 999px; background: {{h.fill}}; height: {{h.height}};"></div>
+              <span style="font-size: 8px; color: {{h.labelColor}}; height: 10px;">{{h.label}}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 16px; background: #f8fafc;">
+        <span style="width: 30px; height: 30px; border-radius: 10px; background: #0052ff; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <svg viewBox="0 0 24 24" style="width: 15px; height: 15px;" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+        </span>
+        <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 1px;">
+          <span style="font-size: 13px; font-weight: 700; line-height: 1.3;">Best deep-work window · 09:00–11:00</span>
+          <span style="font-size: 11px; color: #475569;">Likely a good window</span>
+        </div>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 6px;">
+        <svg viewBox="0 0 24 24" style="width: 12px; height: 12px;" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+        <span style="font-size: 10px; color: #475569;">17 of 25 inputs are your data</span>
+        <svg viewBox="0 0 24 24" style="width: 12px; height: 12px; margin-left: auto;" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Nav ──────────────────────────────────────────────── -->
+  <div style="position: absolute; left: 16px; right: 16px; bottom: 22px; height: 66px; background: #ffffff; border-radius: 26px; box-shadow: 0 10px 34px rgba(15,23,42,0.15), 0 2px 8px rgba(15,23,42,0.06); display: flex; align-items: center; justify-content: space-between; padding: 0 8px;">
+    <div style="width: 62px; display: flex; flex-direction: column; align-items: center; gap: 3px;">
+      <span style="width: 38px; height: 26px; border-radius: 9px; background: #0052ff14; display: flex; align-items: center; justify-content: center;">
+        <svg viewBox="0 0 24 24" style="width: 19px; height: 19px;" fill="none" stroke="#0052ff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+      </span>
+      <span style="font-size: 9.5px; font-weight: 700; color: #0052ff;">Today</span>
+    </div>
+    <div style="width: 62px; display: flex; flex-direction: column; align-items: center; gap: 3px;">
+      <span style="width: 38px; height: 26px; display: flex; align-items: center; justify-content: center;">
+        <svg viewBox="0 0 24 24" style="width: 19px; height: 19px;" fill="none" stroke="#94a3b8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+      </span>
+      <span style="font-size: 9.5px; font-weight: 500; color: #94a3b8;">Insights</span>
+    </div>
+    <div style="width: 62px; display: flex; justify-content: center;">
+      <div style="width: 56px; height: 56px; margin-top: -30px; border-radius: 20px; background: linear-gradient(135deg, #0052ff 0%, #00b4db 100%); box-shadow: 0 12px 26px rgba(0,82,255,0.42); display: flex; align-items: center; justify-content: center;">
+        <svg viewBox="0 0 24 24" style="width: 24px; height: 24px;" fill="none" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+      </div>
+    </div>
+    <div style="width: 62px; display: flex; flex-direction: column; align-items: center; gap: 3px;">
+      <span style="width: 38px; height: 26px; display: flex; align-items: center; justify-content: center;">
+        <svg viewBox="0 0 24 24" style="width: 19px; height: 19px;" fill="none" stroke="#94a3b8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"></rect><rect x="9" y="9" width="6" height="6" rx="1"></rect><line x1="9" y1="1.5" x2="9" y2="4"></line><line x1="15" y1="1.5" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="22.5"></line><line x1="15" y1="20" x2="15" y2="22.5"></line><line x1="20" y1="9" x2="22.5" y2="9"></line><line x1="20" y1="15" x2="22.5" y2="15"></line><line x1="1.5" y1="9" x2="4" y2="9"></line><line x1="1.5" y1="15" x2="4" y2="15"></line></svg>
+      </span>
+      <span style="font-size: 9.5px; font-weight: 500; color: #94a3b8;">Device</span>
+    </div>
+    <div style="width: 62px; display: flex; flex-direction: column; align-items: center; gap: 3px;">
+      <span style="width: 38px; height: 26px; display: flex; align-items: center; justify-content: center;">
+        <svg viewBox="0 0 24 24" style="width: 19px; height: 19px;" fill="none" stroke="#94a3b8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+      </span>
+      <span style="font-size: 9.5px; font-weight: 500; color: #94a3b8;">Profile</span>
+    </div>
+  </div>
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{
+  "$preview": {"width": 390, "height": 844}
+}'>
+class Component extends DCLogic {
+  renderVals() {
+    // The model's output rarely leaves a narrow band, so bar height and colour are
+    // ranked against the day's own spread rather than an absolute scale — otherwise
+    // every hour paints the same and the chart says nothing.
+    const p = [0.38, 0.44, 0.51, 0.54, 0.52, 0.47, 0.42, 0.40, 0.43, 0.45, 0.41, 0.37, 0.35, 0.34, 0.36, 0.39, 0.37];
+    const min = Math.min(...p);
+    const max = Math.max(...p);
+    const span = Math.max(max - min, 1e-6);
+
+    return {
+      hours: p.map((value, i) => {
+        const hour = 6 + i;
+        const rank = (value - min) / span;
+
+        let fill = '#e2e8f0';
+        if (rank >= 0.75) fill = '#00d2ff';
+        else if (rank >= 0.5) fill = '#0052ff';
+        else if (rank >= 0.25) fill = '#00b4db';
+
+        return {
+          label: hour % 4 === 0 ? String(hour) : '',
+          labelColor: hour % 4 === 0 ? '#94a3b8' : 'transparent',
+          height: `${12 + rank * 52}px`,
+          fill,
+        };
+      }),
+    };
+  }
+}
+</script>
+</body>
+</html>

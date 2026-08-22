@@ -1,0 +1,1593 @@
+<title>AuraFlow Wireframes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+/* ── Tokens ─────────────────────────────────────────────────────────── */
+:root{
+  --paper:#e9ebef;
+  --sheet:#ffffff;
+  --ink:#12171f;
+  --ink-2:#5c6573;
+  --ink-3:#8b93a0;
+  --rule:#c4cad3;
+  --rule-2:#9aa3ae;
+  --fill:#dfe3e9;
+  --fill-2:#eef0f4;
+  --solid:#2a3240;
+  --solid-ink:#e9ebef;
+  --pin-bg:#12171f;
+  --pin-fg:#ffffff;
+  --s:0.78;
+
+  --fd:'Archivo Narrow','Arial Narrow',Helvetica,sans-serif;
+  --fb:'IBM Plex Sans',system-ui,-apple-system,Segoe UI,sans-serif;
+  --fm:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0f131a;
+    --sheet:#171c24;
+    --ink:#e4e8ee;
+    --ink-2:#98a1ad;
+    --ink-3:#6d7684;
+    --rule:#333c48;
+    --rule-2:#4d5766;
+    --fill:#242b35;
+    --fill-2:#1d232b;
+    --solid:#c3cad4;
+    --solid-ink:#131820;
+    --pin-bg:#e4e8ee;
+    --pin-fg:#0f131a;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0f131a;
+  --sheet:#171c24;
+  --ink:#e4e8ee;
+  --ink-2:#98a1ad;
+  --ink-3:#6d7684;
+  --rule:#333c48;
+  --rule-2:#4d5766;
+  --fill:#242b35;
+  --fill-2:#1d232b;
+  --solid:#c3cad4;
+  --solid-ink:#131820;
+  --pin-bg:#e4e8ee;
+  --pin-fg:#0f131a;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:var(--fb);
+  font-size:15px;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px 96px}
+
+/* ── Title block ────────────────────────────────────────────────────── */
+.titleblock{
+  border-bottom:2px solid var(--ink);
+  padding:56px 0 0;
+  margin-bottom:0;
+}
+.tb-top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:24px}
+h1{
+  font-family:var(--fd);
+  font-weight:700;
+  font-size:clamp(38px,6vw,62px);
+  line-height:0.95;
+  letter-spacing:-0.01em;
+  text-transform:uppercase;
+  margin:0;
+  text-wrap:balance;
+}
+h1 span{display:block;font-weight:500;color:var(--ink-2)}
+.tb-meta{
+  font-family:var(--fm);
+  font-size:11px;
+  line-height:1.9;
+  color:var(--ink-2);
+  text-align:right;
+  min-width:210px;
+}
+.tb-meta b{color:var(--ink);font-weight:500}
+.tb-rule{display:flex;gap:0;margin:26px 0 0;border-top:1px solid var(--rule)}
+.tb-cell{
+  flex:1 1 180px;
+  padding:12px 16px 14px 0;
+  border-right:1px solid var(--rule);
+}
+.tb-cell:last-child{border-right:0}
+.tb-cell dt{
+  font-family:var(--fd);font-weight:600;font-size:11px;text-transform:uppercase;
+  letter-spacing:0.14em;color:var(--ink-3);margin:0 0 3px;
+}
+.tb-cell dd{margin:0;font-family:var(--fm);font-size:12.5px;color:var(--ink)}
+
+/* ── Prose ──────────────────────────────────────────────────────────── */
+.intro{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  gap:40px;
+  padding:34px 0 40px;
+  border-bottom:1px solid var(--rule);
+}
+.intro p{margin:0 0 14px;max-width:62ch;color:var(--ink-2)}
+.intro p:last-child{margin-bottom:0}
+.intro strong{color:var(--ink);font-weight:600}
+
+.eyebrow{
+  font-family:var(--fd);font-weight:600;font-size:11px;text-transform:uppercase;
+  letter-spacing:0.18em;color:var(--ink-3);margin:0 0 10px;
+}
+
+/* ── Legend ─────────────────────────────────────────────────────────── */
+.legend{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));
+  gap:18px 28px;padding:26px 0 30px;border-bottom:2px solid var(--ink);
+}
+.lg{display:flex;gap:11px;align-items:flex-start}
+.lg-swatch{width:34px;height:22px;flex:none;margin-top:2px}
+.lg-t{font-size:13px;line-height:1.45;color:var(--ink-2)}
+.lg-t b{display:block;font-family:var(--fd);font-weight:600;font-size:12px;
+  text-transform:uppercase;letter-spacing:0.1em;color:var(--ink)}
+
+/* ── Plate ──────────────────────────────────────────────────────────── */
+.plate{
+  display:grid;
+  grid-template-columns:calc(390px * var(--s)) minmax(0,1fr);
+  gap:44px;
+  padding:46px 0;
+  border-bottom:1px solid var(--rule);
+  align-items:start;
+}
+.plate:last-of-type{border-bottom:2px solid var(--ink)}
+
+.plate-head{
+  grid-column:1 / -1;
+  display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;
+  margin:0 0 4px;
+}
+.plate-no{
+  font-family:var(--fm);font-size:12px;color:var(--ink-3);
+  border:1px solid var(--rule);padding:2px 8px;
+}
+.plate-head h2{
+  font-family:var(--fd);font-weight:700;font-size:27px;text-transform:uppercase;
+  letter-spacing:0.02em;margin:0;
+}
+.plate-head .sub{font-size:13.5px;color:var(--ink-2)}
+
+/* frame wrapper: pins live here at full size, frame is scaled inside */
+.fw{
+  position:relative;
+  width:calc(390px * var(--s));
+  height:calc(844px * var(--s));
+}
+.fw::after{
+  content:attr(data-dim);
+  position:absolute;left:0;top:calc(100% + 9px);
+  font-family:var(--fm);font-size:10.5px;color:var(--ink-3);
+}
+.frame{
+  width:390px;height:844px;
+  transform:scale(var(--s));transform-origin:top left;
+  background:var(--sheet);
+  border:1px solid var(--ink);
+  position:relative;overflow:hidden;
+  font-family:var(--fb);color:var(--ink);
+}
+.pin{
+  position:absolute;
+  left:calc(var(--x) * 1px * var(--s));
+  top:calc(var(--y) * 1px * var(--s));
+  transform:translate(-50%,-50%);
+  width:23px;height:23px;border-radius:999px;
+  background:var(--pin-bg);color:var(--pin-fg);
+  font-family:var(--fm);font-size:11.5px;font-weight:500;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 0 0 2.5px var(--sheet);
+  z-index:5;
+}
+
+/* ── Notes column ───────────────────────────────────────────────────── */
+.notes{padding-top:2px}
+.notes ol{list-style:none;counter-reset:n;margin:0;padding:0}
+.notes li{
+  counter-increment:n;
+  display:grid;grid-template-columns:23px minmax(0,1fr);gap:13px;
+  padding:0 0 17px;
+}
+.notes li::before{
+  content:counter(n);
+  width:23px;height:23px;border-radius:999px;
+  background:var(--pin-bg);color:var(--pin-fg);
+  font-family:var(--fm);font-size:11.5px;
+  display:flex;align-items:center;justify-content:center;
+  margin-top:1px;
+}
+.notes h3{
+  font-family:var(--fd);font-weight:600;font-size:14px;text-transform:uppercase;
+  letter-spacing:0.09em;margin:2px 0 4px;
+}
+.notes p{margin:0;font-size:13.8px;line-height:1.62;color:var(--ink-2);max-width:56ch}
+.notes p em{color:var(--ink);font-style:normal;font-weight:600}
+
+.rejected{
+  margin-top:6px;padding:14px 16px;
+  border:1px solid var(--rule);border-left:3px solid var(--rule-2);
+  background:var(--fill-2);
+}
+.rejected b{
+  font-family:var(--fd);font-weight:600;font-size:11px;text-transform:uppercase;
+  letter-spacing:0.13em;color:var(--ink-3);display:block;margin-bottom:3px;
+}
+.rejected p{margin:0;font-size:13.2px;color:var(--ink-2);line-height:1.6;max-width:56ch}
+
+/* ── Wireframe primitives ───────────────────────────────────────────── */
+.frame .g{padding-left:20px;padding-right:20px}
+.box{border:1px solid var(--rule-2);border-radius:6px;background:var(--sheet)}
+.box-d{border:1px dashed var(--rule-2);border-radius:6px;background:var(--fill-2)}
+.blk{background:var(--fill);border-radius:2px;height:8px}
+.solid{background:var(--solid);color:var(--solid-ink);border-radius:6px}
+.lbl{font-size:9.5px;color:var(--ink-2);line-height:1.35}
+.lbl-u{font-family:var(--fd);font-weight:600;font-size:8.5px;text-transform:uppercase;
+  letter-spacing:0.13em;color:var(--ink-3)}
+.val{font-family:var(--fm);font-size:17px;font-weight:500;letter-spacing:-0.02em}
+.val-s{font-family:var(--fm);font-size:12px;font-weight:500}
+.ttl{font-family:var(--fd);font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:0.05em}
+.row{display:flex;align-items:center}
+.col{display:flex;flex-direction:column}
+.sq{border:1px solid var(--rule-2);border-radius:5px;background:var(--fill-2);flex:none}
+.pill{border:1px solid var(--rule-2);border-radius:999px;display:flex;align-items:center;
+  justify-content:center;font-size:9.5px;color:var(--ink-2)}
+.statusbar{height:44px;border-bottom:1px dashed var(--rule);display:flex;align-items:center;
+  justify-content:center}
+.statusbar span{font-family:var(--fd);font-size:8px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-3)}
+.zone{border:1px dashed var(--rule-2);position:relative}
+.zone-tag{position:absolute;top:5px;left:7px;font-family:var(--fd);font-weight:600;
+  font-size:8px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-3)}
+.approx{font-family:var(--fm);font-size:13px;color:var(--ink-2)}
+.cond{font-family:var(--fm);font-size:8px;letter-spacing:0.06em;color:var(--ink-3)}
+
+/* nav bar wireframe */
+.nav{position:absolute;left:16px;right:16px;bottom:22px;height:66px;
+  border:1px solid var(--rule-2);border-radius:26px;background:var(--sheet);
+  display:flex;align-items:center;justify-content:space-between;padding:0 8px}
+.nav .slot{width:62px;display:flex;flex-direction:column;align-items:center;gap:4px}
+.nav .ico{width:26px;height:20px;border:1px solid var(--rule-2);border-radius:4px}
+.nav .ico.on{background:var(--fill);border-color:var(--ink-2)}
+.nav .tx{font-size:8px;color:var(--ink-3)}
+.nav .tx.on{color:var(--ink);font-weight:600}
+.plus{position:absolute;left:50%;bottom:62px;transform:translateX(-50%);
+  width:56px;height:56px;border-radius:20px;border:1.5px solid var(--ink);
+  background:var(--sheet);display:flex;align-items:center;justify-content:center;
+  font-family:var(--fm);font-size:22px;line-height:1;color:var(--ink);z-index:3}
+
+/* ── Nav map ────────────────────────────────────────────────────────── */
+.map{padding:46px 0 6px}
+.map-scroll{overflow-x:auto;padding-bottom:8px}
+.map svg{display:block;min-width:820px;width:100%;height:auto}
+.map text{font-family:var(--fd);text-transform:uppercase;letter-spacing:0.08em}
+.map .mono{font-family:var(--fm);text-transform:none;letter-spacing:0}
+.map-key{display:flex;flex-wrap:wrap;gap:22px;margin-top:20px;
+  font-size:13px;color:var(--ink-2)}
+.map-key span{display:flex;align-items:center;gap:9px}
+.map-key i{width:26px;height:0;border-top:1.5px solid var(--rule-2);display:block}
+
+/* ── Colophon ───────────────────────────────────────────────────────── */
+.colophon{padding:38px 0 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:34px}
+.colophon p{margin:0;font-size:13.5px;color:var(--ink-2);max-width:52ch}
+
+@media (max-width:900px){
+  :root{--s:0.62}
+  .plate{grid-template-columns:1fr;gap:30px}
+  .intro{grid-template-columns:1fr;gap:0}
+  .tb-meta{text-align:left}
+  .tb-cell{border-right:0;border-bottom:1px solid var(--rule);flex-basis:100%}
+  .tb-cell:last-child{border-bottom:0}
+}
+@media (max-width:460px){
+  :root{--s:0.52}
+  .wrap{padding:0 16px 64px}
+}
+</style>
+
+<div class="wrap">
+
+<!-- ══ TITLE BLOCK ══════════════════════════════════════════════════ -->
+<header class="titleblock">
+  <div class="tb-top">
+    <h1>AuraFlow<span>Wireframes</span></h1>
+    <div class="tb-meta">
+      <b>CMP 7003</b> — Emerging Mobile Applications<br>
+      Low-fidelity interface set<br>
+      10 plates · 390 × 844 pt<br>
+      Drawn 21 August 2026
+    </div>
+  </div>
+  <dl class="tb-rule">
+    <div class="tb-cell"><dt>Scale</dt><dd>1:1 at 390 pt, shown reduced</dd></div>
+    <div class="tb-cell"><dt>Fidelity</dt><dd>Structural — greyscale, no brand</dd></div>
+    <div class="tb-cell"><dt>Supersedes</dt><dd>Nothing — precedes hi-fi canvas</dd></div>
+    <div class="tb-cell"><dt>Platform</dt><dd>React Native / Expo, iOS + Android</dd></div>
+  </dl>
+</header>
+
+<!-- ══ INTRO ═══════════════════════════════════════════════════════ -->
+<section class="intro">
+  <div>
+    <p class="eyebrow">What this set is for</p>
+    <p>These plates fix <strong>structure before surface</strong>. Every decision recorded here — what the screen leads with, what gets a whole card, what is deliberately absent — was settled in greyscale, so it could be argued about on its merits rather than defended by how it looked.</p>
+    <p>The notes beside each frame are the substance. A wireframe that only shows boxes proves nothing; the reasoning in the margin is what makes it evidence of design rather than decoration.</p>
+  </div>
+  <div>
+    <p class="eyebrow">How to read a plate</p>
+    <p>Each frame is drawn at the true target size, 390 × 844 pt, and reduced to fit. Numbered bubbles sit on the element they describe and match the numbered notes to the right.</p>
+    <p>Where a decision had a plausible alternative that was rejected, the alternative is recorded too — an unrecorded rejection is indistinguishable from an idea nobody had.</p>
+  </div>
+</section>
+
+<!-- ══ LEGEND ══════════════════════════════════════════════════════ -->
+<section class="legend">
+  <div class="lg">
+    <span class="lg-swatch box"></span>
+    <span class="lg-t"><b>Container</b>A real surface — card, tile, bar</span>
+  </div>
+  <div class="lg">
+    <span class="lg-swatch box-d"></span>
+    <span class="lg-t"><b>Graphic</b>Chart, ring, illustration, camera</span>
+  </div>
+  <div class="lg">
+    <span class="lg-swatch" style="background:var(--fill);border-radius:2px"></span>
+    <span class="lg-t"><b>Text block</b>Copy whose length matters, not wording</span>
+  </div>
+  <div class="lg">
+    <span class="lg-swatch solid"></span>
+    <span class="lg-t"><b>Inverted</b>Dark surface — live hardware data only</span>
+  </div>
+  <div class="lg">
+    <span class="lg-swatch" style="border:1px solid var(--rule-2);border-radius:999px"></span>
+    <span class="lg-t"><b>Control</b>Chip, pill, button, field</span>
+  </div>
+  <div class="lg">
+    <span class="lg-swatch" style="display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:11px;color:var(--ink-2)">≈ —</span>
+    <span class="lg-t"><b>Marks</b>Estimated value · unavailable value</span>
+  </div>
+</section>
+
+<!-- ══ PLATE 01 — TODAY ════════════════════════════════════════════ -->
+<section class="plate">
+  <div class="plate-head">
+    <span class="plate-no">01</span>
+    <h2>Today</h2>
+    <span class="sub">Landing screen · tab 1 of 4</span>
+  </div>
+
+  <div class="fw" data-dim="390 × 844 pt">
+    <div class="frame">
+      <div class="statusbar"><span>status bar</span></div>
+
+      <!-- hero -->
+      <div class="zone" style="height:360px;border-width:0 0 1px 0;background:var(--fill-2)">
+        <span class="zone-tag">Hero</span>
+        <div class="g" style="padding-top:18px;display:flex;justify-content:space-between;align-items:flex-start">
+          <div class="col" style="gap:6px">
+            <div class="lbl-u">Thursday 21 August</div>
+            <div class="ttl" style="font-size:17px">Morning, Navod</div>
+          </div>
+          <div class="sq" style="width:38px;height:38px"></div>
+        </div>
+        <div class="g" style="margin-top:12px;display:flex;gap:8px">
+          <div class="pill" style="height:26px;padding:0 12px">31° Partly cloudy</div>
+          <div class="pill" style="height:26px;padding:0 12px">At work</div>
+        </div>
+
+        <!-- rings -->
+        <div style="margin-top:14px;display:flex;justify-content:center">
+          <svg width="182" height="182" viewBox="0 0 220 220" aria-label="Three concentric progress rings">
+            <g transform="rotate(-90 110 110)" fill="none" stroke-linecap="round">
+              <circle cx="110" cy="110" r="96" stroke="var(--rule)" stroke-width="13"/>
+              <circle cx="110" cy="110" r="96" stroke="var(--ink)" stroke-width="13" stroke-dasharray="603.2" stroke-dashoffset="150.8"/>
+              <circle cx="110" cy="110" r="77" stroke="var(--rule)" stroke-width="9"/>
+              <circle cx="110" cy="110" r="77" stroke="var(--ink-2)" stroke-width="9" stroke-dasharray="483.8" stroke-dashoffset="130.2"/>
+              <circle cx="110" cy="110" r="60" stroke="var(--rule)" stroke-width="9"/>
+              <circle cx="110" cy="110" r="60" stroke="var(--ink-3)" stroke-width="9" stroke-dasharray="377" stroke-dashoffset="141.4"/>
+            </g>
+            <text x="110" y="112" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="44" font-weight="500" fill="var(--ink)">75</text>
+            <text x="110" y="132" text-anchor="middle" font-family="Archivo Narrow, sans-serif" font-size="11" letter-spacing="2.4" fill="var(--ink-3)">RECOVERY</text>
+          </svg>
+        </div>
+      </div>
+
+      <!-- sheet -->
+      <div style="position:absolute;top:334px;left:0;right:0;bottom:0;background:var(--sheet);
+                  border:1px solid var(--rule-2);border-bottom:0;border-radius:30px 30px 0 0;padding:10px 20px 0">
+        <div style="width:38px;height:4px;border-radius:999px;background:var(--fill);margin:0 auto 14px"></div>
+
+        <!-- ring legend -->
+        <div style="display:flex;gap:12px;margin-bottom:14px">
+          <div class="row" style="gap:7px;flex:1">
+            <span style="width:8px;height:8px;border-radius:999px;background:var(--ink-2);flex:none"></span>
+            <div class="col"><span class="val-s">7,314</span><span class="lbl">of 10,000 steps</span></div>
+          </div>
+          <div class="row" style="gap:7px;flex:1">
+            <span style="width:8px;height:8px;border-radius:999px;background:var(--ink-3);flex:none"></span>
+            <div class="col"><span class="val-s">1,250</span><span class="lbl">of 2,000 ml water</span></div>
+          </div>
+        </div>
+
+        <!-- 2×2 tiles -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="box" style="padding:12px">
+            <div class="row" style="justify-content:space-between"><span class="sq" style="width:26px;height:26px"></span><span class="lbl">Steps</span></div>
+            <div class="val" style="margin-top:8px">7,314</div>
+            <div style="height:4px;border-radius:999px;background:var(--fill);margin-top:8px;overflow:hidden"><div style="height:4px;width:73%;background:var(--ink-2)"></div></div>
+            <div class="lbl" style="margin-top:7px">counted while AuraFlow is open</div>
+          </div>
+          <div class="box" style="padding:12px">
+            <div class="row" style="justify-content:space-between"><span class="sq" style="width:26px;height:26px"></span><span class="lbl">Active energy</span></div>
+            <div class="row" style="gap:4px;align-items:baseline;margin-top:8px"><span class="approx">≈</span><span class="val">292</span><span class="lbl">kcal</span></div>
+            <div style="height:4px;margin-top:8px"></div>
+            <div class="lbl" style="margin-top:7px">estimated from steps, not measured</div>
+          </div>
+          <div class="box" style="padding:12px">
+            <div class="row" style="justify-content:space-between"><span class="sq" style="width:26px;height:26px"></span><span class="lbl">Resting HR</span></div>
+            <div class="row" style="gap:4px;align-items:baseline;margin-top:8px"><span class="val">56.7</span><span class="lbl">bpm</span></div>
+            <div class="box-d" style="height:14px;margin-top:6px;border-radius:3px"></div>
+            <div class="lbl" style="margin-top:7px">from last night · 7-day trend</div>
+          </div>
+          <div class="box" style="padding:12px">
+            <div class="row" style="justify-content:space-between"><span class="sq" style="width:26px;height:26px"></span><span class="lbl">Water</span></div>
+            <div class="row" style="gap:4px;align-items:baseline;margin-top:8px"><span class="val">1,250</span><span class="lbl">ml</span></div>
+            <div style="display:flex;gap:3px;margin-top:6px">
+              <span style="flex:1;height:13px;border-radius:3px;background:var(--ink-3)"></span>
+              <span style="flex:1;height:13px;border-radius:3px;background:var(--ink-3)"></span>
+              <span style="flex:1;height:13px;border-radius:3px;background:var(--ink-3)"></span>
+              <span style="flex:1;height:13px;border-radius:3px;background:var(--ink-3)"></span>
+              <span style="flex:1;height:13px;border-radius:3px;background:var(--ink-3)"></span>
+              <span style="flex:1;height:13px;border-radius:3px;background:var(--fill)"></span>
+              <span style="flex:1;height:13px;border-radius:3px;background:var(--fill)"></span>
+              <span style="flex:1;height:13px;border-radius:3px;background:var(--fill)"></span>
+            </div>
+            <div class="lbl" style="margin-top:7px">tap a glass to log 250 ml</div>
+          </div>
+        </div>
+
+        <!-- live node -->
+        <div class="solid" style="margin-top:12px;padding:12px 14px;display:flex;align-items:center;gap:12px">
+          <span style="width:32px;height:32px;border-radius:10px;border:1px solid var(--solid-ink);opacity:.5;flex:none"></span>
+          <div style="flex:1;display:flex;align-items:baseline;gap:12px">
+            <span class="val" style="color:var(--solid-ink)">113</span>
+            <span style="font-size:9px;opacity:.7">bpm</span>
+            <span class="val-s" style="color:var(--solid-ink)">99%</span>
+            <span style="font-size:9px;opacity:.7">SpO₂</span>
+          </div>
+          <span class="pill" style="height:19px;padding:0 9px;border-color:var(--solid-ink);color:var(--solid-ink);opacity:.85;font-size:8.5px">Live</span>
+        </div>
+        <div class="cond" style="margin-top:5px">▸ rendered only when node connected</div>
+      </div>
+
+      <!-- FAB -->
+      <div style="position:absolute;right:20px;bottom:108px;width:52px;height:52px;border-radius:18px;
+                  border:1px solid var(--rule-2);background:var(--sheet);display:flex;align-items:center;
+                  justify-content:center;font-size:8px;color:var(--ink-3);text-align:center;line-height:1.2">chat</div>
+
+      <!-- nav -->
+      <div class="nav">
+        <span class="slot"><span class="ico on"></span><span class="tx on">Today</span></span>
+        <span class="slot"><span class="ico"></span><span class="tx">Insights</span></span>
+        <span class="slot"></span>
+        <span class="slot"><span class="ico"></span><span class="tx">Device</span></span>
+        <span class="slot"><span class="ico"></span><span class="tx">Profile</span></span>
+      </div>
+      <div class="plus">+</div>
+    </div>
+
+    <span class="pin" style="--x:195;--y:250">1</span>
+    <span class="pin" style="--x:296;--y:492">2</span>
+    <span class="pin" style="--x:20;--y:334">3</span>
+    <span class="pin" style="--x:24;--y:686">4</span>
+    <span class="pin" style="--x:195;--y:762">5</span>
+  </div>
+
+  <div class="notes">
+    <ol>
+      <li>
+        <div>
+          <h3>The recovery ring is the hero</h3>
+          <p>One number answers the question people actually open a health app with — <em>how am I today?</em> Steps and water are real goals but they are progress, not judgement, so they become the two inner rings: present at a glance, subordinate by size. A grid of equal tiles would have made the app a data dump with no point of view.</p>
+          <div class="rejected"><b>Rejected</b><p>A four-tile summary grid with no ring. It scanned faster but left the user to synthesise the day themselves, which is the one job the app exists to do.</p></div>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>Estimated figures carry a ≈ and say so</h3>
+          <p>Active energy is derived from step count, not measured. It gets the <em>≈</em> prefix and a caption naming the derivation. Measured values get provenance instead — "from last night". A value the phone cannot produce shows an em dash, never a zero, because zero is a reading and absence is not.</p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>The sheet overlaps the hero by 26 pt</h3>
+          <p>The overlap makes the lower half read as a surface lying <em>on</em> the hero rather than a second band beside it, which is what lets one screen hold a full-bleed graphic and a dense metric grid without feeling like two screens stapled together.</p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>Live hardware is the only inverted surface</h3>
+          <p>The ESP32 strip is the only place in the app showing data arriving in real time, so it is the only dark surface. The inversion is a status signal, not a style: when the node disconnects the strip is removed entirely rather than greyed, because an empty live readout invites the user to wonder whether the number is stale.</p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>Four tabs and a raised action</h3>
+          <p>See plate 09. The bar is inset from the screen edge so content scrolls beneath it, which signals there is more below without a scroll indicator.</p>
+        </div>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<!-- ══ PLATE 02 — TODAY, SCROLLED ══════════════════════════════════ -->
+<section class="plate">
+  <div class="plate-head">
+    <span class="plate-no">02</span>
+    <h2>Today, scrolled</h2>
+    <span class="sub">Same screen, header collapsed</span>
+  </div>
+
+  <div class="fw" data-dim="scroll offset ≥ 180 pt">
+    <div class="frame">
+      <div style="height:100px;border-bottom:1px solid var(--rule-2);background:var(--fill-2);
+                  display:flex;align-items:flex-end;justify-content:space-between;padding:0 20px 14px">
+        <span class="ttl">Today</span>
+        <span class="row" style="gap:5px;align-items:baseline"><span class="val-s">75</span><span class="lbl-u">Recovery</span></span>
+      </div>
+
+      <div class="g" style="padding-top:16px;display:flex;flex-direction:column;gap:14px">
+
+        <!-- brief -->
+        <div class="box" style="padding:14px">
+          <div class="row" style="gap:9px">
+            <span class="sq" style="width:26px;height:26px"></span>
+            <span class="col" style="flex:1"><span class="ttl" style="font-size:12px">Your brief</span><span class="lbl">written 06:12 · Gemini</span></span>
+            <span class="pill" style="height:19px;padding:0 9px">Ready</span>
+          </div>
+          <div class="col" style="gap:6px;margin-top:11px">
+            <span class="blk" style="width:100%"></span><span class="blk" style="width:97%"></span>
+            <span class="blk" style="width:99%"></span><span class="blk" style="width:64%"></span>
+          </div>
+          <div class="col" style="gap:6px;margin-top:10px">
+            <span class="blk" style="width:100%"></span><span class="blk" style="width:52%"></span>
+          </div>
+          <div class="row" style="gap:6px;margin-top:11px">
+            <span class="sq" style="width:11px;height:11px;border-radius:999px"></span>
+            <span class="lbl">Written from your own figures. Not medical advice.</span>
+          </div>
+        </div>
+
+        <!-- sleep -->
+        <div class="box" style="padding:14px">
+          <div class="row" style="justify-content:space-between">
+            <span class="row" style="gap:9px"><span class="sq" style="width:26px;height:26px"></span><span class="ttl" style="font-size:12px">Last night</span></span>
+            <span class="val-s">9h 20m</span>
+          </div>
+          <div style="display:flex;gap:2px;height:13px;margin-top:11px;border-radius:999px;overflow:hidden">
+            <span style="flex:87;background:var(--ink)"></span>
+            <span style="flex:112;background:var(--ink-3)"></span>
+            <span style="flex:361;background:var(--fill)"></span>
+          </div>
+          <div class="row" style="gap:14px;margin-top:9px">
+            <span class="lbl">■ Deep 1h 27m</span><span class="lbl">■ REM 1h 52m</span><span class="lbl">□ Light 6h 1m</span>
+          </div>
+        </div>
+
+        <!-- forecast -->
+        <div class="box" style="padding:14px">
+          <div class="row" style="gap:9px">
+            <span class="sq" style="width:26px;height:26px"></span>
+            <span class="col"><span class="ttl" style="font-size:12px">Focus forecast</span><span class="lbl">experimental · runs on this device</span></span>
+          </div>
+          <div style="position:relative;height:82px;margin-top:11px">
+            <div class="box-d" style="position:absolute;top:0;bottom:16px;left:10.6%;width:17.6%;border-radius:5px"></div>
+            <div style="position:relative;height:100%;display:flex;align-items:flex-end;gap:3px">
+              <span style="flex:1;height:24px;background:var(--fill)"></span>
+              <span style="flex:1;height:35px;background:var(--ink-3)"></span>
+              <span style="flex:1;height:52px;background:var(--ink-2)"></span>
+              <span style="flex:1;height:62px;background:var(--ink)"></span>
+              <span style="flex:1;height:56px;background:var(--ink)"></span>
+              <span style="flex:1;height:44px;background:var(--ink-2)"></span>
+              <span style="flex:1;height:32px;background:var(--ink-3)"></span>
+              <span style="flex:1;height:27px;background:var(--fill)"></span>
+              <span style="flex:1;height:36px;background:var(--ink-3)"></span>
+              <span style="flex:1;height:40px;background:var(--ink-2)"></span>
+              <span style="flex:1;height:30px;background:var(--ink-3)"></span>
+              <span style="flex:1;height:21px;background:var(--fill)"></span>
+              <span style="flex:1;height:16px;background:var(--fill)"></span>
+              <span style="flex:1;height:14px;background:var(--fill)"></span>
+              <span style="flex:1;height:19px;background:var(--fill)"></span>
+              <span style="flex:1;height:26px;background:var(--ink-3)"></span>
+              <span style="flex:1;height:21px;background:var(--fill)"></span>
+            </div>
+          </div>
+          <div class="box" style="padding:9px 11px;margin-top:10px;background:var(--fill-2);border-radius:12px">
+            <div class="row" style="gap:9px">
+              <span class="sq" style="width:24px;height:24px"></span>
+              <span class="col"><span class="lbl" style="color:var(--ink);font-weight:600">Best deep-work window · 09:00–11:00</span><span class="lbl">Likely a good window</span></span>
+            </div>
+          </div>
+          <div class="row" style="gap:6px;margin-top:9px;justify-content:space-between">
+            <span class="lbl">◷ 17 of 25 inputs are your data</span><span class="lbl">▾</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="nav">
+        <span class="slot"><span class="ico on"></span><span class="tx on">Today</span></span>
+        <span class="slot"><span class="ico"></span><span class="tx">Insights</span></span>
+        <span class="slot"></span>
+        <span class="slot"><span class="ico"></span><span class="tx">Device</span></span>
+        <span class="slot"><span class="ico"></span><span class="tx">Profile</span></span>
+      </div>
+      <div class="plus">+</div>
+    </div>
+
+    <span class="pin" style="--x:195;--y:50">1</span>
+    <span class="pin" style="--x:24;--y:200">2</span>
+    <span class="pin" style="--x:340;--y:130">3</span>
+    <span class="pin" style="--x:100;--y:560">4</span>
+    <span class="pin" style="--x:195;--y:660">5</span>
+  </div>
+
+  <div class="notes">
+    <ol>
+      <li>
+        <div>
+          <h3>The hero collapses, it does not vanish</h3>
+          <p>At 100 pt the header keeps the screen name and the score. Scrolling past the ring must not cost the user the one number the ring existed to deliver — otherwise everything below it loses its reference point.</p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>The written brief sits above the charts</h3>
+          <p>Prose is the fastest way to deliver a <em>relationship</em> between two figures; a chart is the fastest way to deliver a trend. The brief explains why today differs from Tuesday, then the charts below let the user verify it. Reversing the order would make the user do the synthesis first and read the summary after they no longer need it.</p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>Generated text is stamped and bounded</h3>
+          <p>Timestamp and model on the card, a status pill, and a standing line that the text came from the user's own figures and is not medical advice. Three states are drawn for this card — see plate 10's note on states — because a brief that has not been written yet is a screen people will meet most mornings.</p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>Forecast bars are ranked, not absolute</h3>
+          <p>The model's hourly output occupies a narrow band. Plotted against an absolute 0–1 scale every bar is the same height and the chart says nothing, so height and weight are ranked against <em>the day's own</em> spread. The band behind the bars marks the recommended window.</p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>Model coverage is stated, not implied</h3>
+          <p>"17 of 25 inputs are your data" is on the face of the card, expandable for the rest. A forecast that hides how much of itself is assumption is the failure mode this whole design language exists to avoid.</p>
+        </div>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<!-- ══ PLATE 03 — NUTRITION ════════════════════════════════════════ -->
+<section class="plate">
+  <div class="plate-head">
+    <span class="plate-no">03</span>
+    <h2>Nutrition</h2>
+    <span class="sub">Pushed from the ＋ sheet</span>
+  </div>
+
+  <div class="fw" data-dim="390 × 844 pt">
+    <div class="frame">
+      <div class="statusbar"><span>status bar</span></div>
+      <div class="g" style="padding-top:14px;display:flex;align-items:flex-end;justify-content:space-between">
+        <div class="col" style="gap:4px">
+          <span class="lbl-u">Thursday 21 August</span>
+          <span class="ttl" style="font-size:20px">Nutrition</span>
+        </div>
+        <span class="pill" style="height:30px;padding:0 13px">+ Log</span>
+      </div>
+
+      <div class="g" style="padding-top:18px;display:flex;flex-direction:column;gap:14px">
+
+        <div class="box" style="padding:16px">
+          <div class="row" style="justify-content:space-between;align-items:flex-start">
+            <div class="col" style="gap:3px"><span class="lbl-u">Eaten</span>
+              <span class="row" style="gap:4px;align-items:baseline"><span class="val" style="font-size:27px">1,420</span><span class="lbl">kcal</span></span></div>
+            <div class="col" style="gap:3px;align-items:flex-end"><span class="lbl-u">Active</span>
+              <span class="row" style="gap:3px;align-items:baseline"><span class="approx" style="font-size:16px">≈</span><span class="val" style="font-size:27px">292</span><span class="lbl">kcal</span></span></div>
+          </div>
+          <div style="display:flex;gap:4px;margin-top:14px">
+            <span style="flex:1420;height:10px;border-radius:999px;background:var(--ink-2)"></span>
+            <span style="flex:292;height:10px;border-radius:999px;background:var(--fill)"></span>
+          </div>
+          <div class="box" style="margin-top:13px;padding:10px 11px;background:var(--fill-2);border-radius:12px">
+            <div class="row" style="gap:7px;align-items:flex-start">
+              <span class="sq" style="width:11px;height:11px;border-radius:999px;margin-top:2px"></span>
+              <span class="lbl">No net figure — AuraFlow doesn't know your basal metabolic rate, and a balance computed without it would be wrong by roughly 1,500 kcal.</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="box" style="padding:14px">
+          <div class="row" style="justify-content:space-between;align-items:baseline">
+            <span class="ttl" style="font-size:12px">Macros</span><span class="lbl">from 3 of 4 items</span>
+          </div>
+          <div style="display:flex;gap:2px;height:11px;margin-top:11px;border-radius:999px;overflow:hidden">
+            <span style="flex:72;background:var(--ink)"></span>
+            <span style="flex:168;background:var(--ink-2)"></span>
+            <span style="flex:48;background:var(--ink-3)"></span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:11px">
+            <div class="col"><span class="lbl">■ Protein</span><span class="val-s">72 g</span></div>
+            <div class="col"><span class="lbl">■ Carbs</span><span class="val-s">168 g</span></div>
+            <div class="col"><span class="lbl">■ Fat</span><span class="val-s">48 g</span></div>
+          </div>
+          <div class="lbl" style="margin-top:10px">One item was logged as an estimate and carries no macro breakdown.</div>
+        </div>
+
+        <div class="box" style="padding:14px">
+          <span class="ttl" style="font-size:12px">Today's meals</span>
+          <div class="col" style="gap:12px;margin-top:12px">
+            <div class="row" style="gap:11px">
+              <span class="sq" style="width:34px;height:34px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:8px">07:20</span>
+              <span class="col" style="flex:1"><span class="lbl" style="color:var(--ink);font-weight:600;font-size:11px">Oats with milk and banana</span><span class="lbl">▦ Open Food Facts · 80 g + 200 ml</span></span>
+              <span class="row" style="gap:3px;align-items:baseline"><span class="val-s">412</span><span class="lbl">kcal</span></span>
+            </div>
+            <div class="row" style="gap:11px">
+              <span class="sq" style="width:34px;height:34px;border-radius:11px;border-style:dashed;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:8px">10:05</span>
+              <span class="col" style="flex:1"><span class="lbl" style="color:var(--ink);font-weight:600;font-size:11px">Flat white</span><span class="lbl">your estimate · 1 cup</span></span>
+              <span class="row" style="gap:3px;align-items:baseline"><span class="approx" style="font-size:11px">≈</span><span class="val-s">120</span><span class="lbl">kcal</span></span>
+            </div>
+            <div class="row" style="gap:11px">
+              <span class="sq" style="width:34px;height:34px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:8px">13:10</span>
+              <span class="col" style="flex:1"><span class="lbl" style="color:var(--ink);font-weight:600;font-size:11px">Rice and dhal curry</span><span class="lbl">▦ Open Food Facts · 1 plate</span></span>
+              <span class="row" style="gap:3px;align-items:baseline"><span class="val-s">640</span><span class="lbl">kcal</span></span>
+            </div>
+            <div class="row" style="gap:11px">
+              <span class="sq" style="width:34px;height:34px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:8px">16:30</span>
+              <span class="col" style="flex:1"><span class="lbl" style="color:var(--ink);font-weight:600;font-size:11px">Peanut butter toast</span><span class="lbl">▦ Open Food Facts · 2 slices</span></span>
+              <span class="row" style="gap:3px;align-items:baseline"><span class="val-s">248</span><span class="lbl">kcal</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="nav">
+        <span class="slot"><span class="ico"></span><span class="tx">Today</span></span>
+        <span class="slot"><span class="ico"></span><span class="tx">Insights</span></span>
+        <span class="slot"></span>
+        <span class="slot"><span class="ico"></span><span class="tx">Device</span></span>
+        <span class="slot"><span class="ico"></span><span class="tx">Profile</span></span>
+      </div>
+      <div class="plus">+</div>
+    </div>
+
+    <span class="pin" style="--x:300;--y:172">1</span>
+    <span class="pin" style="--x:195;--y:270">2</span>
+    <span class="pin" style="--x:330;--y:392">3</span>
+    <span class="pin" style="--x:60;--y:560">4</span>
+  </div>
+
+  <div class="notes">
+    <ol>
+      <li>
+        <div>
+          <h3>In and out, side by side and unequal</h3>
+          <p>Eaten is a counted figure; active energy is derived, so it keeps the <em>≈</em> it carries on Today. Showing them adjacent invites the comparison the user came for, and the proportional bar answers it without arithmetic.</p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>There is no net-calorie number</h3>
+          <p>Every competing app shows one. AuraFlow cannot: a net balance needs basal metabolic rate, which the app has no way to measure and will not silently assume. The card states the omission and its size — roughly 1,500 kcal — so the absence reads as a decision rather than a missing feature.</p>
+          <div class="rejected"><b>Rejected</b><p>Estimating BMR from a Mifflin–St Jeor formula and showing a net figure with a footnote. It would have been the single least defensible number in the app, and it would have undermined the ≈ convention everywhere else.</p></div>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>Aggregates state their coverage</h3>
+          <p>Macros are summed over the three items that carry them, and the card says "from 3 of 4". A total that silently drops an item is worse than no total.</p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>Every row says where its number came from</h3>
+          <p>A barcode lookup and a typed guess are different kinds of number. Looked-up rows carry a barcode mark and the database name; user-entered rows carry "your estimate" and a <em>≈</em> on the value, with a dashed time badge. The distinction is visible in the list, not one tap away.</p>
+        </div>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<!-- ══ PLATE 04 — LOG A MEAL ═══════════════════════════════════════ -->
+<section class="plate">
+  <div class="plate-head">
+    <span class="plate-no">04</span>
+    <h2>Log a meal</h2>
+    <span class="sub">Modal · no tab bar</span>
+  </div>
+
+  <div class="fw" data-dim="390 × 844 pt">
+    <div class="frame">
+      <div class="statusbar"><span>status bar</span></div>
+      <div class="g" style="padding-top:14px;display:flex;justify-content:space-between;align-items:flex-start">
+        <div class="col" style="gap:4px"><span class="ttl" style="font-size:20px">Log a meal</span><span class="lbl">Lunch · Thursday 21 August</span></div>
+        <span class="sq" style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--ink-2)">✕</span>
+      </div>
+
+      <div class="g" style="padding-top:18px;display:flex;flex-direction:column;gap:14px">
+        <div class="box" style="padding:14px;border-width:1.5px;border-color:var(--ink);display:flex;align-items:center;gap:12px;border-radius:20px">
+          <span class="sq" style="width:40px;height:40px;border-radius:14px"></span>
+          <span class="col" style="flex:1"><span class="ttl" style="font-size:12px">Scan a barcode</span><span class="lbl">Looked up in Open Food Facts — real figures, not a guess</span></span>
+          <span class="lbl">›</span>
+        </div>
+
+        <div class="row" style="gap:12px">
+          <span style="flex:1;height:1px;background:var(--rule)"></span>
+          <span class="lbl">or search by name</span>
+          <span style="flex:1;height:1px;background:var(--rule)"></span>
+        </div>
+
+        <div class="box" style="height:46px;border-radius:999px;display:flex;align-items:center;gap:11px;padding:0 16px 0 7px">
+          <span class="sq" style="width:32px;height:32px;border-radius:999px"></span>
+          <span style="flex:1;font-size:12px">peanut butter</span>
+          <span class="lbl">✕</span>
+        </div>
+
+        <div class="box" style="padding:4px 14px">
+          <div class="row" style="gap:11px;padding:11px 0;border-bottom:1px solid var(--rule)">
+            <span class="sq" style="width:34px;height:34px;border-radius:11px"></span>
+            <span class="col" style="flex:1"><span class="lbl" style="color:var(--ink);font-weight:600;font-size:11px">Peanut butter, smooth</span><span class="lbl">Open Food Facts · per 100 g</span></span>
+            <span class="row" style="gap:3px;align-items:baseline"><span class="val-s">588</span><span class="lbl">kcal</span></span>
+          </div>
+          <div class="row" style="gap:11px;padding:11px 0;border-bottom:1px solid var(--rule)">
+            <span class="sq" style="width:34px;height:34px;border-radius:11px"></span>
+            <span class="col" style="flex:1"><span class="lbl" style="color:var(--ink);font-weight:600;font-size:11px">Peanut butter, crunchy</span><span class="lbl">Open Food Facts · per 100 g</span></span>
+            <span class="row" style="gap:3px;align-items:baseline"><span class="val-s">597</span><span class="lbl">kcal</span></span>
+          </div>
+          <div class="row" style="gap:11px;padding:11px 0;border-bottom:1px solid var(--rule)">
+            <span class="sq" style="width:34px;height:34px;border-radius:11px"></span>
+            <span class="col" style="flex:1"><span class="lbl" style="color:var(--ink);font-weight:600;font-size:11px">Peanut butter, reduced fat</span><span class="lbl">Open Food Facts · per 100 g</span></span>
+            <span class="row" style="gap:3px;align-items:baseline"><span class="val-s">520</span><span class="lbl">kcal</span></span>
+          </div>
+          <div class="row" style="gap:7px;padding:11px 0">
+            <span class="sq" style="width:11px;height:11px;border-radius:999px"></span>
+            <span class="lbl">Figures come from Open Food Facts, an open database edited by its users.</span>
+          </div>
+        </div>
+
+        <div class="box" style="padding:14px">
+          <div class="row" style="gap:9px">
+            <span class="sq" style="width:26px;height:26px;border-style:dashed"></span>
+            <span class="col"><span class="ttl" style="font-size:12px">Not in the database?</span><span class="lbl">Saved as your estimate, shown with a ≈</span></span>
+          </div>
+          <div class="row" style="gap:10px;margin-top:11px">
+            <span class="box" style="flex:1;height:42px;border-radius:12px;background:var(--fill-2);display:flex;align-items:center;padding:0 12px;font-size:11px;color:var(--ink-3)">What did you eat?</span>
+            <span class="box" style="width:84px;height:42px;border-radius:12px;background:var(--fill-2);display:flex;align-items:center;padding:0 12px;font-size:11px;color:var(--ink-3)">kcal</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="position:absolute;left:20px;right:20px;bottom:30px;display:flex;flex-direction:column;gap:9px">
+        <span class="box ttl" style="height:50px;border-radius:999px;border-width:1.5px;border-color:var(--ink);
+              display:flex;align-items:center;justify-content:center">Add to lunch</span>
+        <span class="lbl" style="text-align:center">Queues and syncs later if you're offline</span>
+      </div>
+    </div>
+
+    <span class="pin" style="--x:195;--y:158">1</span>
+    <span class="pin" style="--x:24;--y:300">2</span>
+    <span class="pin" style="--x:36;--y:560">3</span>
+    <span class="pin" style="--x:195;--y:800">4</span>
+  </div>
+
+  <div class="notes">
+    <ol>
+      <li>
+        <div>
+          <h3>Barcode first, because the camera is already there</h3>
+          <p>The AR movement feature brings camera permission with it, so a barcode scan costs the user nothing extra and returns a figure with a source. It gets the heaviest treatment on the screen; typing is the fallback, not the default path.</p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>Search results name their source and their basis</h3>
+          <p>"Open Food Facts · per 100 g" on every row. Per-100 g versus per-serving is the most common way a food log goes quietly wrong, so the basis is on the row rather than inside the detail view.</p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>The escape hatch is honest about what it is</h3>
+          <p>Not every meal is in a database — a rice and curry plate rarely is. Manual entry stays available but is labelled at the point of entry as an estimate, and the field block is drawn dashed to match the badge those entries will carry in the list.</p>
+          <div class="rejected"><b>Rejected</b><p>Hiding manual entry behind a "can't find it?" link. It made the honest path feel like a failure state, when it is how a large share of Sri Lankan meals will actually be logged.</p></div>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>Offline is stated at the commit point</h3>
+          <p>The app is offline-first, so the button says what happens if the network is down instead of failing after the tap. The user finds out before they act, not after.</p>
+        </div>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<!-- ══ PLATE 05 — ASSISTANT ════════════════════════════════════════ -->
+<section class="plate">
+  <div class="plate-head">
+    <span class="plate-no">05</span>
+    <h2>Assistant</h2>
+    <span class="sub">Pushed from the Today FAB</span>
+  </div>
+
+  <div class="fw" data-dim="390 × 844 pt">
+    <div class="frame">
+      <div style="height:104px;border-bottom:1px solid var(--rule-2);display:flex;align-items:flex-end;
+                  gap:12px;padding:0 20px 13px">
+        <span class="sq" style="width:32px;height:32px"></span>
+        <span class="col" style="flex:1"><span class="ttl" style="font-size:14px">Assistant</span><span class="lbl">● Grounded on your data</span></span>
+        <span class="sq" style="width:32px;height:32px"></span>
+      </div>
+
+      <div class="g" style="padding-top:16px;display:flex;flex-direction:column;gap:12px">
+
+        <div class="box" style="padding:11px 13px;border-radius:16px;background:var(--fill-2)">
+          <div class="row" style="gap:9px;align-items:flex-start">
+            <span class="sq" style="width:12px;height:12px;margin-top:1px"></span>
+            <span class="lbl">Answers are grounded in your own recorded figures — sleep, recovery, steps, water and meals. It can't see anything else, and it isn't a clinician.</span>
+          </div>
+        </div>
+
+        <div class="row" style="gap:9px;align-items:flex-start">
+          <span class="sq" style="width:25px;height:25px;border-radius:9px;margin-top:2px"></span>
+          <span class="box" style="max-width:250px;padding:11px 13px;border-radius:4px 16px 16px 16px">
+            <span class="lbl" style="font-size:10.5px;line-height:1.55;color:var(--ink)">Morning. You're at 75 today — your best since Sunday. Ask me anything about this week.</span>
+          </span>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end">
+          <span class="box" style="max-width:238px;padding:11px 13px;border-radius:16px 4px 16px 16px;background:var(--fill)">
+            <span class="lbl" style="font-size:10.5px;color:var(--ink)">Why was Tuesday so much worse?</span>
+          </span>
+        </div>
+
+        <div class="row" style="gap:9px;align-items:flex-start">
+          <span class="sq" style="width:25px;height:25px;border-radius:9px;margin-top:2px"></span>
+          <div class="col" style="gap:7px;max-width:250px">
+            <span class="box" style="padding:11px 13px;border-radius:4px 16px 16px 16px">
+              <span class="col" style="gap:5px">
+                <span class="blk" style="width:100%"></span><span class="blk" style="width:96%"></span>
+                <span class="blk" style="width:100%"></span><span class="blk" style="width:91%"></span>
+                <span class="blk" style="width:58%"></span>
+              </span>
+            </span>
+            <div class="row" style="gap:5px;flex-wrap:wrap">
+              <span class="pill" style="height:19px;padding:0 8px;font-size:8px">sleep · Tue</span>
+              <span class="pill" style="height:19px;padding:0 8px;font-size:8px">resting HR · Tue</span>
+              <span class="pill" style="height:19px;padding:0 8px;font-size:8px">baseline · 14 d</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="row" style="gap:7px;flex-wrap:wrap;padding-top:2px">
+          <span class="pill" style="height:28px;padding:0 13px">How's my week?</span>
+          <span class="pill" style="height:28px;padding:0 13px">Should I train today?</span>
+        </div>
+      </div>
+
+      <div style="position:absolute;left:0;right:0;bottom:0;border-top:1px solid var(--rule-2);
+                  padding:12px 20px 30px;display:flex;align-items:center;gap:10px">
+        <span class="box" style="flex:1;height:44px;border-radius:999px;background:var(--fill-2);
+              display:flex;align-items:center;padding:0 16px;font-size:11px;color:var(--ink-3)">Ask about your figures…</span>
+        <span class="box" style="width:44px;height:44px;border-radius:999px;border-width:1.5px;border-color:var(--ink);
+              display:flex;align-items:center;justify-content:center;font-size:13px">➤</span>
+      </div>
+    </div>
+
+    <span class="pin" style="--x:24;--y:200">1</span>
+    <span class="pin" style="--x:250;--y:494">2</span>
+    <span class="pin" style="--x:110;--y:592">3</span>
+    <span class="pin" style="--x:300;--y:118">4</span>
+  </div>
+
+  <div class="notes">
+    <ol>
+      <li>
+        <div>
+          <h3>Scope is declared before the first message</h3>
+          <p>A standing note at the top of the thread says what the assistant can see and what it is not. Placing it in the conversation rather than a settings screen means it is read by everyone, once, at the moment it is relevant.</p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>Replies cite the figures they used</h3>
+          <p>Chips under each answer name the readings it drew on — "sleep · Tue", "baseline · 14 d". The user can check an answer against the dashboard instead of taking it on trust, which is the difference between an assistant grounded in their data and one that sounds like it is.</p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>Suggested questions, not an empty box</h3>
+          <p>An empty prompt field gives no indication of what the assistant can usefully answer. Two suggestions set the scope by example and give a one-tap path for the majority case.</p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>Connection state lives in the header</h3>
+          <p>This is the one screen that stops working offline — the dashboard does not. The status line, the placeholder text and the send control all change together, and an amber banner explains that the rest of the app is unaffected.</p>
+        </div>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<!-- ══ PLATE 06 — INSIGHTS ═════════════════════════════════════════ -->
+<section class="plate">
+  <div class="plate-head">
+    <span class="plate-no">06</span>
+    <h2>Insights</h2>
+    <span class="sub">Tab 2 of 4</span>
+  </div>
+
+  <div class="fw" data-dim="390 × 844 pt">
+    <div class="frame">
+      <div class="statusbar"><span>status bar</span></div>
+      <div class="g col" style="padding-top:14px">
+        <div class="lbl-u">Last 7 days</div>
+        <div class="ttl" style="font-size:20px;margin-top:4px">Insights</div>
+      </div>
+
+      <div class="g" style="padding-top:20px;display:flex;flex-direction:column;gap:14px">
+
+        <div class="box" style="padding:16px 14px 12px">
+          <div class="row" style="justify-content:space-between;align-items:baseline">
+            <span class="ttl" style="font-size:12px">Recovery</span>
+            <span class="lbl">↗ +6 this week</span>
+          </div>
+          <div style="position:relative;height:168px;margin-top:12px">
+            <div style="position:absolute;inset:0 0 22px 0;display:flex;flex-direction:column;justify-content:space-between">
+              <span style="height:1px;background:var(--rule)"></span><span style="height:1px;background:var(--rule)"></span>
+              <span style="height:1px;background:var(--rule)"></span><span style="height:1px;background:var(--rule-2)"></span>
+            </div>
+            <div style="position:relative;height:100%;display:flex;align-items:flex-end;gap:9px">
+              <span class="col" style="flex:1;align-items:center;gap:5px;justify-content:flex-end;height:100%">
+                <span class="lbl">64</span><span style="width:100%;height:83px;background:var(--fill);border-radius:6px 6px 3px 3px"></span><span class="lbl">Fri</span></span>
+              <span class="col" style="flex:1;align-items:center;gap:5px;justify-content:flex-end;height:100%">
+                <span class="lbl">72</span><span style="width:100%;height:94px;background:var(--fill);border-radius:6px 6px 3px 3px"></span><span class="lbl">Sat</span></span>
+              <span class="col" style="flex:1;align-items:center;gap:5px;justify-content:flex-end;height:100%">
+                <span class="lbl">78</span><span style="width:100%;height:101px;background:var(--fill);border-radius:6px 6px 3px 3px"></span><span class="lbl">Sun</span></span>
+              <span class="col" style="flex:1;align-items:center;gap:5px;justify-content:flex-end;height:100%">
+                <span class="lbl">69</span><span style="width:100%;height:90px;background:var(--fill);border:1px dashed var(--ink-2);border-radius:6px 6px 3px 3px"></span><span class="lbl">Mon</span></span>
+              <span class="col" style="flex:1;align-items:center;gap:5px;justify-content:flex-end;height:100%">
+                <span class="lbl">61</span><span style="width:100%;height:79px;background:var(--fill);border-radius:6px 6px 3px 3px"></span><span class="lbl">Tue</span></span>
+              <span class="col" style="flex:1;align-items:center;gap:5px;justify-content:flex-end;height:100%">
+                <span class="lbl">74</span><span style="width:100%;height:96px;background:var(--fill);border-radius:6px 6px 3px 3px"></span><span class="lbl">Wed</span></span>
+              <span class="col" style="flex:1;align-items:center;gap:5px;justify-content:flex-end;height:100%">
+                <span class="lbl" style="color:var(--ink);font-weight:600">75</span><span style="width:100%;height:98px;background:var(--ink);border-radius:6px 6px 3px 3px"></span><span class="lbl" style="color:var(--ink);font-weight:600">Thu</span></span>
+            </div>
+          </div>
+          <div class="row" style="gap:16px;padding-top:9px;border-top:1px solid var(--rule);margin-top:2px">
+            <span class="lbl">▬ Established</span>
+            <span class="lbl">▭ Provisional — building your baseline</span>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="box" style="padding:12px">
+            <div class="row" style="justify-content:space-between"><span class="sq" style="width:26px;height:26px;border-radius:999px"></span><span class="lbl">Average</span></div>
+            <div class="val" style="margin-top:6px">71</div>
+            <div class="lbl" style="margin-top:5px">across 7 scored days</div>
+          </div>
+          <div class="box" style="padding:12px">
+            <div class="row" style="justify-content:space-between"><span class="sq" style="width:26px;height:26px;border-radius:999px"></span><span class="lbl">Recorded</span></div>
+            <div class="val" style="margin-top:6px">7<span class="lbl" style="font-size:12px">/7</span></div>
+            <div class="lbl" style="margin-top:5px">nights with sleep data</div>
+          </div>
+        </div>
+
+        <div class="box" style="padding:14px">
+          <div class="row" style="justify-content:space-between;align-items:baseline">
+            <span class="ttl" style="font-size:12px">Sleep this week</span><span class="lbl">7h 48m avg</span>
+          </div>
+          <div class="row" style="gap:9px;height:58px;align-items:flex-end;margin-top:11px">
+            <span class="col" style="flex:1;gap:2px;justify-content:flex-end;height:100%"><span style="height:10px;background:var(--ink)"></span><span style="height:13px;background:var(--ink-3)"></span><span style="height:29px;background:var(--fill)"></span></span>
+            <span class="col" style="flex:1;gap:2px;justify-content:flex-end;height:100%"><span style="height:11px;background:var(--ink)"></span><span style="height:14px;background:var(--ink-3)"></span><span style="height:33px;background:var(--fill)"></span></span>
+            <span class="col" style="flex:1;gap:2px;justify-content:flex-end;height:100%"><span style="height:12px;background:var(--ink)"></span><span style="height:15px;background:var(--ink-3)"></span><span style="height:34px;background:var(--fill)"></span></span>
+            <span class="col" style="flex:1;gap:2px;justify-content:flex-end;height:100%"><span style="height:8px;background:var(--ink)"></span><span style="height:11px;background:var(--ink-3)"></span><span style="height:25px;background:var(--fill)"></span></span>
+            <span class="col" style="flex:1;gap:2px;justify-content:flex-end;height:100%"><span style="height:8px;background:var(--ink)"></span><span style="height:10px;background:var(--ink-3)"></span><span style="height:23px;background:var(--fill)"></span></span>
+            <span class="col" style="flex:1;gap:2px;justify-content:flex-end;height:100%"><span style="height:11px;background:var(--ink)"></span><span style="height:13px;background:var(--ink-3)"></span><span style="height:31px;background:var(--fill)"></span></span>
+            <span class="col" style="flex:1;gap:2px;justify-content:flex-end;height:100%"><span style="height:10px;background:var(--ink)"></span><span style="height:13px;background:var(--ink-3)"></span><span style="height:39px;background:var(--fill)"></span></span>
+          </div>
+          <div class="box" style="margin-top:11px;padding:9px 11px;background:var(--fill-2);border-radius:10px">
+            <span class="lbl">⚠ Tuesday's resting heart rate ran <strong style="color:var(--ink)">4 bpm above</strong> your baseline.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="nav">
+        <span class="slot"><span class="ico"></span><span class="tx">Today</span></span>
+        <span class="slot"><span class="ico on"></span><span class="tx on">Insights</span></span>
+        <span class="slot"></span>
+        <span class="slot"><span class="ico"></span><span class="tx">Device</span></span>
+        <span class="slot"><span class="ico"></span><span class="tx">Profile</span></span>
+      </div>
+      <div class="plus">+</div>
+    </div>
+
+    <span class="pin" style="--x:340;--y:300">1</span>
+    <span class="pin" style="--x:222;--y:300">2</span>
+    <span class="pin" style="--x:290;--y:500">3</span>
+    <span class="pin" style="--x:195;--y:686">4</span>
+  </div>
+
+  <div class="notes">
+    <ol>
+      <li>
+        <div>
+          <h3>Today is the emphasised bar, not a separate readout</h3>
+          <p>The current day is drawn solid against six lighter bars, so "where am I relative to my week" is answered by position rather than by a second number the user has to hold in their head.</p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>Provisional days are marked in the series</h3>
+          <p>A score computed before the 14-day baseline exists is a different kind of reading, so it is drawn differently — dashed here, violet in the hi-fi set. Never greyed and never smaller: it means <em>less certain</em>, not <em>worse</em>, and muting it would say the opposite.</p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>Recording coverage is a headline stat</h3>
+          <p>"7/7 nights with sleep data" sits beside the average, because an average over four nights and one over seven are not comparable and the user is the only person who can tell which they are looking at.</p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>One relationship, stated in words</h3>
+          <p>The card closes by naming the single thing the week's data actually shows. A screen of charts with no reading is a report, not an insight.</p>
+        </div>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<!-- ══ PLATE 07 — DEVICE ═══════════════════════════════════════════ -->
+<section class="plate">
+  <div class="plate-head">
+    <span class="plate-no">07</span>
+    <h2>Device</h2>
+    <span class="sub">Tab 3 of 4 · ESP32 node</span>
+  </div>
+
+  <div class="fw" data-dim="390 × 844 pt">
+    <div class="frame">
+      <div class="statusbar"><span>status bar</span></div>
+      <div class="g" style="padding-top:14px;display:flex;justify-content:space-between;align-items:flex-start">
+        <div class="col" style="gap:3px"><span class="ttl" style="font-size:20px">Device</span><span class="val-s" style="color:var(--ink-2)">auraflow-node-01</span></div>
+        <span class="pill" style="height:28px;padding:0 11px">● Connected</span>
+      </div>
+
+      <div class="g" style="padding-top:18px;display:flex;flex-direction:column;gap:14px">
+
+        <div class="solid" style="padding:18px;border-radius:20px">
+          <div class="row" style="justify-content:space-between">
+            <span class="lbl-u" style="color:var(--solid-ink);opacity:.7">Live biometrics</span>
+            <span class="pill" style="height:19px;padding:0 9px;border-color:var(--solid-ink);color:var(--solid-ink);opacity:.85;font-size:8.5px">Streaming</span>
+          </div>
+          <div class="row" style="gap:26px;align-items:flex-end;margin-top:14px">
+            <div class="col">
+              <div class="row" style="gap:9px;align-items:center">
+                <span style="width:20px;height:20px;border-radius:5px;border:1px solid var(--solid-ink);opacity:.55"></span>
+                <span class="val" style="font-size:38px;color:var(--solid-ink)">113</span>
+              </div>
+              <span class="lbl-u" style="color:var(--solid-ink);opacity:.6;padding-left:29px">bpm</span>
+            </div>
+            <div class="col" style="padding-bottom:3px">
+              <span class="val" style="font-size:23px;color:var(--solid-ink)">99%</span>
+              <span class="lbl-u" style="color:var(--solid-ink);opacity:.6">SpO₂</span>
+            </div>
+          </div>
+          <div style="height:36px;margin-top:14px;border:1px dashed var(--solid-ink);opacity:.45;border-radius:4px;
+                      display:flex;align-items:center;justify-content:center;font-size:8px;color:var(--solid-ink)">live PPG trace</div>
+          <div class="row" style="gap:7px;margin-top:12px;padding-top:9px;border-top:1px solid var(--solid-ink)">
+            <span class="lbl" style="color:var(--solid-ink);opacity:.65">◷ Finger on sensor · updated 1s ago</span>
+          </div>
+        </div>
+
+        <div class="box" style="padding:14px">
+          <div class="row" style="justify-content:space-between;align-items:baseline">
+            <span class="ttl" style="font-size:12px">Lamp</span><span class="lbl">Focus · 90%</span>
+          </div>
+          <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:11px">
+            <span class="pill" style="height:38px;padding:0 14px">○ Off</span>
+            <span class="pill" style="height:38px;padding:0 14px;background:var(--ink);color:var(--sheet);border-color:var(--ink)">● Focus</span>
+            <span class="pill" style="height:38px;padding:0 14px">○ Break</span>
+            <span class="pill" style="height:38px;padding:0 14px">○ Sleep</span>
+            <span class="pill" style="height:38px;padding:0 14px">○ Alert</span>
+          </div>
+          <div class="lbl" style="margin-top:12px">Brightness</div>
+          <div class="row" style="gap:8px;margin-top:7px">
+            <span class="box" style="flex:1;height:36px;border-radius:10px;background:var(--fill-2);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--ink-2)">25%</span>
+            <span class="box" style="flex:1;height:36px;border-radius:10px;background:var(--fill-2);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--ink-2)">50%</span>
+            <span class="box" style="flex:1;height:36px;border-radius:10px;background:var(--fill-2);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--ink-2)">75%</span>
+            <span class="box" style="flex:1;height:36px;border-radius:10px;background:var(--ink);color:var(--sheet);border-color:var(--ink);display:flex;align-items:center;justify-content:center;font-size:10px">100%</span>
+          </div>
+        </div>
+
+        <div class="box" style="padding:14px">
+          <div class="row" style="gap:8px"><span class="sq" style="width:14px;height:14px"></span><span class="ttl" style="font-size:11px">Diagnostics</span></div>
+          <div class="col" style="gap:8px;margin-top:11px">
+            <span class="row" style="justify-content:space-between"><span class="lbl">Wi-Fi signal</span><span class="val-s">−78 dBm (fair)</span></span>
+            <span class="row" style="justify-content:space-between"><span class="lbl">Local address</span><span class="val-s">192.168.1.33</span></span>
+            <span class="row" style="justify-content:space-between"><span class="lbl">Uptime</span><span class="val-s">4m</span></span>
+            <span class="row" style="justify-content:space-between"><span class="lbl">Free memory</span><span class="val-s">214 KB</span></span>
+            <span class="row" style="justify-content:space-between"><span class="lbl">Pulse sensor</span><span class="val-s">detected</span></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="nav">
+        <span class="slot"><span class="ico"></span><span class="tx">Today</span></span>
+        <span class="slot"><span class="ico"></span><span class="tx">Insights</span></span>
+        <span class="slot"></span>
+        <span class="slot"><span class="ico on"></span><span class="tx on">Device</span></span>
+        <span class="slot"><span class="ico"></span><span class="tx">Profile</span></span>
+      </div>
+      <div class="plus">+</div>
+    </div>
+
+    <span class="pin" style="--x:195;--y:250">1</span>
+    <span class="pin" style="--x:36;--y:352">2</span>
+    <span class="pin" style="--x:100;--y:520">3</span>
+    <span class="pin" style="--x:100;--y:660">4</span>
+  </div>
+
+  <div class="notes">
+    <ol>
+      <li>
+        <div>
+          <h3>Live hardware inverts; everything else does not</h3>
+          <p>The same inverted treatment as the Today strip, so a user who has seen one recognises the other. Inversion means <em>this number is arriving right now</em>, and it is used nowhere else in the app.</p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>A waveform, not a decorative pulse line</h3>
+          <p>The trace is the photoplethysmogram the node is actually transmitting. Drawing a generic heartbeat animation here would put a fictional graphic next to two real measurements on the same surface.</p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>Control sits beside data on one screen</h3>
+          <p>The lamp is actuation and the sensor is telemetry, but they are one physical device to the user. Splitting them into "sensors" and "controls" screens would describe the software's architecture rather than the object on their desk.</p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>Diagnostics are visible, not buried</h3>
+          <p>Signal strength, address, uptime and free memory are what actually explain a dropout on a prototype device. They stay on the face of the screen — this is a build to be demonstrated and debugged, and hiding them behind a developer toggle would cost more than the space they take.</p>
+        </div>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<!-- ══ PLATE 08 — SIGN IN ══════════════════════════════════════════ -->
+<section class="plate">
+  <div class="plate-head">
+    <span class="plate-no">08</span>
+    <h2>Sign in</h2>
+    <span class="sub">Unauthenticated entry · no tab bar</span>
+  </div>
+
+  <div class="fw" data-dim="390 × 844 pt">
+    <div class="frame">
+      <div class="zone" style="height:372px;border-width:0 0 1px 0;background:var(--fill-2)">
+        <span class="zone-tag">Hero</span>
+        <div class="g" style="padding-top:74px;display:flex;flex-direction:column;gap:24px">
+          <div class="row" style="gap:12px">
+            <span class="sq" style="width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:8px;color:var(--ink-3)">mark</span>
+            <div class="col" style="gap:3px">
+              <span class="ttl" style="font-size:19px;letter-spacing:0">AuraFlow</span>
+              <span class="lbl-u">Work with your body</span>
+            </div>
+          </div>
+          <div class="col" style="gap:8px">
+            <span class="ttl" style="font-size:22px">Welcome back</span>
+            <span class="col" style="gap:5px;max-width:268px">
+              <span class="blk" style="width:100%"></span><span class="blk" style="width:92%"></span><span class="blk" style="width:46%"></span>
+            </span>
+          </div>
+        </div>
+        <div style="position:absolute;left:0;right:0;bottom:0;height:30px;
+                    border-top:1px dashed var(--rule-2);display:flex;align-items:center;justify-content:center">
+          <span class="lbl">drawn curve, not a plain radius</span>
+        </div>
+      </div>
+
+      <div class="g" style="padding-top:22px;display:flex;flex-direction:column;gap:15px">
+        <div class="col" style="gap:6px">
+          <span class="lbl" style="color:var(--ink);font-weight:600">Email</span>
+          <span class="box" style="height:48px;border-radius:999px;display:flex;align-items:center;gap:11px;padding:0 16px 0 7px">
+            <span class="sq" style="width:32px;height:32px;border-radius:999px"></span>
+            <span style="font-size:12px">navod@icbt.lk</span>
+          </span>
+        </div>
+        <div class="col" style="gap:6px">
+          <span class="lbl" style="color:var(--ink);font-weight:600">Password</span>
+          <span class="box" style="height:48px;border-radius:999px;border-width:2px;border-color:var(--ink);
+                display:flex;align-items:center;gap:11px;padding:0 16px 0 7px">
+            <span class="sq" style="width:32px;height:32px;border-radius:999px"></span>
+            <span style="flex:1;font-size:13px;letter-spacing:3px">••••••••</span>
+            <span class="lbl">◉</span>
+          </span>
+          <span class="lbl" style="padding-left:16px">focused state drawn — 2 pt border + focus ring</span>
+        </div>
+
+        <span class="box ttl" style="height:50px;border-radius:999px;border-width:1.5px;border-color:var(--ink);
+              display:flex;align-items:center;justify-content:center;margin-top:3px">Sign in</span>
+
+        <span class="lbl" style="text-align:center">⛊ Your health data is encrypted and private</span>
+        <span class="lbl" style="text-align:center;font-size:11px">Don't have an account? <strong style="color:var(--ink)">Sign up</strong></span>
+      </div>
+    </div>
+
+    <span class="pin" style="--x:195;--y:150">1</span>
+    <span class="pin" style="--x:24;--y:520">2</span>
+    <span class="pin" style="--x:195;--y:700">3</span>
+  </div>
+
+  <div class="notes">
+    <ol>
+      <li>
+        <div>
+          <h3>The hero states the payoff, not the product</h3>
+          <p>"Your recovery score is waiting — built from last night's sleep and your resting heart rate." A returning user is being told what is behind the door, and a first-time user learns what the app measures before being asked for anything.</p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>Focus state is drawn, not assumed</h3>
+          <p>Rest, focused and error are specified here because they are where a form actually fails. The focus ring is drawn as a separate outer layer — React Native has no shadow spread, so it has to be a real element rather than a style.</p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>The privacy line sits under the button</h3>
+          <p>Directly beneath the commit control, where the user is deciding whether to hand over health data — not in a policy screen they will never open.</p>
+        </div>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<!-- ══ PLATE 09 — QUICK ACTIONS ════════════════════════════════════ -->
+<section class="plate">
+  <div class="plate-head">
+    <span class="plate-no">09</span>
+    <h2>＋ Quick actions</h2>
+    <span class="sub">Modal sheet over any tab</span>
+  </div>
+
+  <div class="fw" data-dim="sheet height intrinsic ≈ 460 pt">
+    <div class="frame">
+      <div style="position:absolute;inset:0;background:var(--fill);opacity:.55"></div>
+      <div style="position:absolute;top:70px;left:0;right:0;text-align:center">
+        <span class="lbl">underlying screen dimmed · not blurred</span>
+      </div>
+
+      <div style="position:absolute;left:0;right:0;bottom:0;background:var(--sheet);
+                  border:1px solid var(--ink);border-bottom:0;border-radius:30px 30px 0 0;padding:12px 20px 28px">
+        <div style="width:38px;height:4px;border-radius:999px;background:var(--fill);margin:0 auto 14px"></div>
+        <div class="col" style="gap:3px">
+          <span class="ttl" style="font-size:16px">What are you logging?</span>
+          <span class="lbl">Everything here writes to today, and queues if you're offline.</span>
+        </div>
+
+        <div class="col" style="gap:10px;margin-top:15px">
+          <div class="box" style="padding:14px;border-radius:18px;border-width:1.5px;border-color:var(--ink);display:flex;align-items:center;gap:13px">
+            <span class="sq" style="width:42px;height:42px;border-radius:14px"></span>
+            <span class="col" style="flex:1;gap:3px">
+              <span class="row" style="gap:7px;align-items:center">
+                <span class="ttl" style="font-size:12px">Movement session</span>
+                <span class="pill" style="height:16px;padding:0 6px;font-size:7.5px;border-color:var(--ink);color:var(--ink)">AR</span>
+              </span>
+              <span class="lbl">Camera counts your reps · recovery 75, you're clear for a full set</span>
+            </span>
+            <span class="lbl">›</span>
+          </div>
+
+          <div class="box" style="padding:14px;border-radius:18px;background:var(--fill-2);display:flex;align-items:center;gap:13px">
+            <span class="sq" style="width:42px;height:42px;border-radius:14px"></span>
+            <span class="col" style="flex:1;gap:3px"><span class="ttl" style="font-size:12px">Log a meal</span><span class="lbl">Scan a barcode or search Open Food Facts</span></span>
+            <span class="lbl">›</span>
+          </div>
+
+          <div class="box" style="padding:14px;border-radius:18px;background:var(--fill-2);display:flex;align-items:center;gap:13px">
+            <span class="sq" style="width:42px;height:42px;border-radius:14px"></span>
+            <span class="col" style="flex:1;gap:3px"><span class="ttl" style="font-size:12px">Log last night</span><span class="lbl">Hours slept and resting heart rate</span></span>
+            <span class="lbl">›</span>
+          </div>
+
+          <div class="box" style="padding:14px;border-radius:18px;background:var(--fill-2);display:flex;align-items:center;gap:13px">
+            <span class="sq" style="width:42px;height:42px;border-radius:14px"></span>
+            <span class="col" style="flex:1;gap:3px"><span class="ttl" style="font-size:12px">Add water</span><span class="lbl">250 ml · 1,250 of 2,000 so far</span></span>
+            <span class="lbl">›</span>
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:center;margin-top:15px">
+          <span class="box" style="width:52px;height:52px;border-radius:18px;border-width:1.5px;border-color:var(--ink);
+                display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:18px">✕</span>
+        </div>
+      </div>
+    </div>
+
+    <span class="pin" style="--x:195;--y:432">1</span>
+    <span class="pin" style="--x:36;--y:492">2</span>
+    <span class="pin" style="--x:36;--y:600">3</span>
+    <span class="pin" style="--x:195;--y:790">4</span>
+  </div>
+
+  <div class="notes">
+    <ol>
+      <li>
+        <div>
+          <h3>Why the ＋ carries three actions instead of a sixth tab</h3>
+          <p>The app has six destinations — Today, Insights, Movement, Nutrition, Device, Profile — and a tab bar tops out at five before the labels become unreadable. But the three that lost a tab share a property the other four do not: they are things the user <em>does</em>, not places they <em>go</em>. Grouping them behind one raised control turns an overflow problem into a statement about the app: four places to look, one button to record.</p>
+          <div class="rejected"><b>Rejected</b><p>A six-slot bar with icon-only tabs. Labels are what make a tab bar learnable, and dropping them to fit a sixth destination trades comprehension for capacity. Also rejected: a "More" tab, which hides the app's most frequent write actions two taps deep.</p></div>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>AR lives here, and only here</h3>
+          <p>The camera-based movement session is a task with a beginning and an end, not a place to browse — so it is the first row of the action sheet rather than a tab. Its subtitle is recovery-aware, which makes the AR feature a consequence of the recovery score rather than a detached novelty.</p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>Rows are ordered by frequency, not by feature weight</h3>
+          <p>Meals, then sleep, then water. The AR session leads on visual weight because it is the most capable thing here, but the ordering below it follows how often a user will reach for each.</p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>The ＋ becomes the dismiss control</h3>
+          <p>It rotates 45° into an ✕ in place, so the control that opened the sheet is the control that closes it. No separate close affordance in a corner, and no reliance on a swipe the user has to discover.</p>
+        </div>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<!-- ══ PLATE 10 — NAVIGATION MAP ═══════════════════════════════════ -->
+<section class="map">
+  <div class="plate-head">
+    <span class="plate-no">10</span>
+    <h2>Navigation map</h2>
+    <span class="sub">How the ten screens connect</span>
+  </div>
+
+  <div class="map-scroll">
+    <svg viewBox="0 0 900 470" role="img" aria-label="Navigation map showing four tabs, three actions behind the plus button, and pushed screens">
+      <defs>
+        <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 z" fill="var(--rule-2)"/>
+        </marker>
+      </defs>
+
+      <!-- entry -->
+      <rect x="20" y="24" width="150" height="52" rx="6" fill="none" stroke="var(--ink)" stroke-width="1.5"/>
+      <text x="95" y="46" text-anchor="middle" font-size="13" font-weight="700" fill="var(--ink)">Sign in</text>
+      <text x="95" y="63" text-anchor="middle" font-size="10" class="mono" fill="var(--ink-3)">plate 08</text>
+      <path d="M95 76 L95 108" stroke="var(--rule-2)" stroke-width="1.5" marker-end="url(#ar)"/>
+      <text x="105" y="96" font-size="9.5" fill="var(--ink-3)">authenticated</text>
+
+      <!-- tab container -->
+      <rect x="20" y="112" width="520" height="176" rx="8" fill="none" stroke="var(--rule)" stroke-width="1" stroke-dasharray="5 4"/>
+      <text x="34" y="132" font-size="10" letter-spacing="1.6" fill="var(--ink-3)">TAB BAR — FOUR DESTINATIONS</text>
+
+      <!-- tabs -->
+      <rect x="36" y="146" width="112" height="60" rx="6" fill="var(--fill)" stroke="var(--ink)" stroke-width="1.5"/>
+      <text x="92" y="172" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--ink)">Today</text>
+      <text x="92" y="189" text-anchor="middle" font-size="10" class="mono" fill="var(--ink-2)">plates 01–02</text>
+
+      <rect x="160" y="146" width="112" height="60" rx="6" fill="none" stroke="var(--rule-2)" stroke-width="1.5"/>
+      <text x="216" y="172" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--ink)">Insights</text>
+      <text x="216" y="189" text-anchor="middle" font-size="10" class="mono" fill="var(--ink-2)">plate 06</text>
+
+      <rect x="284" y="146" width="112" height="60" rx="6" fill="none" stroke="var(--rule-2)" stroke-width="1.5"/>
+      <text x="340" y="172" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--ink)">Device</text>
+      <text x="340" y="189" text-anchor="middle" font-size="10" class="mono" fill="var(--ink-2)">plate 07</text>
+
+      <rect x="408" y="146" width="112" height="60" rx="6" fill="none" stroke="var(--rule-2)" stroke-width="1.5"/>
+      <text x="464" y="172" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--ink)">Profile</text>
+      <text x="464" y="189" text-anchor="middle" font-size="10" class="mono" fill="var(--ink-2)">—</text>
+
+      <text x="34" y="240" font-size="9.5" letter-spacing="0.4" fill="var(--ink-3)">Lateral movement between tabs is free and preserves each tab's scroll position.</text>
+      <path d="M92 218 L92 228 L464 228 L464 218" fill="none" stroke="var(--rule)" stroke-width="1" stroke-dasharray="3 3"/>
+
+      <text x="34" y="266" font-size="9.5" fill="var(--ink-3)">Today also carries a floating assistant control →</text>
+
+      <!-- plus -->
+      <rect x="596" y="146" width="112" height="60" rx="16" fill="none" stroke="var(--ink)" stroke-width="2.5"/>
+      <text x="652" y="172" text-anchor="middle" font-size="14" font-weight="700" fill="var(--ink)">＋ Action</text>
+      <text x="652" y="189" text-anchor="middle" font-size="10" class="mono" fill="var(--ink-2)">plate 09 · modal</text>
+      <path d="M540 176 L592 176" stroke="var(--rule-2)" stroke-width="1.5" marker-end="url(#ar)"/>
+      <text x="566" y="167" text-anchor="middle" font-size="9" fill="var(--ink-3)">any tab</text>
+
+      <!-- three actions -->
+      <rect x="736" y="96" width="148" height="46" rx="6" fill="none" stroke="var(--ink)" stroke-width="1.5" stroke-dasharray="6 4"/>
+      <text x="810" y="115" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ink)">Movement · AR</text>
+      <text x="810" y="131" text-anchor="middle" font-size="10" class="mono" fill="var(--ink-2)">camera · pushed</text>
+
+      <rect x="736" y="153" width="148" height="46" rx="6" fill="none" stroke="var(--ink)" stroke-width="1.5" stroke-dasharray="6 4"/>
+      <text x="810" y="172" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ink)">Log a meal</text>
+      <text x="810" y="188" text-anchor="middle" font-size="10" class="mono" fill="var(--ink-2)">plate 04 · pushed</text>
+
+      <rect x="736" y="210" width="148" height="46" rx="6" fill="none" stroke="var(--rule-2)" stroke-width="1.5" stroke-dasharray="6 4"/>
+      <text x="810" y="229" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ink)">Sleep · Water</text>
+      <text x="810" y="245" text-anchor="middle" font-size="10" class="mono" fill="var(--ink-2)">inline · no screen</text>
+
+      <path d="M708 176 L722 176 L722 119 L732 119" fill="none" stroke="var(--rule-2)" stroke-width="1.5" marker-end="url(#ar)"/>
+      <path d="M708 176 L732 176" stroke="var(--rule-2)" stroke-width="1.5" marker-end="url(#ar)"/>
+      <path d="M708 176 L722 176 L722 233 L732 233" fill="none" stroke="var(--rule-2)" stroke-width="1.5" marker-end="url(#ar)"/>
+
+      <!-- nutrition -->
+      <rect x="736" y="290" width="148" height="46" rx="6" fill="none" stroke="var(--ink)" stroke-width="1.5" stroke-dasharray="6 4"/>
+      <text x="810" y="309" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ink)">Nutrition</text>
+      <text x="810" y="325" text-anchor="middle" font-size="10" class="mono" fill="var(--ink-2)">plate 03 · pushed</text>
+      <path d="M810 199 L810 286" stroke="var(--rule-2)" stroke-width="1.5" marker-end="url(#ar)"/>
+      <text x="820" y="248" font-size="9" fill="var(--ink-3)">after saving</text>
+
+      <!-- assistant -->
+      <rect x="330" y="330" width="160" height="52" rx="6" fill="none" stroke="var(--ink)" stroke-width="1.5" stroke-dasharray="6 4"/>
+      <text x="410" y="352" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--ink)">Assistant</text>
+      <text x="410" y="369" text-anchor="middle" font-size="10" class="mono" fill="var(--ink-2)">plate 05 · pushed</text>
+      <path d="M92 206 L92 356 L326 356" fill="none" stroke="var(--rule-2)" stroke-width="1.5" marker-end="url(#ar)"/>
+      <text x="150" y="349" font-size="9" fill="var(--ink-3)">floating control, Today only</text>
+
+      <!-- note -->
+      <text x="20" y="424" font-size="10.5" fill="var(--ink-2)">Four tabs are places. Everything reached through ＋ is a task — it opens over the current tab and returns to it.</text>
+      <text x="20" y="443" font-size="10.5" fill="var(--ink-2)">Nothing sits more than two levels deep, and no screen is reachable only by a swipe.</text>
+    </svg>
+  </div>
+
+  <div class="map-key">
+    <span><i style="border-top-style:solid;border-top-width:2.5px;border-top-color:var(--ink)"></i> Tab or modal root</span>
+    <span><i style="border-top-style:dashed"></i> Pushed screen — returns to its parent</span>
+    <span><i style="border-top-color:var(--rule);border-top-style:dotted"></i> Lateral tab movement</span>
+  </div>
+</section>
+
+<!-- ══ COLOPHON ════════════════════════════════════════════════════ -->
+<section class="colophon">
+  <div>
+    <p class="eyebrow">Method</p>
+    <p>Screens were wireframed and argued in greyscale first. Only once the structure held were brand colour, gradient and depth applied, in a separate high-fidelity canvas.</p>
+  </div>
+  <div>
+    <p class="eyebrow">States drawn elsewhere</p>
+    <p>Each component's states — daily brief pending / ready / failed, provisional versus established, node connected or absent, looked-up versus estimated, assistant offline — are specified on the component sheet in the hi-fi set and in <span class="mono" style="font-family:var(--fm);font-size:12.5px">docs/design/ui-spec.md</span>.</p>
+  </div>
+  <div>
+    <p class="eyebrow">Constraint noted throughout</p>
+    <p>Target is React Native, so no backdrop blur, no CSS grid, no shadow spread, and shadows behave differently on Android. Substitutions are recorded in the build spec rather than discovered during implementation.</p>
+  </div>
+</section>
+
+</div>

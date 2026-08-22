@@ -28,6 +28,29 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    /*
+     * The weather key lives here, server-side, and never reaches the app.
+     *
+     * EXPO_PUBLIC_* variables are inlined into the JavaScript bundle and readable from
+     * the APK, so a key shipped that way is a published key. The app calls our own
+     * endpoint instead and we call OpenWeatherMap.
+     */
+    'openweather' => [
+        'key' => env('OPENWEATHER_API_KEY'),
+        'base_url' => env('OPENWEATHER_BASE_URL', 'https://api.openweathermap.org/data/2.5'),
+    ],
+
+    /*
+     * Gemini, for the daily lifestyle summary. Server-side for the same reason as the
+     * weather key, plus one more: an LLM key in a shipped bundle is a bill anyone can run
+     * up. Free tier at aistudio.google.com.
+     */
+    'gemini' => [
+        'key' => env('GEMINI_API_KEY'),
+        'model' => env('GEMINI_MODEL', 'gemini-3.6-flash'),
+        'base_url' => env('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com/v1beta'),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

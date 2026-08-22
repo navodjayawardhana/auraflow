@@ -1,29 +1,77 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+// The mqtt client is a Node library running in a JS engine that has neither of these
+// globals. Shimmed here, before anything imports it, because a missing Buffer surfaces
+// as an opaque crash inside the library rather than a resolution error.
+import { Buffer } from 'buffer';
+import process from 'process';
+
+if (typeof global.Buffer === 'undefined') {
+  global.Buffer = Buffer;
+}
+if (typeof global.process === 'undefined') {
+  global.process = process;
+}
+
+/* The imports below deliberately sit after the shim. Hoisting them would let a module
+   that transitively pulls in `mqtt` evaluate before `global.Buffer` exists, which fails
+   as an opaque crash inside the library rather than a resolution error. */
+/* eslint-disable import/first */
+import {
+  PlusJakartaSans_400Regular,
+  PlusJakartaSans_500Medium,
+  PlusJakartaSans_600SemiBold,
+  PlusJakartaSans_800ExtraBold,
+} from '@expo-google-fonts/plus-jakarta-sans';
+import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { useFonts } from 'expo-font';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
-import { ActivityIndicator, useColorScheme, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
+import { AuraColors } from '@/constants/theme';
 import { AuthProvider, useAuth } from '@/context/auth-context';
+/* eslint-enable import/first */
 
 SplashScreen.preventAutoHideAsync();
 
 /**
- * Sends the user to the right half of the app once the stored session is known.
- *
- * The redirect waits for `isRestoring` deliberately. Acting earlier would bounce a
- * signed-in user to the login screen for the moment it takes to read the token, which
- * reads as being logged out at every cold start.
+ * The app is light-only by design. The tokens have no dark variants, so honouring the
+ * system scheme would give dark navigation chrome around light screens — a half-built
+ * dark mode reads as a defect rather than a feature.
  */
-function AuthGate() {
+const navigationTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    background: AuraColors.surface.default,
+    card: AuraColors.surface.default,
+    text: AuraColors.content.default,
+    primary: AuraColors.brand.default,
+    border: AuraColors.surface.selected,
+  },
+};
+
+// The single navigation decision point for the whole app. Screens never call
+// router.replace/push to (app) or (auth) root after sign-in/out themselves —
+// they just let auth state change and this effect react, so there is never a
+// race between two places deciding where the user should be.
+function AuthGate({ fontsReady }: { fontsReady: boolean }) {
   const { user, isRestoring } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
-  useEffect(() => {
-    if (isRestoring) return;
+  // One gate, not two: the session restore and the font load both have to finish before
+  // anything is worth showing, so they hide the splash together.
+  const isReady = fontsReady && !isRestoring;
 
-    SplashScreen.hideAsync();
+  useEffect(() => {
+    if (isReady) {
+      SplashScreen.hideAsync();
+    }
+  }, [isReady]);
+
+  useEffect(() => {
+    if (!isReady) return;
 
     const inAuthGroup = segments[0] === '(auth)';
 
@@ -32,31 +80,44 @@ function AuthGate() {
     } else if (user && inAuthGroup) {
       router.replace('/(app)');
     }
-  }, [user, isRestoring, segments, router]);
+  }, [user, isReady, segments, router]);
 
-  if (isRestoring) {
+  if (!isReady) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator />
+      <View style={styles.gate}>
+        <ActivityIndicator color={AuraColors.brand.default} />
       </View>
     );
   }
 
-  return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="(auth)" />
-      <Stack.Screen name="(app)" />
-    </Stack>
-  );
+  return <Stack screenOptions={{ headerShown: false }} />;
 }
 
+const styles = StyleSheet.create({
+  gate: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: AuraColors.surface.default,
+  },
+});
+
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
+  const [fontsLoaded, fontError] = useFonts({
+    PlusJakartaSans_400Regular,
+    PlusJakartaSans_500Medium,
+    PlusJakartaSans_600SemiBold,
+    PlusJakartaSans_800ExtraBold,
+  });
+
+  // A failed font load falls back to the system face rather than blocking the app —
+  // wrong typography is a smaller problem than a permanent splash screen.
+  const fontsReady = fontsLoaded || fontError !== null;
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={navigationTheme}>
       <AuthProvider>
-        <AuthGate />
+        <AuthGate fontsReady={fontsReady} />
       </AuthProvider>
     </ThemeProvider>
   );

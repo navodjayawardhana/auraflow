@@ -27,6 +27,8 @@ class HealthSnapshot extends Model
         'deep_sleep_minutes',
         'rem_sleep_minutes',
         'resting_heart_rate',
+        'steps',
+        'water_ml',
     ];
 
     protected function casts(): array
@@ -37,6 +39,8 @@ class HealthSnapshot extends Model
             'deep_sleep_minutes' => 'integer',
             'rem_sleep_minutes' => 'integer',
             'resting_heart_rate' => 'float',
+            'steps' => 'integer',
+            'water_ml' => 'integer',
         ];
     }
 

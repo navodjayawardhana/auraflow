@@ -348,25 +348,70 @@ The performance, security and compatibility evaluation blocks are unaffected.
 
 ## 8. Ethics
 
+### 8.1 The training data
+
 Both datasets are **public, de-identified and released for research reuse** by their
 original custodians. Participant consent, ethical review and de-identification were
 handled by the original studies and are documented in their respective publications;
-this project performs **secondary analysis** of already-published data and therefore
-requires no new ethical approval and collects no new personal data.
+**the modelling work is secondary analysis** of already-published data and therefore
+requires no new ethical approval.
 
-Obligations this project does carry:
+Obligations that analysis carries:
 
 - **Attribution** — both datasets cited in the report reference list and in §3.1–3.2 above (both licences require this)
 - **Non-commercial restriction** — PMData, see §3.2
 - **No re-identification** — no attempt to link participants to identities, and no
   re-publication of the raw data in the repository or the report appendices
-- **Separate consent** for the SUS usability study (E2), which does involve new
-  participants; consent forms in `docs/test-evidence/`
 
-Under GDPR the source data is already de-identified and lawfully published for research;
-the Art. 9 special-category analysis in the requirements pack therefore addresses the
-**live app**, where AuraFlow processes the end user's own health data, which remains the
-higher-risk pathway.
+### 8.2 The IoT node — this project *does* collect new data
+
+⚠️ **Corrected 2026-08-12.** An earlier version of this section stated that the project
+"collects no new personal data". That was true while the node was simulated. It stopped
+being true the moment `SIMULATE_BIO` goes to `0` and a real finger goes on the
+MAX30102: a measured heart rate is personal data, and a heart rate is **health data —
+special category under GDPR Art. 9**. The report must not repeat the old claim.
+
+What is actually collected, and the boundary that keeps it proportionate:
+
+| Activity | Who | Governance |
+|---|---|---|
+| Node-vs-watch HR agreement (E-IoT, ~20 simultaneous samples) | **the developer only** | Self-measurement with the researcher's own device. Declare it; it is not third-party human-subjects research |
+| OLED / serial evidence screenshots | the developer only | Same |
+| SUS usability study (E2, n=5) | other participants | **No biometrics.** App interaction only — consent forms in `docs/test-evidence/` |
+
+**Nobody else's finger needs to go on this sensor.** The trained model comes entirely
+from LifeSnaps and PMData, so there is no reason to collect biometrics from other
+people, and the validation figure the evaluation needs is a device-agreement
+measurement that n=1 satisfies. Report n=1 as the limitation it is, in §5.4, rather
+than widening the collection to improve it.
+
+**If that scope ever widens** — a classmate, a family member, anyone who is not the
+developer — then before a single reading is taken:
+
+1. **Institutional ethics approval.** Not retrospective. Physiological measurement on
+   another person is human-subjects research whatever the intent.
+2. **Participant information sheet + written informed consent**, on the university's own
+   template, covering what is measured, why, retention, and withdrawal.
+3. **An Art. 9 condition**, not just an Art. 6 lawful basis. Explicit consent under
+   Art. 9(2)(a) is the realistic route at this scale.
+
+### 8.3 Not a medical device
+
+The MAX30102 on a hobby breakout is a demonstration instrument. Its SpO₂ output is not
+clinically validated, the firmware applies no medical-grade signal quality gate beyond a
+finger-present check and a plausibility range, and nothing it produces may be presented
+as a diagnostic or physiological finding about a person. The report should say this
+plainly where the node is introduced — a reading reported as clinical is a much worse
+error than a reading reported as a sensor demo.
+
+### 8.4 GDPR position
+
+The source data is already de-identified and lawfully published for research. The Art. 9
+special-category analysis in the requirements pack therefore addresses two pathways: the
+**live app**, where AuraFlow processes the end user's own health data, and the **IoT
+node**, whose measurements are health data about the developer. Both are special
+category; the app remains the higher-risk one because it processes at scale and
+continuously, while the node's collection is momentary, local and self-directed.
 
 ---
 
@@ -401,6 +446,32 @@ higher-risk pathway.
     0.667 P@1 with observed context but 0.600 without it, against 0.578 for a fixed-09:00
     heuristic. A deployed system must *predict* location rather than observe it, so 0.600
     is the defensible figure and the margin over trivial advice is small.
+
+---
+
+## Demo timeline (the API's seeded data)
+
+`api/database/seeders/data/demo_timeline.json` is **synthetic**, generated once by
+`ml/simulate.py` (seed 7003, two-process model + chronotype phase). It exists so the
+mobile app's recovery and insights screens can be demonstrated, and it never stands in
+for measurement — the file declares this in its own `meta.warning`.
+
+`DemoTimelineSeeder` transforms it in two ways worth recording:
+
+1. **Dates are rebased.** The generated window is fixed (2026-07-13 … 2026-08-11), so
+   every date is shifted by the offset that lands the last night on the day the seeder
+   runs. Without this the app would still show "no recovery score yet" for today.
+2. **REM is derived, not generated.** The simulator emits `deep_sleep_min` but no REM.
+   The seeder derives `rem_minutes = round(sleep_minutes × 0.22)` with a deterministic
+   ±10% jitter (seeded from `meta.seed`), clamped so `deep + rem ≤ sleep_minutes`.
+   The reason is mechanical rather than physiological: `SleepSummary::hasStageBreakdown()`
+   requires both stages, so a null REM silently disables the architecture component and
+   every demo score would be computed from 2 of 3 signals rather than 3. Because the
+   timeline is already declared synthetic end to end, a derived REM introduces no new
+   claim of measurement — but it is a modelling assumption, so it is stated here.
+
+Real data entering the system through `POST /api/v1/health-snapshots` is not touched by
+any of this.
 
 ---
 

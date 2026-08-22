@@ -1,28 +1,18 @@
 import * as SecureStore from 'expo-secure-store';
 
-import { API_BASE_URL } from '@/constants/api-config';
+// Edit this if your API isn't running on the same machine's default port.
+// Physical devices need your machine's LAN address, not localhost.
+const DEFAULT_API_URL = 'http://localhost:8000/api/v1';
+const API_URL = process.env.EXPO_PUBLIC_API_URL ?? DEFAULT_API_URL;
 
-const TOKEN_KEY = 'auraflow_token';
+const TOKEN_KEY = 'auraflow.authToken';
 
-/**
- * The token lives in SecureStore, not AsyncStorage.
- *
- * AsyncStorage is a plaintext file in the app sandbox: readable on a rooted or
- * jailbroken device, and in any backup that includes app data. SecureStore hands the
- * value to the Android Keystore or the iOS Keychain, which are hardware-backed where
- * the device supports it.
- *
- * For an app holding a token that unlocks health data, that difference is the whole
- * argument. See report 4.6.
- */
 export async function getToken(): Promise<string | null> {
   return SecureStore.getItemAsync(TOKEN_KEY);
 }
 
-export async function saveToken(token: string): Promise<void> {
-  await SecureStore.setItemAsync(TOKEN_KEY, token, {
-    keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
-  });
+export async function setToken(token: string): Promise<void> {
+  await SecureStore.setItemAsync(TOKEN_KEY, token);
 }
 
 export async function clearToken(): Promise<void> {
@@ -30,87 +20,90 @@ export async function clearToken(): Promise<void> {
 }
 
 export class ApiError extends Error {
-  constructor(
-    message: string,
-    readonly status: number,
-    readonly errors: Record<string, string[]> = {},
-  ) {
+  status: number;
+  errors?: Record<string, string[]>;
+
+  constructor(message: string, status: number, errors?: Record<string, string[]>) {
     super(message);
-    this.name = 'ApiError';
+    this.status = status;
+    this.errors = errors;
   }
 
-  /** The token is gone or revoked; the caller should send the user back to sign in. */
   get isUnauthenticated(): boolean {
     return this.status === 401;
   }
 
   get isValidation(): boolean {
-    return this.status === 422;
+    return (this.status === 422 || this.status === 429) && this.errors != null;
   }
 
-  /** First message for a field, for showing inline next to the input. */
   fieldError(field: string): string | undefined {
-    return this.errors[field]?.[0];
+    return this.errors?.[field]?.[0];
   }
 }
 
-async function authHeaders(): Promise<Record<string, string>> {
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = await getToken();
-  return {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     Accept: 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(options.headers as Record<string, string> | undefined),
   };
-}
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const url = `${API_URL}${path}`;
+
+  // Development only. These lines print URLs, status codes and error bodies — including
+  // validation errors from the login route — so they must never reach a release build.
+  if (__DEV__) {
+    console.log(`[api] ${options.method ?? 'GET'} ${url}`);
+  }
+
   let response: Response;
-
   try {
-    response = await fetch(`${API_BASE_URL}${path}`, {
-      ...init,
-      headers: { ...(await authHeaders()), ...(init.headers ?? {}) },
-    });
-  } catch {
-    // fetch only rejects on a transport failure, so this is genuinely "no network"
-    // rather than an error status. Worth saying plainly: the offline case is common
-    // and a bare "Network request failed" tells the user nothing.
-    throw new ApiError('Could not reach AuraFlow. Check your connection.', 0);
+    response = await fetch(url, { ...options, headers });
+  } catch (error) {
+    if (__DEV__) {
+      console.log('[api] request failed:', url, error);
+    }
+    throw new ApiError("Can't reach AuraFlow — check your connection.", 0);
+  }
+
+  if (__DEV__) {
+    console.log(`[api] ${response.status} ${url}`);
+  }
+
+  if (!response.ok) {
+    let body: { message?: string; errors?: Record<string, string[]> } = {};
+    try {
+      body = await response.json();
+    } catch {
+      // no JSON body — fall through with a generic message
+    }
+    if (__DEV__) {
+      console.log('[api] error body:', body);
+    }
+    throw new ApiError(body.message ?? 'Something went wrong.', response.status, body.errors);
   }
 
   if (response.status === 204) {
     return undefined as T;
   }
-
-  const body = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    throw new ApiError(
-      body?.message ?? `Request failed (${response.status})`,
-      response.status,
-      body?.errors ?? {},
-    );
-  }
-
-  return body as T;
+  return response.json() as Promise<T>;
 }
 
 export function apiGet<T>(path: string): Promise<T> {
-  return request<T>(path);
+  return request<T>(path, { method: 'GET' });
 }
 
 export function apiPost<T>(path: string, body?: unknown): Promise<T> {
-  return request<T>(path, {
-    method: 'POST',
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+  return request<T>(path, { method: 'POST', body: body ? JSON.stringify(body) : undefined });
 }
 
 export function apiPatch<T>(path: string, body?: unknown): Promise<T> {
-  return request<T>(path, {
-    method: 'PATCH',
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+  return request<T>(path, { method: 'PATCH', body: body ? JSON.stringify(body) : undefined });
 }
 
 export function apiDelete<T>(path: string): Promise<T> {

@@ -49,6 +49,20 @@ final class FakeDailyHealthSnapshotRepository implements DailyHealthSnapshotRepo
         return array_values($found);
     }
 
+    public function findRange(UserId $userId, DateTimeImmutable $from, DateTimeImmutable $to): array
+    {
+        $found = array_filter(
+            $this->snapshots,
+            fn (DailyHealthSnapshot $s) => $s->userId()->equals($userId)
+                && $s->date() >= $from->setTime(0, 0)
+                && $s->date() <= $to->setTime(0, 0),
+        );
+
+        usort($found, fn ($a, $b) => $a->date() <=> $b->date());
+
+        return array_values($found);
+    }
+
     public function save(DailyHealthSnapshot $snapshot): void
     {
         foreach ($this->snapshots as $index => $existing) {

@@ -20,6 +20,8 @@ final class DailyHealthSnapshotMapper
             new DateTimeImmutable($model->recorded_on->format('Y-m-d')),
             self::toSleep($model),
             self::toRestingHeartRate($model),
+            $model->steps,
+            $model->water_ml,
         );
     }
 
@@ -37,6 +39,8 @@ final class DailyHealthSnapshotMapper
             'deep_sleep_minutes' => $sleep?->deepMinutes() === null ? null : (int) round($sleep->deepMinutes()),
             'rem_sleep_minutes'  => $sleep?->remMinutes() === null ? null : (int) round($sleep->remMinutes()),
             'resting_heart_rate' => $snapshot->restingHeartRate()?->bpm(),
+            'steps'              => $snapshot->steps(),
+            'water_ml'           => $snapshot->waterMl(),
         ];
     }
 

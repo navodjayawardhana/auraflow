@@ -2,25 +2,31 @@
   "expo": {
     "name": "AuraFlow",
     "slug": "auraflow",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "auraflow",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "ios": {
-      "icon": "./assets/expo.icon",
-      "supportsTablet": true,
       "bundleIdentifier": "lk.icbt.auraflow"
     },
     "android": {
       "package": "lk.icbt.auraflow",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#0052FF",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.BLUETOOTH_SCAN",
+        "android.permission.BLUETOOTH_CONNECT",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACTIVITY_RECOGNITION",
+        "android.permission.INTERNET"
+      ]
     },
     "web": {
       "output": "static",
@@ -28,24 +34,43 @@
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store",
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "backgroundColor": "#0F172A",
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "imageWidth": 180
+        }
+      ],
+      "expo-secure-store",
+      "expo-font",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "AuraFlow reads your location only while the app is open, to tell whether you're at home, at work or at the gym. Coordinates stay on this phone.",
+          "isAndroidBackgroundLocationEnabled": false
         }
       ],
       [
-        "expo-build-properties",
+        "expo-sensors",
         {
-          "android": {
-            "//": "Health Connect requires API 34+; the camera and TFLite modules need the New Architecture, which the AR work depends on.",
-            "compileSdkVersion": 35,
-            "targetSdkVersion": 35,
-            "minSdkVersion": 26
-          }
+          "motionPermission": "AuraFlow counts your steps to show your daily activity."
+        }
+      ],
+      "expo-asset",
+      [
+        "react-native-ble-plx",
+        {
+          "isBackgroundEnabled": false,
+          "neverForLocation": true,
+          "bluetoothAlwaysPermission": "AuraFlow connects to your AuraFlow node over Bluetooth to read your heart rate during a session."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "AuraFlow uses the camera to count your squats and check depth. Frames are analysed on this phone and never leave it.",
+          "recordAudioAndroid": false
         }
       ]
     ],
