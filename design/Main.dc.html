@@ -1,0 +1,275 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;800&display=swap">
+  <style>
+    body { margin: 0; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #0052ff; } a:hover { color: #0041cc; }
+    .num { font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+    /* One card recipe everywhere: white on a sunken page, lifted by shadow rather
+       than outlined by a hairline that disappears against white. */
+    .card { background: #ffffff; border-radius: 22px; box-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 10px 26px rgba(15,23,42,0.07); }
+    .tile { background: #ffffff; border-radius: 18px; box-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 8px 20px rgba(15,23,42,0.06); }
+  </style>
+</helmet>
+
+<div style="width: 390px; height: 844px; background: #f8fafc; position: relative; overflow: hidden; color: #0f172a;">
+
+  <!-- ── Hero ─────────────────────────────────────────────── -->
+  <div style="position: relative; height: 404px; background: linear-gradient(158deg, #0b2f8f 0%, #0052ff 46%, #00a5db 100%); overflow: hidden;">
+    <div style="position: absolute; top: -80px; right: -60px; width: 240px; height: 240px; border-radius: 999px; background: radial-gradient(circle, rgba(0,240,255,0.32) 0%, rgba(0,240,255,0) 70%);"></div>
+    <div style="position: absolute; bottom: -70px; left: -50px; width: 200px; height: 200px; border-radius: 999px; background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0) 70%);"></div>
+    <svg viewBox="0 0 390 120" preserveAspectRatio="none" style="position: absolute; bottom: 46px; left: 0; width: 390px; height: 120px; opacity: 0.2;">
+      <path d="M0 78 H92 L106 46 L120 104 L134 62 L146 78 H390" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+    </svg>
+
+    <!-- 20px gutter, matched by every screen and by the sheet below -->
+    <div style="position: relative; padding: 60px 20px 0; display: flex; align-items: center; justify-content: space-between; gap: 16px;">
+      <div style="display: flex; flex-direction: column; gap: 5px;">
+        <div style="font-size: 11px; font-weight: 600; letter-spacing: 2.4px; text-transform: uppercase; color: rgba(255,255,255,0.6);">Thursday 21 August</div>
+        <div style="font-size: 26px; font-weight: 800; color: #ffffff; letter-spacing: -0.6px; line-height: 1.1;">Morning, Navod</div>
+      </div>
+      <div style="width: 44px; height: 44px; border-radius: 15px; background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.22); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+        <svg viewBox="77 37 266 266" style="width: 24px; height: 24px;">
+          <path d="M 90 230 C 130 230 155 210 185 100 C 198 50 215 50 228 100 C 242 165 195 195 160 185 C 220 185 245 185 265 240 C 285 280 305 240 330 200" fill="none" stroke="#ffffff" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"></path>
+          <circle cx="213" cy="72" r="7" fill="#00f0ff"></circle>
+        </svg>
+      </div>
+    </div>
+
+    <div style="position: relative; margin: 16px 20px 0; display: flex; align-items: center; gap: 8px;">
+      <div style="display: flex; align-items: center; gap: 7px; height: 32px; padding: 0 12px; border-radius: 999px; background: rgba(255,255,255,0.15);">
+        <svg viewBox="0 0 24 24" style="width: 14px; height: 14px;" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path></svg>
+        <span class="num" style="font-size: 13px; font-weight: 700; color: #ffffff;">31°</span>
+        <span style="font-size: 13px; color: rgba(255,255,255,0.76);">Partly cloudy</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 999px; background: rgba(255,255,255,0.15);">
+        <svg viewBox="0 0 24 24" style="width: 13px; height: 13px;" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+        <span style="font-size: 13px; color: #ffffff;">At work</span>
+      </div>
+    </div>
+
+    <div style="position: relative; margin-top: 16px; display: flex; align-items: center; justify-content: center;">
+      <svg viewBox="0 0 220 220" style="width: 200px; height: 200px;">
+        <defs>
+          <linearGradient id="ringRecovery" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#7ef9ff"></stop><stop offset="1" stop-color="#ffffff"></stop>
+          </linearGradient>
+          <linearGradient id="ringProvisional" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#c4b5fd"></stop><stop offset="1" stop-color="#ede9fe"></stop>
+          </linearGradient>
+        </defs>
+        <g transform="rotate(-90 110 110)">
+          <circle cx="110" cy="110" r="96" fill="none" stroke="rgba(255,255,255,0.16)" stroke-width="13"></circle>
+          <circle cx="110" cy="110" r="96" fill="none" stroke="{{ringStroke}}" stroke-width="13" stroke-linecap="round" stroke-dasharray="603.2" stroke-dashoffset="150.8"></circle>
+          <circle cx="110" cy="110" r="77" fill="none" stroke="rgba(255,255,255,0.14)" stroke-width="9"></circle>
+          <circle cx="110" cy="110" r="77" fill="none" stroke="#00f0ff" stroke-width="9" stroke-linecap="round" stroke-dasharray="483.8" stroke-dashoffset="130.2"></circle>
+          <circle cx="110" cy="110" r="60" fill="none" stroke="rgba(255,255,255,0.14)" stroke-width="9"></circle>
+          <circle cx="110" cy="110" r="60" fill="none" stroke="#7dd3fc" stroke-width="9" stroke-linecap="round" stroke-dasharray="377" stroke-dashoffset="141.4"></circle>
+        </g>
+      </svg>
+      <div style="position: absolute; display: flex; flex-direction: column; align-items: center; gap: 2px;">
+        <div class="num" style="font-size: 60px; font-weight: 800; color: #ffffff; line-height: 1;">75</div>
+        <div style="font-size: 10px; font-weight: 600; letter-spacing: 2.2px; text-transform: uppercase; color: rgba(255,255,255,0.68);">Recovery</div>
+        <sc-if value="{{isProvisional}}" hint-placeholder-val="{{ false }}">
+          <div style="margin-top: 7px; height: 22px; padding: 0 10px; border-radius: 999px; background: rgba(196,181,253,0.24); display: flex; align-items: center; font-size: 10px; font-weight: 600; color: #ede9fe;">Provisional</div>
+        </sc-if>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Sheet ────────────────────────────────────────────── -->
+  <div style="position: absolute; top: 378px; left: 0; right: 0; bottom: 0; background: #f8fafc; border-radius: 30px 30px 0 0; box-shadow: 0 -14px 44px rgba(11,47,143,0.20); padding: 10px 20px 0;">
+
+    <div style="width: 38px; height: 4px; border-radius: 999px; background: #cbd5e1; margin: 0 auto 16px;"></div>
+
+    <!-- ring legend, on the same 20px gutter and the same baseline as the grid below -->
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="width: 8px; height: 8px; border-radius: 999px; background: #00d2ff; flex-shrink: 0;"></span>
+        <div style="display: flex; flex-direction: column; gap: 1px;">
+          <span class="num" style="font-size: 14px; font-weight: 800; line-height: 1.1;">7,314</span>
+          <span style="font-size: 10px; color: #475569;">of 10,000 steps</span>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="width: 8px; height: 8px; border-radius: 999px; background: #7dd3fc; flex-shrink: 0;"></span>
+        <div style="display: flex; flex-direction: column; gap: 1px;">
+          <span class="num" style="font-size: 14px; font-weight: 800; line-height: 1.1;">1,250</span>
+          <span style="font-size: 10px; color: #475569;">of 2,000 ml water</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;">
+
+      <div class="tile" style="padding: 14px; display: flex; flex-direction: column; gap: 9px;">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <span style="width: 30px; height: 30px; border-radius: 10px; background: #0052ff14; display: flex; align-items: center; justify-content: center;">
+            <svg viewBox="0 0 24 24" style="width: 15px; height: 15px;" fill="none" stroke="#0052ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+          </span>
+          <span style="font-size: 11px; color: #475569;">Steps</span>
+        </div>
+        <span class="num" style="font-size: 24px; font-weight: 800; line-height: 1;">7,314</span>
+        <div style="height: 4px; border-radius: 999px; background: #e2e8f0; overflow: hidden;"><div style="height: 4px; width: 73%; border-radius: 999px; background: #0052ff;"></div></div>
+        <span style="font-size: 10px; line-height: 14px; color: #475569;">counted while AuraFlow is open</span>
+      </div>
+
+      <div class="tile" style="padding: 14px; display: flex; flex-direction: column; gap: 9px;">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <span style="width: 30px; height: 30px; border-radius: 10px; background: #0083b014; display: flex; align-items: center; justify-content: center;">
+            <svg viewBox="0 0 24 24" style="width: 15px; height: 15px;" fill="none" stroke="#0083b0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+          </span>
+          <span style="font-size: 11px; color: #475569;">Active energy</span>
+        </div>
+        <div style="display: flex; align-items: baseline; gap: 4px;">
+          <span style="font-size: 18px; font-weight: 600; color: #475569; line-height: 1;">≈</span>
+          <span class="num" style="font-size: 24px; font-weight: 800; line-height: 1;">292</span>
+          <span style="font-size: 11px; color: #475569;">kcal</span>
+        </div>
+        <div style="height: 4px;"></div>
+        <span style="font-size: 10px; line-height: 14px; color: #475569;">estimated from steps, not measured</span>
+      </div>
+
+      <div class="tile" style="padding: 14px; display: flex; flex-direction: column; gap: 9px;">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <span style="width: 30px; height: 30px; border-radius: 10px; background: #dc262614; display: flex; align-items: center; justify-content: center;">
+            <svg viewBox="0 0 24 24" style="width: 15px; height: 15px;" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+          </span>
+          <span style="font-size: 11px; color: #475569;">Resting HR</span>
+        </div>
+        <div style="display: flex; align-items: baseline; gap: 4px;">
+          <span class="num" style="font-size: 24px; font-weight: 800; line-height: 1;">56.7</span>
+          <span style="font-size: 11px; color: #475569;">bpm</span>
+        </div>
+        <svg viewBox="0 0 100 12" preserveAspectRatio="none" style="width: 100%; height: 12px;">
+          <polyline points="0,8 14,6 28,9 42,4 56,7 70,3 85,5 100,4" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.7"></polyline>
+        </svg>
+        <span style="font-size: 10px; line-height: 14px; color: #475569;">from last night · 7-day trend</span>
+      </div>
+
+      <div class="tile" style="padding: 14px; display: flex; flex-direction: column; gap: 9px;">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <span style="width: 30px; height: 30px; border-radius: 10px; background: #0083b014; display: flex; align-items: center; justify-content: center;">
+            <svg viewBox="0 0 24 24" style="width: 15px; height: 15px;" fill="none" stroke="#0083b0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path></svg>
+          </span>
+          <span style="font-size: 11px; color: #475569;">Water</span>
+        </div>
+        <div style="display: flex; align-items: baseline; gap: 4px;">
+          <span class="num" style="font-size: 24px; font-weight: 800; line-height: 1;">1,250</span>
+          <span style="font-size: 11px; color: #475569;">ml</span>
+        </div>
+        <div style="display: flex; gap: 3px;">
+          <span style="flex-grow: 1; height: 14px; border-radius: 4px; background: #0083b0;"></span>
+          <span style="flex-grow: 1; height: 14px; border-radius: 4px; background: #0083b0;"></span>
+          <span style="flex-grow: 1; height: 14px; border-radius: 4px; background: #0083b0;"></span>
+          <span style="flex-grow: 1; height: 14px; border-radius: 4px; background: #0083b0;"></span>
+          <span style="flex-grow: 1; height: 14px; border-radius: 4px; background: #0083b0;"></span>
+          <span style="flex-grow: 1; height: 14px; border-radius: 4px; background: #e2e8f0;"></span>
+          <span style="flex-grow: 1; height: 14px; border-radius: 4px; background: #e2e8f0;"></span>
+          <span style="flex-grow: 1; height: 14px; border-radius: 4px; background: #e2e8f0;"></span>
+        </div>
+        <span style="font-size: 10px; line-height: 14px; color: #475569;">tap a glass to log 250 ml</span>
+      </div>
+    </div>
+
+    <sc-if value="{{nodeConnected}}" hint-placeholder-val="{{ true }}">
+      <div style="margin-top: 12px; display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 20px; background: linear-gradient(120deg, #0f172a 0%, #14306b 100%); box-shadow: 0 10px 26px rgba(15,23,42,0.22);">
+        <span style="width: 38px; height: 38px; border-radius: 13px; background: rgba(220,38,38,0.2); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <svg viewBox="0 0 24 24" style="width: 19px; height: 19px;" fill="#fda4af" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+        </span>
+        <div style="flex-grow: 1; display: flex; align-items: baseline; gap: 14px;">
+          <div style="display: flex; align-items: baseline; gap: 4px;">
+            <span class="num" style="font-size: 26px; font-weight: 800; color: #ffffff; line-height: 1;">113</span>
+            <span style="font-size: 11px; color: rgba(255,255,255,0.58);">bpm</span>
+          </div>
+          <div style="display: flex; align-items: baseline; gap: 4px;">
+            <span class="num" style="font-size: 18px; font-weight: 700; color: #ffffff; line-height: 1;">99%</span>
+            <span style="font-size: 11px; color: rgba(255,255,255,0.58);">SpO₂</span>
+          </div>
+        </div>
+        <span style="display: flex; align-items: center; gap: 5px; height: 24px; padding: 0 10px; border-radius: 999px; background: rgba(74,222,128,0.2);">
+          <span style="width: 6px; height: 6px; border-radius: 999px; background: #4ade80;"></span>
+          <span style="font-size: 10px; font-weight: 600; color: #bbf7d0;">Live</span>
+        </span>
+      </div>
+    </sc-if>
+  </div>
+
+  <!-- ── Assistant, always reachable ──────────────────────── -->
+  <div style="position: absolute; right: 20px; bottom: 108px; width: 52px; height: 52px; border-radius: 18px; background: #ffffff; box-shadow: 0 10px 26px rgba(15,23,42,0.18), 0 2px 6px rgba(15,23,42,0.08); display: flex; align-items: center; justify-content: center;">
+    <svg viewBox="0 0 24 24" style="width: 22px; height: 22px;" fill="none" stroke="url(#fabGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <defs>
+        <linearGradient id="fabGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#0052ff"></stop><stop offset="1" stop-color="#00d2ff"></stop>
+        </linearGradient>
+      </defs>
+      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+    </svg>
+    <span style="position: absolute; top: 8px; right: 8px; width: 7px; height: 7px; border-radius: 999px; background: #00d2ff;"></span>
+  </div>
+
+  <!-- ── Nav: floating, inset, raised centre action ───────── -->
+  <div style="position: absolute; left: 16px; right: 16px; bottom: 22px; height: 66px; background: #ffffff; border-radius: 26px; box-shadow: 0 10px 34px rgba(15,23,42,0.15), 0 2px 8px rgba(15,23,42,0.06); display: flex; align-items: center; justify-content: space-between; padding: 0 8px;">
+    <div style="width: 62px; display: flex; flex-direction: column; align-items: center; gap: 3px;">
+      <span style="width: 38px; height: 26px; border-radius: 9px; background: #0052ff14; display: flex; align-items: center; justify-content: center;">
+        <svg viewBox="0 0 24 24" style="width: 19px; height: 19px;" fill="none" stroke="#0052ff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+      </span>
+      <span style="font-size: 9.5px; font-weight: 700; color: #0052ff;">Today</span>
+    </div>
+    <div style="width: 62px; display: flex; flex-direction: column; align-items: center; gap: 3px;">
+      <span style="width: 38px; height: 26px; display: flex; align-items: center; justify-content: center;">
+        <svg viewBox="0 0 24 24" style="width: 19px; height: 19px;" fill="none" stroke="#94a3b8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+      </span>
+      <span style="font-size: 9.5px; font-weight: 500; color: #94a3b8;">Insights</span>
+    </div>
+
+    <div style="width: 62px; display: flex; justify-content: center;">
+      <div style="width: 56px; height: 56px; margin-top: -30px; border-radius: 20px; background: linear-gradient(135deg, #0052ff 0%, #00b4db 100%); box-shadow: 0 12px 26px rgba(0,82,255,0.42); display: flex; align-items: center; justify-content: center;">
+        <svg viewBox="0 0 24 24" style="width: 24px; height: 24px;" fill="none" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+      </div>
+    </div>
+
+    <div style="width: 62px; display: flex; flex-direction: column; align-items: center; gap: 3px;">
+      <span style="width: 38px; height: 26px; display: flex; align-items: center; justify-content: center;">
+        <svg viewBox="0 0 24 24" style="width: 19px; height: 19px;" fill="none" stroke="#94a3b8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"></rect><rect x="9" y="9" width="6" height="6" rx="1"></rect><line x1="9" y1="1.5" x2="9" y2="4"></line><line x1="15" y1="1.5" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="22.5"></line><line x1="15" y1="20" x2="15" y2="22.5"></line><line x1="20" y1="9" x2="22.5" y2="9"></line><line x1="20" y1="15" x2="22.5" y2="15"></line><line x1="1.5" y1="9" x2="4" y2="9"></line><line x1="1.5" y1="15" x2="4" y2="15"></line></svg>
+      </span>
+      <span style="font-size: 9.5px; font-weight: 500; color: #94a3b8;">Device</span>
+    </div>
+    <div style="width: 62px; display: flex; flex-direction: column; align-items: center; gap: 3px;">
+      <span style="width: 38px; height: 26px; display: flex; align-items: center; justify-content: center;">
+        <svg viewBox="0 0 24 24" style="width: 19px; height: 19px;" fill="none" stroke="#94a3b8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+      </span>
+      <span style="font-size: 9.5px; font-weight: 500; color: #94a3b8;">Profile</span>
+    </div>
+  </div>
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{
+  "scoreState": {"editor": "enum", "options": ["established", "provisional"], "default": "established", "section": "States"},
+  "nodeConnected": {"editor": "boolean", "default": true, "section": "States"},
+  "$preview": {"width": 390, "height": 844}
+}'>
+class Component extends DCLogic {
+  renderVals() {
+    const provisional = (this.props.scoreState ?? 'established') === 'provisional';
+
+    return {
+      isProvisional: provisional,
+      // Provisional reads as a different KIND of number, not a worse one — violet
+      // rather than the confident cyan, and never a severity colour.
+      ringStroke: provisional ? 'url(#ringProvisional)' : 'url(#ringRecovery)',
+      nodeConnected: this.props.nodeConnected ?? true,
+    };
+  }
+}
+</script>
+</body>
+</html>

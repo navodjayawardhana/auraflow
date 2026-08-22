@@ -2,27 +2,31 @@
  * AuraFlow — IoT Wellbeing Node
  * CMP 7003 · PRAC1 · W10.13
  *
- * Board  : ESP32 DevKit v1
+ * Board  : ESP32 DevKitC (38-pin)
  * Frame  : Arduino
  *
- * One node, three jobs:
+ * Built against the parts that actually arrived (2026-08-12): ESP32 DevKitC (38-pin),
+ * MAX30102, SSD1306 0.96" SPI, TP4056. Three jobs, down from four:
  *
- *   SENSE (environment)  DHT22 + LDR + electret mic
- *                        -> room temperature / humidity / light / noise, the
- *                           sleep-quality features the wrist device has no
- *                           sensor for. Feeds the Week 8 ML model.
+ *   SENSE (biometrics)   MAX30102 -> live HR + SpO2. The Huawei Fit exposes no
+ *                        0x180D Heart Rate service (measured 2026-08-08), so
+ *                        this is the system's only live biometric stream, and
+ *                        the reference we validate the watch's Health Connect
+ *                        samples against.
  *
- *   SENSE (biometrics)   MAX30102 -> live HR + SpO2, MAX30205 -> skin temp.
- *                        The Huawei Fit exposes no 0x180D Heart Rate service
- *                        (measured 2026-08-08), so this is the system's only
- *                        live biometric stream, and the reference we validate
- *                        the watch's Health Connect samples against.
+ *   ACT (circadian lamp) The DevKit's onboard LED under PWM, driven by
+ *                        geofence / break / bedtime / posture-alert events from
+ *                        the app. The WS2812 ring never arrived, so the modes
+ *                        are carried by brightness and motion instead of hue.
  *
- *   ACT (circadian lamp) WS2812 ring driven by geofence / break / bedtime /
- *                        posture-alert events from the app.
+ *   SHOW (OLED)          SSD1306 mirrors HR / SpO2 and the lamp mode so the
+ *                        node can be demoed without a phone in shot.
  *
- *   SHOW (OLED)          SSD1306 mirrors HR / SpO2 / skin temp / lamp mode so
- *                        the node can be demoed without a phone in shot.
+ * Deliberately NOT here: room temperature, humidity, ambient light and noise.
+ * The DHT22, LDR and mic never arrived, and rather than publish a stand-in
+ * dressed up as a room measurement the environment topic is gone. What used to
+ * be `telemetry/environment` is now `telemetry/device` and carries only node
+ * health — every field in it is something the ESP32 genuinely knows.
  *
  * The node stays deliberately dumb: it reports and it obeys. All the deciding
  * happens in the app and the Laravel API, which is what keeps the ML model and
@@ -36,6 +40,7 @@
 
 #include "config.h"
 #include "secrets.h"
+#include "ble.h"
 #include "light.h"
 #include "sensors.h"
 #include "display.h"
@@ -43,7 +48,7 @@
 // ---------------------------------------------------------------- topics
 String topicLightSet;
 String topicLightState;
-String topicEnv;
+String topicDevice;
 String topicBio;
 String topicStatus;
 
@@ -55,10 +60,14 @@ LightMode   publishedMode       = LIGHT_OFF;
 uint8_t     publishedBrightness = 255;   // impossible value -> forces first publish
 const char* pendingSource       = "boot";
 
+// Mirrored separately for BLE, because that path publishes whether or not MQTT is up.
+LightMode   bleMode             = LIGHT_OFF;
+uint8_t     bleBrightness       = 255;   // as above, forces the first mirror
+
 BioReading    lastBio          = {};
 bool          haveBio          = false;
 bool          lastFingerState  = false;
-unsigned long lastEnvMs        = 0;
+unsigned long lastDeviceMs     = 0;
 unsigned long lastBioMs        = 0;
 unsigned long lastReconnectMs  = 0;
 
@@ -84,31 +93,37 @@ void publishLightState() {
                 Light::nameOf(Light::mode()), Light::brightness(), pendingSource);
 }
 
-void publishEnvironment() {
-  const EnvReading e = Sensors::readEnvironment();
-
+// Node health, not room environment. Every field here is something the board
+// measures about itself — there is no sensor on this build that can see the
+// room, and nothing in this payload pretends to.
+void publishDevice() {
   JsonDocument doc;
-  if (e.dhtOk) {
-    doc["temperature_c"] = round(e.temperatureC * 10) / 10.0;
-    doc["humidity_pct"]  = round(e.humidityPct * 10) / 10.0;
-  } else {
-    doc["dht_error"] = true;      // be honest rather than publishing NaN as 0
+  doc["rssi"]           = WiFi.RSSI();
+  doc["ip"]             = WiFi.localIP().toString();
+  doc["uptime_s"]       = millis() / 1000;
+  doc["heap_free_b"]    = ESP.getFreeHeap();
+  doc["light_mode"]     = Light::nameOf(Light::mode());
+  doc["pulse_sensor"]   = Sensors::pulseSensorPresent();
+
+  // MAX30102 on-die temperature: a diagnostic that shows the LEDs warming, NOT
+  // a skin or body temperature. Named so it cannot be mistaken for one, and
+  // skipped entirely while a finger is on the sensor — see sensors.h.
+  float dieC;
+  if (Sensors::readDieTemperature(dieC)) {
+    doc["sensor_die_temp_c"] = round(dieC * 100) / 100.0;
   }
-  doc["ambient_pct"] = e.ambientPct;
-  doc["noise_pct"]   = e.noisePct;
-  doc["light_mode"]  = Light::nameOf(Light::mode());
-  doc["uptime_s"]    = millis() / 1000;
-#if SIMULATE_ENV
+#if SIMULATE_BIO
   doc["simulated"] = true;      // the API must be able to keep this out of the
                                 // training set — see config.h
 #endif
 
   char buf[256];
   const size_t n = serializeJson(doc, buf, sizeof(buf));
-  mqtt.publish(topicEnv.c_str(), (const uint8_t*)buf, n, false);
+  mqtt.publish(topicDevice.c_str(), (const uint8_t*)buf, n, false);
 
-  Serial.printf("[env] %.1fC %.0f%%RH light=%u noise=%u\n",
-                e.temperatureC, e.humidityPct, e.ambientPct, e.noisePct);
+  Serial.printf("[device] rssi=%d heap=%lu uptime=%lus\n",
+                WiFi.RSSI(), (unsigned long)ESP.getFreeHeap(),
+                (unsigned long)(millis() / 1000));
 }
 
 void publishBiometrics(const BioReading& b) {
@@ -117,13 +132,9 @@ void publishBiometrics(const BioReading& b) {
   doc["ir_mean"] = b.irMean;                 // contact quality
   if (b.heartRateValid) doc["hr_bpm"] = b.heartRate;
   if (b.spo2Valid)      doc["spo2_pct"] = b.spo2;
-  // Fingertip SKIN temperature, deliberately not called body_temp: it runs
-  // several degrees under core and must not be reported as a fever reading.
-  if (b.bodyTempValid)  doc["skin_temp_c"] = round(b.bodyTempC * 100) / 100.0;
-  doc["hr_valid"]        = b.heartRateValid;
-  doc["spo2_valid"]      = b.spo2Valid;
-  doc["skin_temp_valid"] = b.bodyTempValid;
-  doc["uptime_s"]        = millis() / 1000;
+  doc["hr_valid"]   = b.heartRateValid;
+  doc["spo2_valid"] = b.spo2Valid;
+  doc["uptime_s"]   = millis() / 1000;
 #if SIMULATE_BIO
   doc["simulated"] = true;
 #endif
@@ -133,10 +144,9 @@ void publishBiometrics(const BioReading& b) {
   mqtt.publish(topicBio.c_str(), (const uint8_t*)buf, n, false);
 
   if (b.fingerPresent) {
-    Serial.printf("[bio] hr=%ld(%d) spo2=%ld(%d) skin=%.2f(%d) ir=%lu\n",
+    Serial.printf("[bio] hr=%ld(%d) spo2=%ld(%d) ir=%lu\n",
                   (long)b.heartRate, b.heartRateValid,
-                  (long)b.spo2, b.spo2Valid,
-                  b.bodyTempC, b.bodyTempValid, (unsigned long)b.irMean);
+                  (long)b.spo2, b.spo2Valid, (unsigned long)b.irMean);
   }
 }
 
@@ -190,6 +200,9 @@ bool connectMqtt() {
 }
 
 // ---------------------------------------------------------------- input
+// The BOOT button on GPIO0. It already has a pull-up on the board; INPUT_PULLUP
+// is belt and braces. Pressing it during a reset enters download mode, which is
+// only a problem if you hold it through one.
 void handleButton() {
   static bool          lastRaw     = HIGH;
   static bool          stableState = HIGH;
@@ -221,8 +234,14 @@ void setup() {
 
   pinMode(PIN_BUTTON, INPUT_PULLUP);
   Light::begin();
-  Sensors::begin();     // brings up Wire — must run before Display::begin()
+  Sensors::begin();
   Display::begin();
+
+  // Before Wi-Fi, so a phone can pair and read vitals even where there is no network at
+  // all. BLE is the local path; MQTT below is the remote one. They coexist rather than
+  // one superseding the other — see ble.h.
+  Ble::begin(DEVICE_ID);
+  Serial.println("[ble] advertising as " DEVICE_ID);
 
   if (Sensors::simulated()) {
     Serial.println("[warn] simulated sensor data — payloads carry \"simulated\":true");
@@ -231,7 +250,7 @@ void setup() {
   const String base = String("auraflow/") + DEVICE_ID;
   topicLightSet   = base + "/light/set";
   topicLightState = base + "/light/state";
-  topicEnv        = base + "/telemetry/environment";
+  topicDevice     = base + "/telemetry/device";
   topicBio        = base + "/telemetry/biometrics";
   topicStatus     = base + "/status";
 
@@ -274,9 +293,9 @@ void loop() {
       publishLightState();
     }
 
-    if (millis() - lastEnvMs > ENV_PUBLISH_MS) {
-      lastEnvMs = millis();
-      publishEnvironment();
+    if (millis() - lastDeviceMs > DEVICE_PUBLISH_MS) {
+      lastDeviceMs = millis();
+      publishDevice();
     }
 
     if (haveBio) {
@@ -293,10 +312,34 @@ void loop() {
   }
 
   Sensors::update();
-  if (Sensors::takeBiometrics(lastBio)) haveBio = true;
+
+  if (Sensors::takeBiometrics(lastBio)) {
+    haveBio = true;
+
+    // Deliberately outside the MQTT branch above, and deliberately unthrottled: BLE is
+    // the local path, so a paired phone gets every reading the sensor produces (~1 Hz)
+    // whether or not there is a network. That is what makes it feel like a watch rather
+    // than a web page, and it is the whole reason both transports exist.
+    Ble::publishBiometrics(lastBio);
+  }
 
   handleButton();
   Light::update();
+  Ble::update();
+
+  // A phone can drive the lamp over BLE too, so the remote state topic has to hear about
+  // it rather than reporting a change it cannot explain.
+  if (Ble::consumeLightWriteFlag()) {
+    pendingSource = "ble";
+  }
+
+  // Mirrored to BLE only on a change: rebuilding the JSON every loop would burn the heap
+  // for nothing, and a characteristic holds its last value for a late-connecting phone.
+  if (Light::mode() != bleMode || Light::brightness() != bleBrightness) {
+    bleMode       = Light::mode();
+    bleBrightness = Light::brightness();
+    Ble::publishLightState(bleMode, bleBrightness);
+  }
 
   DisplayState ds;
   ds.wifiUp     = WiFi.status() == WL_CONNECTED;

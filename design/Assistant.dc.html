@@ -1,0 +1,126 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;800&display=swap">
+  <style>
+    body { margin: 0; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #0052ff; } a:hover { color: #0041cc; }
+    .num { font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  </style>
+</helmet>
+
+<div style="width: 390px; height: 844px; background: #f8fafc; position: relative; overflow: hidden; color: #0f172a;">
+
+  <!-- ── Header ───────────────────────────────────────────── -->
+  <div style="position: absolute; top: 0; left: 0; right: 0; padding: 56px 20px 14px; background: #ffffff; box-shadow: 0 2px 14px rgba(15,23,42,0.06); z-index: 2; display: flex; align-items: center; gap: 12px;">
+    <div style="width: 36px; height: 36px; border-radius: 12px; background: #f1f5f9; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+      <svg viewBox="0 0 24 24" style="width: 18px; height: 18px;" fill="none" stroke="#475569" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+    </div>
+    <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px;">
+      <span style="font-size: 17px; font-weight: 800; line-height: 1.2;">Assistant</span>
+      <div style="display: flex; align-items: center; gap: 5px;">
+        <span style="width: 6px; height: 6px; border-radius: 999px; background: {{statusDot}};"></span>
+        <span style="font-size: 10px; color: #475569;">{{statusText}}</span>
+      </div>
+    </div>
+    <div style="width: 36px; height: 36px; border-radius: 12px; background: linear-gradient(135deg, #0052ff 0%, #00b4db 100%); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+      <svg viewBox="0 0 24 24" style="width: 17px; height: 17px;" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z"></path></svg>
+    </div>
+  </div>
+
+  <!-- ── Conversation ─────────────────────────────────────── -->
+  <div style="position: absolute; top: 106px; left: 0; right: 0; bottom: 96px; padding: 16px 20px 0; display: flex; flex-direction: column; gap: 12px; overflow: hidden;">
+
+    <!-- what it can and cannot see, said once at the top -->
+    <div style="display: flex; align-items: flex-start; gap: 9px; padding: 12px 14px; border-radius: 16px; background: #eef4ff;">
+      <svg viewBox="0 0 24 24" style="width: 14px; height: 14px; flex-shrink: 0; margin-top: 1px;" fill="none" stroke="#0052ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+      <span style="font-size: 10px; line-height: 15px; color: #1e3a8a; text-wrap: pretty;">Answers are grounded in your own recorded figures — sleep, recovery, steps, water and meals. It can't see anything else, and it isn't a clinician.</span>
+    </div>
+
+    <sc-if value="{{isOffline}}" hint-placeholder-val="{{ false }}">
+      <div style="display: flex; align-items: center; gap: 9px; padding: 12px 14px; border-radius: 16px; background: #fef3c7;">
+        <svg viewBox="0 0 24 24" style="width: 14px; height: 14px; flex-shrink: 0;" fill="none" stroke="#b45309" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="1" y1="1" x2="23" y2="23"></line><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path><path d="M10.71 5.05A16 16 0 0 1 22.58 9"></path><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>
+        <span style="font-size: 11px; line-height: 16px; color: #92400e;">You're offline. Your dashboard still works — the assistant needs a connection.</span>
+      </div>
+    </sc-if>
+
+    <!-- assistant -->
+    <div style="display: flex; gap: 9px; align-items: flex-start;">
+      <span style="width: 28px; height: 28px; border-radius: 10px; background: linear-gradient(135deg, #0052ff 0%, #00b4db 100%); display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px;">
+        <svg viewBox="0 0 24 24" style="width: 14px; height: 14px;" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z"></path></svg>
+      </span>
+      <div style="max-width: 268px; padding: 12px 14px; border-radius: 4px 18px 18px 18px; background: #ffffff; box-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 6px 18px rgba(15,23,42,0.06);">
+        <span style="font-size: 13px; line-height: 20px; color: #334155;">Morning. You're at 75 today — your best since Sunday. Ask me anything about this week.</span>
+      </div>
+    </div>
+
+    <!-- user -->
+    <div style="display: flex; justify-content: flex-end;">
+      <div style="max-width: 258px; padding: 12px 14px; border-radius: 18px 4px 18px 18px; background: linear-gradient(120deg, #0052ff 0%, #00a5db 100%); box-shadow: 0 6px 18px rgba(0,82,255,0.22);">
+        <span style="font-size: 13px; line-height: 20px; color: #ffffff;">Why was Tuesday so much worse?</span>
+      </div>
+    </div>
+
+    <!-- assistant, citing the figures it used -->
+    <div style="display: flex; gap: 9px; align-items: flex-start;">
+      <span style="width: 28px; height: 28px; border-radius: 10px; background: linear-gradient(135deg, #0052ff 0%, #00b4db 100%); display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px;">
+        <svg viewBox="0 0 24 24" style="width: 14px; height: 14px;" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z"></path></svg>
+      </span>
+      <div style="max-width: 268px; display: flex; flex-direction: column; gap: 7px;">
+        <div style="padding: 12px 14px; border-radius: 4px 18px 18px 18px; background: #ffffff; box-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 6px 18px rgba(15,23,42,0.06);">
+          <span style="font-size: 13px; line-height: 20px; color: #334155;">Two things moved together. You slept 6h 12m — about 90 minutes under your usual — and your resting heart rate came in at 64, four beats above your baseline. The score weights that heart-rate deviation heavily, so it pulled Tuesday down to 61.</span>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 5px;">
+          <span style="height: 22px; padding: 0 8px; border-radius: 999px; background: #ffffff; box-shadow: 0 1px 3px rgba(15,23,42,0.06); display: flex; align-items: center; font-size: 9.5px; color: #475569;">sleep · Tue</span>
+          <span style="height: 22px; padding: 0 8px; border-radius: 999px; background: #ffffff; box-shadow: 0 1px 3px rgba(15,23,42,0.06); display: flex; align-items: center; font-size: 9.5px; color: #475569;">resting HR · Tue</span>
+          <span style="height: 22px; padding: 0 8px; border-radius: 999px; background: #ffffff; box-shadow: 0 1px 3px rgba(15,23,42,0.06); display: flex; align-items: center; font-size: 9.5px; color: #475569;">baseline · 14 d</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- suggestions, so an empty prompt box is never the only affordance -->
+    <div style="display: flex; flex-wrap: wrap; gap: 7px; padding-top: 2px;">
+      <span style="height: 32px; padding: 0 13px; border-radius: 999px; background: #ffffff; box-shadow: 0 1px 4px rgba(15,23,42,0.07); display: flex; align-items: center; font-size: 12px; font-weight: 600; color: #0052ff;">How's my week?</span>
+      <span style="height: 32px; padding: 0 13px; border-radius: 999px; background: #ffffff; box-shadow: 0 1px 4px rgba(15,23,42,0.07); display: flex; align-items: center; font-size: 12px; font-weight: 600; color: #0052ff;">Should I train today?</span>
+    </div>
+  </div>
+
+  <!-- ── Composer ─────────────────────────────────────────── -->
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 20px 30px; background: #ffffff; box-shadow: 0 -4px 20px rgba(15,23,42,0.07); display: flex; align-items: center; gap: 10px;">
+    <div style="flex-grow: 1; height: 48px; border-radius: 999px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 0 18px; display: flex; align-items: center;">
+      <span style="font-size: 14px; color: #94a3b8;">{{composerHint}}</span>
+    </div>
+    <div style="width: 48px; height: 48px; border-radius: 999px; background: {{sendBg}}; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: {{sendShadow}};">
+      <svg viewBox="0 0 24 24" style="width: 20px; height: 20px;" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+    </div>
+  </div>
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{
+  "connection": {"editor": "enum", "options": ["online", "offline"], "default": "online", "section": "States"},
+  "$preview": {"width": 390, "height": 844}
+}'>
+class Component extends DCLogic {
+  renderVals() {
+    const offline = (this.props.connection ?? 'online') === 'offline';
+
+    return {
+      isOffline: offline,
+      statusDot: offline ? '#94a3b8' : '#0f9d58',
+      statusText: offline ? 'Unavailable offline' : 'Grounded on your data',
+      composerHint: offline ? 'Reconnect to ask a question' : 'Ask about your figures…',
+      sendBg: offline ? '#cbd5e1' : 'linear-gradient(135deg, #0052ff 0%, #00b4db 100%)',
+      sendShadow: offline ? 'none' : '0 8px 20px rgba(0,82,255,0.32)',
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,53 @@
+{
+  "pages": [
+    { "id": "screens", "name": "Screens" },
+    { "id": "system", "name": "Design system" }
+  ],
+  "artboards": [
+    { "file": "SignIn.dc.html", "title": "Sign in", "x": 0, "y": 0, "w": 390, "h": 844, "page": "screens" },
+    { "file": "Main.dc.html", "title": "Today", "x": 460, "y": 0, "w": 390, "h": 844, "page": "screens" },
+    { "file": "TodayScrolled.dc.html", "title": "Today — scrolled", "x": 920, "y": 0, "w": 390, "h": 844, "page": "screens" },
+    { "file": "QuickActions.dc.html", "title": "＋ Quick actions", "x": 1380, "y": 0, "w": 390, "h": 844, "page": "screens" },
+    { "file": "Meals.dc.html", "title": "Nutrition", "x": 1840, "y": 0, "w": 390, "h": 844, "page": "screens" },
+    { "file": "LogMeal.dc.html", "title": "Log a meal", "x": 2300, "y": 0, "w": 390, "h": 844, "page": "screens" },
+    { "file": "Assistant.dc.html", "title": "Assistant", "x": 2760, "y": 0, "w": 390, "h": 844, "page": "screens" },
+    { "file": "Insights.dc.html", "title": "Insights", "x": 3220, "y": 0, "w": 390, "h": 844, "page": "screens" },
+    { "file": "Device.dc.html", "title": "Device", "x": 3680, "y": 0, "w": 390, "h": 844, "page": "screens" },
+    { "file": "Components.dc.html", "title": "Component sheet", "x": 0, "y": 0, "w": 880, "h": 2280, "page": "system" }
+  ],
+  "annotations": [
+    {
+      "id": "composition",
+      "x": 0,
+      "y": -230,
+      "w": 390,
+      "text": "Composition pass\n\nOne 20px gutter on every screen. Cards are now white on a sunken page and lifted by shadow, rather than white-on-white behind a hairline that vanished. Radii settled at 22 for section cards, 18 for tiles, 999 for controls.",
+      "page": "screens"
+    },
+    {
+      "id": "nav",
+      "x": 1380,
+      "y": -230,
+      "w": 390,
+      "text": "Navigation\n\nFive slots is the ceiling and the app has six destinations, so the bar floats — inset, rounded, shadowed — and the raised ＋ carries Movement session (AR), Log a meal, Log last night and Add water.",
+      "page": "screens"
+    },
+    {
+      "id": "meals",
+      "x": 1840,
+      "y": -230,
+      "w": 850,
+      "text": "Nutrition, and the honesty problem\n\nEntry goes through Open Food Facts — free, open, no API key, barcode lookup, and the camera is already being added for AR so scanning costs nothing extra. Looked-up figures carry the barcode mark in green; anything the user typed carries a ≈ in amber, the same distinction the dashboard already makes between measured and estimated.\n\nThere is deliberately no \"net calories\" figure: without a basal rate it would be wrong by roughly 1,500 kcal, and the card says so rather than showing a confident number.",
+      "page": "screens"
+    },
+    {
+      "id": "assistant",
+      "x": 2760,
+      "y": -230,
+      "w": 390,
+      "text": "Assistant\n\nReachable from a floating button above the nav on every screen. Replies cite the figures they used, the grounding note sits at the top of the conversation, and the offline state is a tweak on this artboard.",
+      "page": "screens"
+    }
+  ],
+  "launch": { "view": "canvas", "page": "screens" }
+}

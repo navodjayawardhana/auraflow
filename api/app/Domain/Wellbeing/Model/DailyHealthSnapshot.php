@@ -22,6 +22,13 @@ final class DailyHealthSnapshot
         private readonly DateTimeImmutable $date,
         private ?SleepSummary $sleep,
         private ?RestingHeartRate $restingHeartRate,
+        // Plain nullable integers rather than value objects, unlike sleep and heart rate.
+        // Those two carry physiological rules the domain has to enforce -- a night of
+        // forty minutes is not sleep, a rate of 500 is not a pulse. A step count has no
+        // equivalent invariant beyond "not negative", so wrapping it would be ceremony
+        // without a rule to justify it; the range check lives at the HTTP boundary.
+        private ?int $steps = null,
+        private ?int $waterMl = null,
     ) {
     }
 
@@ -30,8 +37,10 @@ final class DailyHealthSnapshot
         DateTimeImmutable $date,
         ?SleepSummary $sleep = null,
         ?RestingHeartRate $restingHeartRate = null,
+        ?int $steps = null,
+        ?int $waterMl = null,
     ): self {
-        return new self($userId, $date->setTime(0, 0), $sleep, $restingHeartRate);
+        return new self($userId, $date->setTime(0, 0), $sleep, $restingHeartRate, $steps, $waterMl);
     }
 
     /** Rebuild from storage without re-running creation rules. */
@@ -40,8 +49,10 @@ final class DailyHealthSnapshot
         DateTimeImmutable $date,
         ?SleepSummary $sleep,
         ?RestingHeartRate $restingHeartRate,
+        ?int $steps = null,
+        ?int $waterMl = null,
     ): self {
-        return new self($userId, $date->setTime(0, 0), $sleep, $restingHeartRate);
+        return new self($userId, $date->setTime(0, 0), $sleep, $restingHeartRate, $steps, $waterMl);
     }
 
     public function recordSleep(SleepSummary $sleep): void
@@ -72,6 +83,16 @@ final class DailyHealthSnapshot
     public function restingHeartRate(): ?RestingHeartRate
     {
         return $this->restingHeartRate;
+    }
+
+    public function steps(): ?int
+    {
+        return $this->steps;
+    }
+
+    public function waterMl(): ?int
+    {
+        return $this->waterMl;
     }
 
     public function hasSleep(): bool

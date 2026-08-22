@@ -1,92 +1,129 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 
-import { ApiError, clearToken, getToken } from '@/services/api-client';
+import { ApiError, getToken } from '@/services/api-client';
 import * as authService from '@/services/auth-service';
+import { clearNamespace, readCache, writeCache } from '@/services/cache';
 import type { User } from '@/types';
 
-type AuthState = {
+/**
+ * The cached identity is keyed under a fixed id rather than the user's own, because at
+ * restore time we do not yet know who the token belongs to.
+ */
+const IDENTITY_NAMESPACE = 'session';
+const IDENTITY_RESOURCE = 'me';
+
+interface AuthContextValue {
   user: User | null;
-  /** True until the stored token has been checked, so the router can hold its decision. */
   isRestoring: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (input: {
-    name: string;
-    email: string;
-    password: string;
-    passwordConfirmation: string;
-  }) => Promise<void>;
+  signUp: (
+    name: string,
+    email: string,
+    password: string,
+    passwordConfirmation: string,
+  ) => Promise<void>;
   signOut: () => Promise<void>;
-};
+  signOutEverywhere: () => Promise<void>;
+}
 
-const AuthContext = createContext<AuthState | null>(null);
+const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isRestoring, setIsRestoring] = useState(true);
 
   useEffect(() => {
-    let cancelled = false;
-
-    async function restore() {
-      const token = await getToken();
-
-      if (!token) {
-        if (!cancelled) setIsRestoring(false);
-        return;
-      }
-
+    (async () => {
       try {
-        const current = await authService.fetchCurrentUser();
-        if (!cancelled) setUser(current);
+        const token = await getToken();
+        if (!token) return;
+
+        const restoredUser = await authService.fetchCurrentUser();
+        setUser(restoredUser);
+        await writeCache(IDENTITY_NAMESPACE, IDENTITY_RESOURCE, restoredUser);
       } catch (error) {
-        // A token the server rejects is dead weight: drop it so the user gets the sign-in
-        // screen rather than a session that fails on every subsequent request.
         if (error instanceof ApiError && error.isUnauthenticated) {
-          await clearToken();
+          // The server has revoked this token, so the local copies of both the token and
+          // the identity are worthless.
+          setUser(null);
+          await clearNamespace(IDENTITY_NAMESPACE);
+          return;
         }
-        // Any other failure -- offline, server down -- leaves the token in place. The
-        // user is probably still signed in; they just cannot be verified right now.
+
+        // A network failure is not a sign-out. The token stays where it is, and a
+        // previously cached identity lets the app open straight into its signed-in
+        // state offline rather than bouncing to the login screen.
+        const cached = await readCache<User>(IDENTITY_NAMESPACE, IDENTITY_RESOURCE);
+        if (cached !== null) {
+          setUser(cached.value);
+        }
       } finally {
-        if (!cancelled) setIsRestoring(false);
+        setIsRestoring(false);
       }
-    }
-
-    restore();
-
-    return () => {
-      cancelled = true;
-    };
+    })();
   }, []);
 
-  const signIn = useCallback(async (email: string, password: string) => {
-    setUser(await authService.login(email, password));
-  }, []);
-
-  const signUp = useCallback<AuthState['signUp']>(async (input) => {
-    setUser(await authService.register(input));
-  }, []);
-
-  const signOut = useCallback(async () => {
-    // Clear locally first. If the network call fails the user still expects to be
-    // signed out, and auth-service drops the token regardless.
-    setUser(null);
-    await authService.logout();
-  }, []);
-
-  const value = useMemo(
-    () => ({ user, isRestoring, signIn, signUp, signOut }),
-    [user, isRestoring, signIn, signUp, signOut],
-  );
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth(): AuthState {
-  const context = useContext(AuthContext);
-
-  if (context === null) {
-    throw new Error('useAuth must be used inside an <AuthProvider>.');
+  async function signIn(email: string, password: string) {
+    const payload = await authService.login({ email, password });
+    setUser(payload.user);
+    await writeCache(IDENTITY_NAMESPACE, IDENTITY_RESOURCE, payload.user);
   }
 
+  async function signUp(
+    name: string,
+    email: string,
+    password: string,
+    passwordConfirmation: string,
+  ) {
+    const payload = await authService.register({
+      name,
+      email,
+      password,
+      password_confirmation: passwordConfirmation,
+    });
+    setUser(payload.user);
+    await writeCache(IDENTITY_NAMESPACE, IDENTITY_RESOURCE, payload.user);
+  }
+
+  /**
+   * Cached health data must not survive a sign-out. Purged before the token is cleared,
+   * so an interrupted sign-out never leaves readable data behind with no session to
+   * explain it.
+   */
+  async function purgeLocalData(signedOutUser: User | null) {
+    await clearNamespace(IDENTITY_NAMESPACE);
+    if (signedOutUser !== null) {
+      await clearNamespace(signedOutUser.id);
+    }
+  }
+
+  async function signOut() {
+    const previous = user;
+    setUser(null);
+    await purgeLocalData(previous);
+    // authService.logout() is already best-effort — it swallows network errors itself.
+    await authService.logout();
+  }
+
+  async function signOutEverywhere() {
+    const previous = user;
+    setUser(null);
+    await purgeLocalData(previous);
+    await authService.logoutEverywhere();
+  }
+
+  return (
+    <AuthContext.Provider
+      value={{ user, isRestoring, signIn, signUp, signOut, signOutEverywhere }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuth(): AuthContextValue {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
   return context;
 }

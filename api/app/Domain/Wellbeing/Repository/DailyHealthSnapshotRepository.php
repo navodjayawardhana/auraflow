@@ -21,5 +21,16 @@ interface DailyHealthSnapshotRepository
      */
     public function findPrecedingDays(UserId $userId, DateTimeImmutable $before, int $days): array;
 
+    /**
+     * Snapshots in the inclusive window, oldest first.
+     *
+     * Unlike findPrecedingDays this includes both endpoints: a client asking for a
+     * window wants exactly the days it asked for, and any baseline arithmetic over
+     * them is the caller's concern rather than the repository's.
+     *
+     * @return DailyHealthSnapshot[]
+     */
+    public function findRange(UserId $userId, DateTimeImmutable $from, DateTimeImmutable $to): array;
+
     public function save(DailyHealthSnapshot $snapshot): void;
 }

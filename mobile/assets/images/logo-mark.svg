@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="29.120000000000005 -15.879999999999995 361.76 361.76" width="1024" height="1024">
+  <defs>
+    <linearGradient id="markStroke" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0052FF"/>
+      <stop offset="0.5" stop-color="#00D2FF"/>
+      <stop offset="1" stop-color="#00F0FF"/>
+    </linearGradient>
+  </defs>
+  
+  <path d="M 90 230 C 130 230 155 210 185 100 C 198 50 215 50 228 100 C 242 165 195 195 160 185 C 220 185 245 185 265 240 C 285 280 305 240 330 200" fill="none" stroke="#00D2FF" stroke-opacity="0.18" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 90 230 C 130 230 155 210 185 100 C 198 50 215 50 228 100 C 242 165 195 195 160 185 C 220 185 245 185 265 240 C 285 280 305 240 330 200" fill="none" stroke="#0052FF" stroke-opacity="0.12" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 90 230 C 130 230 155 210 185 100 C 198 50 215 50 228 100 C 242 165 195 195 160 185 C 220 185 245 185 265 240 C 285 280 305 240 330 200" fill="none" stroke="url(#markStroke)" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="213" cy="72" r="7" fill="#00F0FF"/>
+</svg>

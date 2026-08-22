@@ -1,44 +1,60 @@
 #include "light.h"
 
-#include <Adafruit_NeoPixel.h>
-
 #include "config.h"
 
 namespace {
 
-struct Rgb { uint8_t r, g, b; };
+// LEDC: 8-bit duty at 5 kHz. Well above anything the eye or a phone camera
+// picks up as flicker, which matters — the lamp ends up in the demo video.
+constexpr uint8_t  LEDC_CHANNEL    = 0;
+constexpr uint32_t LEDC_FREQ_HZ    = 5000;
+constexpr uint8_t  LEDC_RESOLUTION = 8;
 
-Adafruit_NeoPixel strip(NUM_PIXELS, PIN_LED_DATA, NEO_GRB + NEO_KHZ800);
+// The Arduino-ESP32 3.x core replaced the channel-based LEDC API with a
+// pin-based one. Supporting both keeps this compiling on whichever core is
+// already installed rather than making the board package a prerequisite.
+#if ESP_ARDUINO_VERSION_MAJOR >= 3
+void lampAttach() { ledcAttach(PIN_LAMP, LEDC_FREQ_HZ, LEDC_RESOLUTION); }
+void lampWrite(uint8_t duty) { ledcWrite(PIN_LAMP, duty); }
+#else
+void lampAttach() {
+  ledcSetup(LEDC_CHANNEL, LEDC_FREQ_HZ, LEDC_RESOLUTION);
+  ledcAttachPin(PIN_LAMP, LEDC_CHANNEL);
+}
+void lampWrite(uint8_t duty) { ledcWrite(LEDC_CHANNEL, duty); }
+#endif
 
 LightMode currentMode     = LIGHT_OFF;
 LightMode modeBeforeAlert = LIGHT_OFF;
 uint8_t   brightnessPct   = 70;
 
-Rgb shown  = {0, 0, 0};   // what the pixels show right now
-Rgb target = {0, 0, 0};   // where the fade is heading
+uint8_t shown  = 0;   // duty the LED is at right now
+uint8_t target = 0;   // where the fade is heading
 
 unsigned long alertUntilMs = 0;
 unsigned long lastFadeMs   = 0;
 
-Rgb baseColourFor(LightMode m) {
+// With one monochrome LED the mode has to live in the brightness and in the
+// movement, because there is no hue left to put it in. Focus sits hard on;
+// break breathes so it reads as "step away" from the corner of your eye;
+// sleep is dim and still.
+uint8_t baseLevelFor(LightMode m) {
   switch (m) {
-    case LIGHT_FOCUS: return {200, 220, 255};  // cool daylight — alerting
-    case LIGHT_BREAK: return {255, 140,  40};  // warm amber — step away
-    case LIGHT_SLEEP: return {255,  45,   0};  // deep red — low blue light
-    case LIGHT_ALERT: return {255,   0,   0};
-    default:          return {  0,   0,   0};
+    case LIGHT_FOCUS: return 255;
+    case LIGHT_BREAK: return 200;
+    case LIGHT_SLEEP: return 255;   // the cap in recomputeTarget() does the work
+    case LIGHT_ALERT: return 255;
+    default:          return 0;
   }
 }
 
 void recomputeTarget() {
-  const Rgb base = baseColourFor(currentMode);
+  const uint8_t base = baseLevelFor(currentMode);
   // Sleep mode is capped: a bright lamp at 23:00 defeats the whole point.
   const uint8_t pct = (currentMode == LIGHT_SLEEP)
                           ? min<uint8_t>(brightnessPct, 35)
                           : brightnessPct;
-  target.r = (uint16_t)base.r * pct / 100;
-  target.g = (uint16_t)base.g * pct / 100;
-  target.b = (uint16_t)base.b * pct / 100;
+  target = (uint16_t)base * pct / 100;
 }
 
 uint8_t stepToward(uint8_t from, uint8_t to) {
@@ -47,9 +63,15 @@ uint8_t stepToward(uint8_t from, uint8_t to) {
   return (from - to <= FADE_STEP) ? to : from - FADE_STEP;
 }
 
-void paint(const Rgb& c) {
-  strip.fill(strip.Color(c.r, c.g, c.b));
-  strip.show();
+// A triangle wave in [floorPct..100] of `level`, period `periodMs`. Cheaper
+// than a sine and indistinguishable once it is driving an LED.
+uint8_t breathe(uint8_t level, uint16_t periodMs, uint8_t floorPct) {
+  const uint16_t phase = millis() % periodMs;
+  const uint16_t half  = periodMs / 2;
+  const uint16_t up    = (phase < half) ? phase : (periodMs - phase);
+  const uint8_t  span  = 100 - floorPct;
+  const uint16_t pct   = floorPct + (uint32_t)up * span / half;
+  return (uint16_t)level * pct / 100;
 }
 
 }  // namespace
@@ -57,14 +79,13 @@ void paint(const Rgb& c) {
 namespace Light {
 
 void begin() {
-  strip.begin();
-  strip.clear();
-  strip.show();
+  lampAttach();
+  lampWrite(0);
 }
 
 void set(LightMode m, uint8_t pct) {
   if (m == LIGHT_ALERT) {
-    // Alert is transient: flash, then fall back to whatever we were doing.
+    // Alert is transient: pulse, then fall back to whatever we were doing.
     if (currentMode != LIGHT_ALERT) modeBeforeAlert = currentMode;
     alertUntilMs = millis() + ALERT_DURATION_MS;
   } else {
@@ -83,21 +104,24 @@ void update() {
     if (millis() > alertUntilMs) {
       set(modeBeforeAlert, brightnessPct);
     } else {
-      const uint16_t phase = millis() % 800;                 // 0.8 s per pulse
-      const uint8_t  level = (phase < 400) ? (phase * 255 / 400)
-                                           : ((800 - phase) * 255 / 400);
-      shown = {level, 0, 0};
-      paint(shown);
+      // Hard 0->full pulse at 0.8 s. Deliberately not subtle; this is the
+      // posture / bedtime nag.
+      shown = breathe(255, 800, 0);
+      lampWrite(shown);
       return;
     }
   }
 
-  if (shown.r == target.r && shown.g == target.g && shown.b == target.b) return;
+  shown = stepToward(shown, target);
 
-  shown.r = stepToward(shown.r, target.r);
-  shown.g = stepToward(shown.g, target.g);
-  shown.b = stepToward(shown.b, target.b);
-  paint(shown);
+  // Break mode keeps moving after the fade has settled, so it stays
+  // distinguishable from focus without colour.
+  if (currentMode == LIGHT_BREAK && shown == target) {
+    lampWrite(breathe(shown, 4000, 45));
+    return;
+  }
+
+  lampWrite(shown);
 }
 
 LightMode mode()       { return currentMode; }
