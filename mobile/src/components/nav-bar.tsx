@@ -1,5 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   interpolate,
@@ -67,7 +68,13 @@ export function NavBar({ items, activeKey, onSelect, isSheetOpen, onTogglePlus }
   const bottom = Math.max(insets.bottom + 4, 22);
 
   const open = useSharedValue(0);
-  open.value = withTiming(isSheetOpen ? 1 : 0, { duration: 200 });
+
+  // In an effect rather than at render: Reanimated's strict mode warns about writing to a
+  // shared value while React is rendering, and it is right to — a render can be discarded
+  // or replayed, and the animation would run for one that never reached the screen.
+  useEffect(() => {
+    open.value = withTiming(isSheetOpen ? 1 : 0, { duration: 200 });
+  }, [isSheetOpen, open]);
 
   const plusStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${interpolate(open.value, [0, 1], [0, 45])}deg` }],

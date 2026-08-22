@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useAuth } from '@/context/auth-context';
 import { readCache, writeCache } from '@/services/cache';
@@ -84,9 +84,21 @@ export function useCachedResource<T>(
     load();
   }, [load]);
 
+  /**
+   * Read through a ref rather than closed over, because `refresh` must keep its identity
+   * when the data changes.
+   *
+   * Screens put `refresh` in effect dependency lists — the Today screen's `useFocusEffect`
+   * among them — and a fetch that returns a fresh object every time would otherwise spin:
+   * fetch, setData, new `refresh`, effect re-runs, fetch. The only thing this closure
+   * wants from `data` is whether there is any, which is not worth an identity change.
+   */
+  const hasData = useRef(false);
+  hasData.current = data !== null;
+
   const refresh = useCallback(async () => {
-    await fetchFresh(data !== null);
-  }, [fetchFresh, data]);
+    await fetchFresh(hasData.current);
+  }, [fetchFresh]);
 
   return { data, status, source, cachedAt, isStale, refresh };
 }
