@@ -8,7 +8,10 @@
     "scheme": "auraflow",
     "userInterfaceStyle": "light",
     "ios": {
-      "bundleIdentifier": "lk.icbt.auraflow"
+      "bundleIdentifier": "lk.icbt.auraflow",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "lk.icbt.auraflow",
