@@ -24,8 +24,13 @@ jest.mock('@/services/movement-service', () => ({
   logExerciseSession: (...args: unknown[]) => mockLogExerciseSession(...args),
 }));
 
+/* The imports below must stay under the jest.mock calls. Jest hoists the mock factories
+   above them anyway, but putting the imports first makes the file read as though the real
+   modules load before they are replaced, which is the opposite of what happens. */
+/* eslint-disable import/first */
 import { ApiError } from '@/services/api-client';
 import { clearOutbox, enqueue, flush, pendingCount, type QueuedPayload } from '@/services/outbox';
+/* eslint-enable import/first */
 
 const V1_KEY = 'auraflow.outbox.v1';
 
