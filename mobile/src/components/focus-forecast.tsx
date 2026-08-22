@@ -6,8 +6,8 @@ import { Rect, Svg } from 'react-native-svg';
 
 import { Font, Radius, Surfaces, Type } from '@/constants/design';
 import { AuraColors, IconTones } from '@/constants/theme';
-import { buildFocusFeatures, type Context } from '@/ml/focus-features';
-import { model, predictFocusReady, realFeatureCount } from '@/ml/focus-model';
+import { buildFocusFeatures, focusCoverage, type Context, type FocusCoverage } from '@/ml/focus-features';
+import { model, predictFocusReady } from '@/ml/focus-model';
 import type { HealthSnapshot } from '@/types';
 
 const FIRST_HOUR = 6;
@@ -60,10 +60,10 @@ export function FocusForecast({
 }: FocusForecastProps) {
   const [isOpen, setIsOpen] = useState(false);
 
-  const { points, best, realFeatures } = useMemo(() => {
+  const { points, best, coverage } = useMemo(() => {
     const now = new Date();
     const hourly: { hour: number; probability: number }[] = [];
-    let realCount = 0;
+    let hourlyCoverage: FocusCoverage | null = null;
 
     for (let hour = FIRST_HOUR; hour <= LAST_HOUR; hour += 1) {
       const at = new Date(now);
@@ -83,7 +83,7 @@ export function FocusForecast({
       );
 
       hourly.push({ hour, probability: prediction.probability });
-      realCount = realFeatureCount(prediction);
+      hourlyCoverage = focusCoverage(prediction);
     }
 
     let bestStart = hourly[0].hour;
@@ -102,7 +102,7 @@ export function FocusForecast({
     return {
       points: hourly,
       best: { start: bestStart, end: bestStart + WINDOW_HOURS, mean: bestMean },
-      realFeatures: realCount,
+      coverage: hourlyCoverage as FocusCoverage,
     };
   }, [snapshot, history, context, liveHeartRate, liveSpo2, stepsLastHour, stepsCoverageMinutes]);
 
@@ -187,7 +187,7 @@ export function FocusForecast({
         style={styles.disclosure}>
         <Feather name="info" size={12} color={AuraColors.content.muted} />
         <Text style={styles.disclosureLabel}>
-          {realFeatures} of {model.features.length} inputs are your data
+          {coverage.supplied} of {coverage.total} health inputs are your data
         </Text>
         <Feather
           name={isOpen ? 'chevron-up' : 'chevron-down'}
@@ -201,6 +201,13 @@ export function FocusForecast({
           <Text style={styles.panelText}>
             A logistic regression trained offline on a public wearable cohort, running on this
             device — nothing is sent anywhere to produce it.
+          </Text>
+          <Text style={styles.panelText}>
+            {coverage.supplied === 0
+              ? `None of its ${coverage.total} health inputs — sleep, heart, movement — are yours yet, so all of them are filled from the cohort's median. These bars are when that cohort tends to be alert, not when you are. Log a night and it starts describing you.`
+              : `Its other ${coverage.total - coverage.supplied} health inputs are filled from the cohort's median.`}{' '}
+            {coverage.ambient} more come from the clock and the location category — real, but
+            true of anyone holding a phone.
           </Text>
           <Text style={styles.panelText}>
             On held-out data it scored ROC-AUC {model.metrics_holdout.roc_auc.toFixed(3)}, F1{' '}

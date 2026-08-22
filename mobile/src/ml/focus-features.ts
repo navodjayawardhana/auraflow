@@ -1,3 +1,4 @@
+import { model, type FocusPrediction } from '@/ml/focus-model';
 import type { HealthSnapshot } from '@/types';
 
 /**
@@ -149,4 +150,52 @@ export function buildFocusFeatures(inputs: FocusFeatureInputs): Record<string, n
   // a number the model would read as something it is not.
 
   return features;
+}
+
+/**
+ * Features read off the phone's clock. Real on every device, for every account, from the
+ * first second the app is open.
+ */
+export const CLOCK_FEATURES = ['hour_sin', 'hour_cos', 'dow_sin', 'dow_cos', 'is_weekend'] as const;
+
+/**
+ * What is left once the clock and the location encoding are set aside: sleep, heart,
+ * movement. These are the only inputs a person can actually contribute, which makes them
+ * the only honest denominator for "how much of this forecast is about me".
+ *
+ * The context one-hots are excluded for the reason they exist. `buildFocusFeatures` writes
+ * all seven on every call, and all-zero means OTHER — "we do not know where you are". They
+ * are supplied whether or not anyone told us anything, so counting them would report seven
+ * contributions from someone who has opened the app once and said nothing.
+ */
+export const HEALTH_FEATURES = model.features.filter(
+  (feature) =>
+    !(CLOCK_FEATURES as readonly string[]).includes(feature) &&
+    !(CONTEXTS as readonly string[]).includes(feature),
+);
+
+export interface FocusCoverage {
+  /** Health inputs this prediction had from the user rather than the training median. */
+  supplied: number;
+  /** Health inputs the model takes in total. */
+  total: number;
+  /** Clock and location inputs — real, but true of anyone holding a phone. */
+  ambient: number;
+}
+
+/**
+ * Splits the model's inputs into what the user gave it and what is merely available.
+ *
+ * A single count over all 25 features reads as coverage of the person, and on a new account
+ * it would say twelve when the true figure for their own body is zero. The split is the
+ * difference between a disclosure and a decoration.
+ */
+export function focusCoverage(prediction: FocusPrediction): FocusCoverage {
+  const imputed = new Set(prediction.imputedFeatures);
+
+  return {
+    supplied: HEALTH_FEATURES.filter((feature) => !imputed.has(feature)).length,
+    total: HEALTH_FEATURES.length,
+    ambient: CLOCK_FEATURES.length + CONTEXTS.length,
+  };
 }

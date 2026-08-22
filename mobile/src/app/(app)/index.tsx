@@ -2,10 +2,13 @@ import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DailyBriefCard } from '@/components/daily-brief-card';
+import { FirstRunGuide } from '@/components/first-run-guide';
 import { FocusForecast } from '@/components/focus-forecast';
 import { HeroDecoration } from '@/components/hero-decoration';
 import { HeroRings } from '@/components/hero-rings';
@@ -32,6 +35,7 @@ import { useContextAwareness } from '@/hooks/use-context-awareness';
 import { useIot } from '@/context/iot-context';
 import { useCachedResource } from '@/hooks/use-cached-resource';
 import { useOutboxFlush } from '@/hooks/use-outbox-flush';
+import { useSheetDrag } from '@/hooks/use-sheet-drag';
 import { useSteps } from '@/hooks/use-steps';
 import { fetchBrief, refreshBrief, type DailyBrief } from '@/services/brief-service';
 import { estimateActiveKcal } from '@/services/energy';
@@ -43,6 +47,8 @@ import { fetchWeather } from '@/services/weather-service';
 const HERO_HEIGHT = 404;
 /** The sheet overlaps the hero by 26px — that overlap is the whole effect. */
 const SHEET_TOP = 378;
+/** Clear of the status bar when the sheet is fully up, so its handle is still grabbable. */
+const SHEET_TOP_GAP = 8;
 
 function Chip({
   icon,
@@ -68,6 +74,10 @@ export default function TodayScreen() {
   const insets = useSafeAreaInsets();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  const expandedTop = insets.top + SHEET_TOP_GAP;
+  const { pan, scrollGesture, onScroll, sheetStyle, heroStyle, isExpanded, toggle, travel } =
+    useSheetDrag({ restingTop: SHEET_TOP, expandedTop });
+
   const today = todayIsoDate();
   const recoveryFetcher = useCallback(() => fetchRecovery(today), [today]);
 
@@ -92,7 +102,7 @@ export default function TodayScreen() {
   const tonight = history.find((s) => s.date === today) ?? null;
 
   const steps = useSteps();
-  const { biometrics, isBiometricsStale } = useIot();
+  const { biometrics, isBiometricsStale, selectedDeviceId } = useIot();
   const liveHeartRate = isBiometricsStale ? null : usableHeartRate(biometrics);
   const liveSpo2 = isBiometricsStale ? null : usableSpo2(biometrics);
 
@@ -169,7 +179,7 @@ export default function TodayScreen() {
     .toUpperCase();
 
   return (
-    <View style={styles.screen}>
+    <GestureHandlerRootView style={styles.screen}>
       <LinearGradient
         colors={Gradients.hero}
         start={GradientAxis.deg158.start}
@@ -177,7 +187,7 @@ export default function TodayScreen() {
         style={styles.hero}>
         <HeroDecoration height={HERO_HEIGHT} />
 
-        <View style={[styles.heroContent, { paddingTop: insets.top + 16 }]}>
+        <Animated.View style={[styles.heroContent, { paddingTop: insets.top + 16 }, heroStyle]}>
           <View style={styles.heroHead}>
             <View style={styles.heroGreeting}>
               <Text style={Type.eyebrowOnHero}>{dateLabel}</Text>
@@ -207,116 +217,150 @@ export default function TodayScreen() {
               waterProgress={waterMl === null ? null : waterMl / WATER_GOAL_ML}
             />
           </View>
-        </View>
+        </Animated.View>
       </LinearGradient>
 
-      <View style={styles.sheet}>
-        <View style={styles.handle} />
+      <GestureDetector gesture={pan}>
+        <Animated.View style={[styles.sheet, { top: expandedTop }, sheetStyle]}>
+          {/* A button as well as a handle. Someone who cannot drag — a switch, a screen
+              reader, a shaking hand — still gets both positions, and no card below is
+              reachable only from the open one. */}
+          <Pressable
+            onPress={toggle}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: isExpanded }}
+            accessibilityLabel={isExpanded ? 'Collapse the dashboard' : 'Expand the dashboard'}
+            accessibilityHint={
+              isExpanded ? 'Shows your recovery rings again' : 'Covers the recovery rings'
+            }
+            hitSlop={{ left: 60, right: 60, bottom: 8 }}
+            style={styles.grab}>
+            <View style={styles.handle} />
+          </Pressable>
 
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scroll}
-          refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />}>
-          {isStale ? <OfflineBanner cachedAt={cachedAt} /> : null}
+          <GestureDetector gesture={scrollGesture}>
+            <Animated.ScrollView
+              showsVerticalScrollIndicator={false}
+              onScroll={onScroll}
+              scrollEventThrottle={16}
+              // The sheet is laid out at its open height and translated down to rest, so
+              // while it rests its last `travel` points hang below the screen. Without this
+              // the end of the list could never be scrolled into view down there.
+              contentContainerStyle={[
+                styles.scroll,
+                { paddingBottom: Layout.scrollBottom + (isExpanded ? 0 : travel) },
+              ]}
+              refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />}>
+              {isStale ? <OfflineBanner cachedAt={cachedAt} /> : null}
 
-          {/* The hero shows an em dash when there is no score; this says why, and how to
-              fix it. The ring alone would leave the user guessing. */}
-          {recovery !== null && !recovery.available ? (
-            <RecoveryCard status="loaded" reading={recovery} onRetry={refresh} />
-          ) : null}
+              {/* Above the recovery card on purpose: it is the card that explains why that one,
+                  and three others below it, have nothing to show. */}
+              <FirstRunGuide
+                hasLoggedSleep={tonight?.sleep_minutes != null}
+                hasNode={selectedDeviceId !== null}
+                hasContext={context !== null}
+              />
 
-          <RingLegend
-            steps={stepsAvailable ? steps.today : null}
-            stepGoal={STEP_GOAL}
-            waterMl={waterMl}
-            waterGoalMl={WATER_GOAL_ML}
-          />
+              {/* The hero shows an em dash when there is no score; this says why, and how to
+                  fix it. The ring alone would leave the user guessing. */}
+              {recovery !== null && !recovery.available ? (
+                <RecoveryCard status="loaded" reading={recovery} onRetry={refresh} />
+              ) : null}
 
-          <View style={styles.grid}>
-          <View style={styles.gridRow}>
-            <MetricTile
-              index={0}
-              label="Steps"
-              icon="activity"
-              tone="brand"
-              state={stepsAvailable ? 'measured' : 'unavailable'}
-              value={stepsAvailable ? steps.today.toLocaleString() : '—'}
-              progress={stepsAvailable ? steps.today / STEP_GOAL : undefined}
-              caption={
-                steps.status === 'counting'
-                  ? 'counted while AuraFlow is open'
-                  : steps.status === 'denied'
-                    ? 'activity permission denied'
-                    : steps.status === 'unavailable'
-                      ? 'no step sensor on this phone'
-                      : 'checking…'
-              }
-            />
-            <MetricTile
-              index={1}
-              label="Active energy"
-              icon="zap"
-              tone="accent"
-              state={stepsAvailable ? 'estimated' : 'unavailable'}
-              value={stepsAvailable ? String(estimateActiveKcal(steps.today)) : '—'}
-              unit="kcal"
-              caption="estimated from steps, not measured"
-            />
-          </View>
+              <RingLegend
+                steps={stepsAvailable ? steps.today : null}
+                stepGoal={STEP_GOAL}
+                waterMl={waterMl}
+                waterGoalMl={WATER_GOAL_ML}
+              />
 
-          <View style={styles.gridRow}>
-            <MetricTile
-              index={2}
-              label="Resting HR"
-              icon="heart"
-              tone="vital"
-              state={tonight?.resting_heart_rate != null ? 'measured' : 'unavailable'}
-              value={tonight?.resting_heart_rate != null ? String(tonight.resting_heart_rate) : '—'}
-              unit="bpm"
-              caption="from last night"
-            />
-            <MetricTile
-              index={3}
-              label="Water"
-              icon="droplet"
-              tone="accent"
-              state={waterMl != null ? 'measured' : 'unavailable'}
-              value={waterMl != null ? waterMl.toLocaleString() : '—'}
-              unit="ml"
-              progress={waterMl == null ? undefined : waterMl / WATER_GOAL_ML}
-              caption={`of ${WATER_GOAL_ML.toLocaleString()} ml today`}
-            />
-          </View>
-          </View>
+              <View style={styles.grid}>
+              <View style={styles.gridRow}>
+                <MetricTile
+                  index={0}
+                  label="Steps"
+                  icon="activity"
+                  tone="brand"
+                  state={stepsAvailable ? 'measured' : 'unavailable'}
+                  value={stepsAvailable ? steps.today.toLocaleString() : '—'}
+                  progress={stepsAvailable ? steps.today / STEP_GOAL : undefined}
+                  caption={
+                    steps.status === 'counting'
+                      ? 'counted while AuraFlow is open'
+                      : steps.status === 'denied'
+                        ? 'activity permission denied'
+                        : steps.status === 'unavailable'
+                          ? 'no step sensor on this phone'
+                          : 'checking…'
+                  }
+                />
+                <MetricTile
+                  index={1}
+                  label="Active energy"
+                  icon="zap"
+                  tone="accent"
+                  state={stepsAvailable ? 'estimated' : 'unavailable'}
+                  value={stepsAvailable ? String(estimateActiveKcal(steps.today)) : '—'}
+                  unit="kcal"
+                  caption="estimated from steps, not measured"
+                />
+              </View>
 
-          {liveHeartRate !== null ? (
-            <LiveNodeStrip heartRate={liveHeartRate} spo2={liveSpo2} />
-          ) : null}
+              <View style={styles.gridRow}>
+                <MetricTile
+                  index={2}
+                  label="Resting HR"
+                  icon="heart"
+                  tone="vital"
+                  state={tonight?.resting_heart_rate != null ? 'measured' : 'unavailable'}
+                  value={tonight?.resting_heart_rate != null ? String(tonight.resting_heart_rate) : '—'}
+                  unit="bpm"
+                  caption="from last night"
+                />
+                <MetricTile
+                  index={3}
+                  label="Water"
+                  icon="droplet"
+                  tone="accent"
+                  state={waterMl != null ? 'measured' : 'unavailable'}
+                  value={waterMl != null ? waterMl.toLocaleString() : '—'}
+                  unit="ml"
+                  progress={waterMl == null ? undefined : waterMl / WATER_GOAL_ML}
+                  caption={`of ${WATER_GOAL_ML.toLocaleString()} ml today`}
+                />
+              </View>
+              </View>
 
-          <DailyBriefCard brief={brief} onRetry={retryBrief} />
+              {liveHeartRate !== null ? (
+                <LiveNodeStrip heartRate={liveHeartRate} spo2={liveSpo2} />
+              ) : null}
 
-          <SleepStageBar snapshot={tonight} />
+              <DailyBriefCard brief={brief} onRetry={retryBrief} />
 
-          <FocusForecast
-            snapshot={tonight}
-            history={history}
-            context={context}
-            liveHeartRate={liveHeartRate}
-            liveSpo2={liveSpo2}
-            stepsLastHour={stepsAvailable ? steps.lastHour : null}
-            stepsCoverageMinutes={steps.coverageMinutes}
-          />
+              <SleepStageBar snapshot={tonight} />
 
-          {pending > 0 ? (
-            <View style={styles.pending}>
-              <Feather name="upload-cloud" size={14} color={AuraColors.content.muted} />
-              <Text style={Type.caption}>
-                {pending} update{pending === 1 ? '' : 's'} waiting to sync
-              </Text>
-            </View>
-          ) : null}
-        </ScrollView>
-      </View>
+              <FocusForecast
+                snapshot={tonight}
+                history={history}
+                context={context}
+                liveHeartRate={liveHeartRate}
+                liveSpo2={liveSpo2}
+                stepsLastHour={stepsAvailable ? steps.lastHour : null}
+                stepsCoverageMinutes={steps.coverageMinutes}
+              />
+
+              {pending > 0 ? (
+                <View style={styles.pending}>
+                  <Feather name="upload-cloud" size={14} color={AuraColors.content.muted} />
+                  <Text style={Type.caption}>
+                    {pending} update{pending === 1 ? '' : 's'} waiting to sync
+                  </Text>
+                </View>
+              ) : null}
+            </Animated.ScrollView>
+          </GestureDetector>
+        </Animated.View>
+      </GestureDetector>
 
       <Pressable
         onPress={() => router.push('/assistant')}
@@ -325,7 +369,7 @@ export default function TodayScreen() {
         style={[styles.fab, { bottom: Math.max(insets.bottom + 4, 22) + 86 }]}>
         <Feather name="message-circle" size={22} color={AuraColors.brand.default} />
       </Pressable>
-    </View>
+    </GestureHandlerRootView>
   );
 }
 
@@ -363,33 +407,32 @@ const styles = StyleSheet.create({
     textTransform: 'capitalize',
   },
   rings: { marginTop: 16, alignItems: 'center' },
+  // Laid out at its fully open size and translated down to rest, because a transform is the
+  // only way this can follow a finger without a layout pass on every frame. `top` therefore
+  // carries the open position, not the resting one.
   sheet: {
     position: 'absolute',
-    top: SHEET_TOP,
     left: 0,
     right: 0,
     bottom: 0,
     backgroundColor: AuraColors.surface.sunken,
     borderTopLeftRadius: Radius.sheet,
     borderTopRightRadius: Radius.sheet,
-    paddingTop: 10,
     // Android draws no upward shadow, so the sheet's edge is stated with a hairline.
     borderTopWidth: 1,
     borderTopColor: 'rgba(15,23,42,0.06)',
   },
+  // The strip carries the padding rather than the handle, so the whole of it is pressable —
+  // a 4px bar is a target nobody can hit.
+  grab: { alignItems: 'center', paddingTop: 10, paddingBottom: 16 },
   handle: {
     width: 38,
     height: 4,
     borderRadius: 999,
     backgroundColor: '#cbd5e1',
-    alignSelf: 'center',
-    marginBottom: 16,
   },
-  scroll: {
-    paddingHorizontal: Layout.gutter,
-    paddingBottom: Layout.scrollBottom,
-    gap: Layout.gapCards,
-  },
+  // The bottom padding is set on the element: it depends on where the sheet is resting.
+  scroll: { paddingHorizontal: Layout.gutter, gap: Layout.gapCards },
   // Two explicit rows rather than one wrapping row: the tiles set flex:1, which gives
   // them a zero basis, so a wrapping container would fit all four on a single line.
   // The wrapper carries the row gap so the grid is evenly spaced in both axes.

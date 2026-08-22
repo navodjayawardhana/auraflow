@@ -71,8 +71,3 @@ export function predictFocusReady(inputs: Partial<Record<string, number>>): Focu
     imputedFeatures,
   };
 }
-
-/** How many of the model's inputs were the user's own data rather than a population median. */
-export function realFeatureCount(prediction: FocusPrediction): number {
-  return model.features.length - prediction.imputedFeatures.length;
-}
