@@ -40,6 +40,11 @@ export interface SquatSession {
   counter: RepCounterState;
   /** Landmarks from the most recent usable frame, for the skeleton overlay. */
   landmarks: Landmarks | null;
+  /**
+   * The captured frame's own pixel dimensions. The landmarks are in this space, so the
+   * overlay cannot be projected onto the preview without it.
+   */
+  frameSize: { width: number; height: number } | null;
   elapsedSeconds: number;
   start: () => void;
   stop: () => void;
@@ -57,6 +62,7 @@ export function useSquatSession({ camera, onShallowRep }: Options): SquatSession
   const [phase, setPhase] = useState<SessionPhase>('loading');
   const [counter, setCounter] = useState<RepCounterState>(initialRepCounterState);
   const [landmarks, setLandmarks] = useState<Landmarks | null>(null);
+  const [frameSize, setFrameSize] = useState<{ width: number; height: number } | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   // Read inside the capture loop, which must not re-subscribe every time a rep lands.
@@ -121,6 +127,7 @@ export function useSquatSession({ camera, onShallowRep }: Options): SquatSession
             const marks = (people[0] ?? null) as Landmarks | null;
 
             if (!cancelled) {
+              setFrameSize({ width: photo.width, height: photo.height });
               setLandmarks(marks);
 
               const previous = counterRef.current;
@@ -159,6 +166,7 @@ export function useSquatSession({ camera, onShallowRep }: Options): SquatSession
     error: pose.error === null ? null : 'The pose model could not be loaded.',
     counter,
     landmarks,
+    frameSize,
     elapsedSeconds,
     start,
     stop,
