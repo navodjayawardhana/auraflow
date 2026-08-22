@@ -1,4 +1,4 @@
-import { Tabs, useRouter } from 'expo-router';
+import { Tabs, useRouter, useSegments } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 
@@ -64,8 +64,17 @@ export default function AppLayout() {
 
 function AppShell() {
   const router = useRouter();
+  const segments = useSegments();
   const [activeKey, setActiveKey] = useState('index');
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+
+  // The movement session is a full-bleed camera. The floating bar and its ＋ are drawn
+  // above every screen in this group, and over a viewfinder they would sit on top of the
+  // user's own feet — the part of the frame the rep counter depends on seeing.
+  // Compared as a plain string: expo-router's generated route union is only refreshed
+  // when the dev server runs, so narrowing against it here would break the typecheck on
+  // any machine that has not started the app since this screen was added.
+  const isImmersive = (segments as string[])[segments.length - 1] === 'move';
 
   function select(key: string) {
     setActiveKey(key);
@@ -76,9 +85,16 @@ function AppShell() {
     setIsSheetOpen(false);
 
     const destination =
-      key === 'meal' ? '/log-meal' : key === 'night' ? '/log-night' : key === 'water' ? '/meals' : null;
+      key === 'move'
+        ? '/move'
+        : key === 'meal'
+          ? '/log-meal'
+          : key === 'night'
+            ? '/log-night'
+            : key === 'water'
+              ? '/meals'
+              : null;
 
-    // The movement session is not built yet; the sheet is where it will live.
     if (destination !== null) router.push(destination as never);
   }
 
@@ -99,15 +115,18 @@ function AppShell() {
         <Tabs.Screen name="log-night" options={{ href: null }} />
         <Tabs.Screen name="places" options={{ href: null }} />
         <Tabs.Screen name="assistant" options={{ href: null }} />
+        <Tabs.Screen name="move" options={{ href: null }} />
       </Tabs>
 
-      <NavBar
-        items={TABS}
-        activeKey={activeKey}
-        onSelect={select}
-        isSheetOpen={isSheetOpen}
-        onTogglePlus={() => setIsSheetOpen((open) => !open)}
-      />
+      {isImmersive ? null : (
+        <NavBar
+          items={TABS}
+          activeKey={activeKey}
+          onSelect={select}
+          isSheetOpen={isSheetOpen}
+          onTogglePlus={() => setIsSheetOpen((open) => !open)}
+        />
+      )}
 
       <QuickActionsSheet
         visible={isSheetOpen}
