@@ -13,6 +13,20 @@ export async function fetchRecovery(date: string): Promise<RecoveryReading> {
   return payload.data;
 }
 
+/**
+ * `iso` moved by `days`. Unbounded — the caller owns what counts as too far.
+ *
+ * Parsed with the time appended, because `new Date('2026-08-22')` is read as UTC while
+ * `new Date('2026-08-22T00:00:00')` is read as local. West of Greenwich the first lands on
+ * the previous day, and a date stepper that skips a day the first time you press it is a
+ * bug nobody finds until the demo.
+ */
+export function shiftIsoDate(iso: string, days: number): string {
+  const d = new Date(`${iso}T00:00:00`);
+  d.setDate(d.getDate() + days);
+  return todayIsoDate(d);
+}
+
 /** The last `days` calendar dates, oldest first, ending today. */
 export function recentDates(days: number, from = new Date()): string[] {
   return Array.from({ length: days }, (_, i) => {

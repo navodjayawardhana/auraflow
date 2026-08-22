@@ -1,5 +1,5 @@
 import { buildFocusFeatures } from '@/ml/focus-features';
-import { model, predictFocusReady, realFeatureCount } from '@/ml/focus-model';
+import { model, predictFocusReady } from '@/ml/focus-model';
 import type { HealthSnapshot } from '@/types';
 
 /** A night with everything absent unless the test says otherwise. */
@@ -79,7 +79,9 @@ describe('predictFocusReady', () => {
     expect(imputedFeatures).not.toContain('resting_hr');
     expect(imputedFeatures).toContain('steps');
     expect(imputedFeatures).toContain('rmssd');
-    expect(realFeatureCount(predictFocusReady({ sleep_hours: 7.5 }))).toBe(1);
+    expect(predictFocusReady({ sleep_hours: 7.5 }).imputedFeatures).toHaveLength(
+      model.features.length - 1,
+    );
   });
 
   it('treats a non-finite input as missing rather than poisoning the sum', () => {
