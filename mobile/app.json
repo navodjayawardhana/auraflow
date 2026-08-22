@@ -75,7 +75,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "AuraFlow uses the camera to count your squats and check depth. Frames are analysed on this phone and never leave it.",
+          "cameraPermission": "AuraFlow uses the camera for two things. Counting your squats: those frames are analysed on this phone and never leave it. Photographing a meal: that one photo is sent to AuraFlow to be identified, and is kept by neither.",
           "recordAudioAndroid": false
         }
       ]

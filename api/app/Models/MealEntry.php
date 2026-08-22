@@ -17,6 +17,16 @@ class MealEntry extends Model
     /** The user's own guess. Shown differently, because it is a different claim. */
     public const SOURCE_ESTIMATE = 'estimate';
 
+    /**
+     * A vision model's guess from a photograph, which the user then checked.
+     *
+     * Its own value rather than folded into SOURCE_ESTIMATE: the user owns an estimate they
+     * typed, and does not own one a model produced from a picture with no scale in it. A
+     * row that cannot say which of the two it is cannot be honestly labelled later, and no
+     * schema change was needed to keep them apart — `source` was already a string.
+     */
+    public const SOURCE_PHOTO = 'photo';
+
     protected $fillable = [
         'user_id',
         'eaten_on',

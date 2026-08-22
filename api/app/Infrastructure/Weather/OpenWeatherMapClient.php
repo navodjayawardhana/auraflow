@@ -3,49 +3,27 @@
 namespace App\Infrastructure\Weather;
 
 use App\Application\Wellbeing\DTO\CurrentWeather;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
 /**
- * The app's only route to weather data.
+ * The preferred source: it names the place and describes the sky in words.
  *
- * Proxied rather than called from the phone for one reason that matters and one that
- * follows from it: the API key stays on the server (an EXPO_PUBLIC_ variable is inlined
- * into the bundle and readable from the APK), and one cache entry then serves every
- * client asking about the same place instead of each phone spending a request.
+ * Proxied rather than called from the phone, which is the reason this class is server-side
+ * at all: the API key would otherwise be an EXPO_PUBLIC_ variable, inlined into the bundle
+ * and readable from the APK. Caching lives in ChainedWeatherProvider, in front of every
+ * provider rather than inside each one.
  */
-final class OpenWeatherMapClient
+final class OpenWeatherMapClient implements WeatherProvider
 {
-    /**
-     * Weather changes slowly relative to how often a dashboard is opened, and the free
-     * tier is rate limited. Ten minutes keeps a pull-to-refresh loop from burning quota
-     * without the reading ever being meaningfully stale.
-     */
-    private const CACHE_TTL_SECONDS = 600;
-
-    /**
-     * Coordinates are rounded before they become a cache key. Two purposes: a coarser key
-     * actually shares between nearby users, and a full-precision location is not written
-     * into a cache store that outlives the request.
-     */
-    private const KEY_PRECISION = 2;
+    public function isConfigured(): bool
+    {
+        return filled(config('services.openweather.key'));
+    }
 
     public function currentAt(float $latitude, float $longitude): CurrentWeather
     {
-        $key = sprintf(
-            'weather.%s.%s',
-            number_format($latitude, self::KEY_PRECISION, '.', ''),
-            number_format($longitude, self::KEY_PRECISION, '.', ''),
-        );
-
-        $payload = Cache::remember(
-            $key,
-            self::CACHE_TTL_SECONDS,
-            fn () => $this->fetch($latitude, $longitude),
-        );
-
-        return $this->toDto($payload);
+        return $this->toDto($this->fetch($latitude, $longitude));
     }
 
     /**
@@ -54,10 +32,6 @@ final class OpenWeatherMapClient
     private function fetch(float $latitude, float $longitude): array
     {
         $apiKey = config('services.openweather.key');
-
-        if (blank($apiKey)) {
-            throw new RuntimeException('OPENWEATHER_API_KEY is not configured.');
-        }
 
         $response = Http::timeout(6)
             ->retry(2, 200)

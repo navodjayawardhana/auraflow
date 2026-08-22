@@ -4,16 +4,19 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\ShowWeatherRequest;
-use App\Infrastructure\Weather\OpenWeatherMapClient;
+use App\Infrastructure\Weather\WeatherProvider;
 use Illuminate\Http\JsonResponse;
 use Throwable;
 
 /**
  * Weather, proxied so the provider key never ships in the app bundle.
+ *
+ * Which provider answers is the container's business, not this controller's -- see
+ * AppServiceProvider for the chain and ChainedWeatherProvider for how it falls through.
  */
 final class WeatherController extends Controller
 {
-    public function __construct(private readonly OpenWeatherMapClient $weather)
+    public function __construct(private readonly WeatherProvider $weather)
     {
     }
 

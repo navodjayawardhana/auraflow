@@ -2,18 +2,24 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Application\Nutrition\UseCase\EstimateMealFromPhotoUseCase;
+use App\Domain\Nutrition\Exception\UnreadableMealPhotoException;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\V1\EstimateMealPhotoRequest;
 use App\Http\Requests\Api\V1\ListMealsRequest;
 use App\Http\Requests\Api\V1\StoreMealRequest;
 use App\Infrastructure\Nutrition\OpenFoodFactsClient;
 use App\Models\MealEntry;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Throwable;
 
 final class MealController extends Controller
 {
-    public function __construct(private readonly OpenFoodFactsClient $foodFacts)
-    {
+    public function __construct(
+        private readonly OpenFoodFactsClient $foodFacts,
+        private readonly EstimateMealFromPhotoUseCase $estimateFromPhoto,
+    ) {
     }
 
     public function index(ListMealsRequest $request): JsonResponse
@@ -90,6 +96,42 @@ final class MealController extends Controller
         }
 
         return response()->json(['data' => $product]);
+    }
+
+    /**
+     * What a vision model thinks is on the plate.
+     *
+     * Estimates only, and nothing is written here: the reply is a draft the user edits and
+     * then posts to `store` like any other meal. Splitting it that way is what keeps the
+     * model out of the write path — a figure only ever reaches the database after a person
+     * has looked at it.
+     */
+    public function estimate(EstimateMealPhotoRequest $request): JsonResponse
+    {
+        try {
+            $estimate = $this->estimateFromPhoto->execute($request->imageBytes(), $request->mimeType());
+        } catch (UnreadableMealPhotoException) {
+            // 422: the photo is the problem, and retrying the same one will fail the same
+            // way. Distinct from the 503 below, which is worth trying again.
+            return response()->json([
+                'message' => "AuraFlow couldn't find food in that photo — you can type it in instead.",
+            ], 422);
+        } catch (Throwable) {
+            return response()->json([
+                'message' => 'Photo recognition is unavailable right now.',
+            ], 503);
+        }
+
+        return response()->json([
+            'data' => $estimate->toArray() + [
+                // Named for the same reason a brief names its writer: a guess produced by a
+                // model since replaced should be identifiable rather than anonymous.
+                'model' => config('services.gemini.model'),
+                // The source the client posts back, sent rather than assumed, so what this
+                // row's provenance will be is decided in one place.
+                'source' => MealEntry::SOURCE_PHOTO,
+            ],
+        ]);
     }
 
     /**

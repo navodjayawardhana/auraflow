@@ -15,6 +15,8 @@ import {
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ConfirmSheet } from '@/components/confirm-sheet';
+import { ConversationsSheet } from '@/components/conversations-sheet';
 import {
   Font,
   GradientAxis,
@@ -27,7 +29,15 @@ import {
 } from '@/constants/design';
 import { AuraColors, IconTones } from '@/constants/theme';
 import { ApiError } from '@/services/api-client';
-import { fetchThread, sendMessage, type ChatMessage } from '@/services/chat-service';
+import {
+  clearThread,
+  fetchConversations,
+  fetchThread,
+  sendMessage,
+  startConversation,
+  type ChatMessage,
+  type Conversation,
+} from '@/services/chat-service';
 
 const SUGGESTIONS = [
   'How did I sleep?',
@@ -63,13 +73,21 @@ export default function AssistantScreen() {
   const scroller = useRef<ScrollView>(null);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [conversation, setConversation] = useState<Conversation | null>(null);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  // One at a time: the confirmation replaces the switcher rather than stacking on it,
+  // because two Modals over each other misbehave on Android.
+  const [sheet, setSheet] = useState<'none' | 'chats' | 'confirm'>('none');
+  const [isClearing, setIsClearing] = useState(false);
   const [draft, setDraft] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
-      setMessages(await fetchThread());
+      const thread = await fetchThread();
+      setConversation(thread.conversation);
+      setMessages(thread.messages);
     } catch {
       // An unreachable thread is an empty one for now; the composer still works and the
       // send path reports its own failure.
@@ -79,6 +97,76 @@ export default function AssistantScreen() {
   useEffect(() => {
     load();
   }, [load]);
+
+  async function openChats() {
+    setSheet('chats');
+
+    try {
+      setConversations(await fetchConversations());
+    } catch {
+      // The sheet still offers a new chat and a way out; a failed list is not worth an
+      // error banner over the conversation the user is reading.
+    }
+  }
+
+  async function openConversation(id: number) {
+    setSheet('none');
+    if (id === conversation?.id) return;
+
+    setError(null);
+
+    try {
+      const thread = await fetchThread(id);
+      setConversation(thread.conversation);
+      setMessages(thread.messages);
+    } catch {
+      setError("That chat couldn't be opened.");
+    }
+  }
+
+  async function newChat() {
+    setSheet('none');
+    setError(null);
+
+    try {
+      setConversation(await startConversation());
+      setMessages([]);
+    } catch {
+      setError("A new chat couldn't be started.");
+    }
+  }
+
+  async function clearCurrentChat() {
+    if (conversation === null) return;
+
+    const doomed = conversation.id;
+    setIsClearing(true);
+
+    try {
+      await clearThread(doomed);
+    } catch {
+      setError("That chat couldn't be deleted.");
+      setIsClearing(false);
+      setSheet('none');
+      return;
+    }
+
+    setConversations((current) => current.filter((c) => c.id !== doomed));
+    setMessages([]);
+    setError(null);
+
+    // Land in a fresh chat rather than nowhere. Left with no conversation, the next
+    // message would be resolved server-side onto whichever chat happened to be most
+    // recent, and the user would watch an old thread reappear under what they typed.
+    try {
+      setConversation(await startConversation());
+    } catch {
+      setConversation(null);
+    }
+
+    setIsClearing(false);
+    setSheet('none');
+  }
 
   async function send(text: string) {
     const body = text.trim();
@@ -99,8 +187,13 @@ export default function AssistantScreen() {
     setMessages((current) => [...current, optimistic]);
 
     try {
-      const { question, answer } = await sendMessage(body);
-      setMessages((current) => [...current.filter((m) => m.id !== optimistic.id), question, answer]);
+      const result = await sendMessage(body, conversation?.id);
+      setConversation(result.conversation);
+      setMessages((current) => [
+        ...current.filter((m) => m.id !== optimistic.id),
+        result.question,
+        result.answer,
+      ]);
     } catch (e) {
       setError(
         e instanceof ApiError && e.status === 0
@@ -125,13 +218,31 @@ export default function AssistantScreen() {
         </Pressable>
 
         <View style={styles.headerText}>
-          <Text style={styles.headerTitle}>Assistant</Text>
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            {conversation?.title ?? 'Assistant'}
+          </Text>
           <Text style={Type.caption}>Answers from your own figures</Text>
         </View>
 
-        <View style={styles.headerBadge}>
-          <Feather name="cpu" size={16} color={IconTones.brand.color} />
-        </View>
+        {/* Both header actions are safe ones. Nothing here deletes anything -- that lives
+            behind the switcher, in red, behind a confirmation. */}
+        <Pressable
+          onPress={newChat}
+          accessibilityRole="button"
+          accessibilityLabel="New chat"
+          hitSlop={6}
+          style={styles.headerAction}>
+          <Feather name="edit-3" size={16} color={IconTones.brand.color} />
+        </Pressable>
+
+        <Pressable
+          onPress={openChats}
+          accessibilityRole="button"
+          accessibilityLabel="Your chats"
+          hitSlop={6}
+          style={styles.headerAction}>
+          <Feather name="list" size={17} color={IconTones.brand.color} />
+        </Pressable>
       </View>
 
       <KeyboardAvoidingView
@@ -207,6 +318,31 @@ export default function AssistantScreen() {
           </Pressable>
         </View>
       </KeyboardAvoidingView>
+
+      <ConversationsSheet
+        visible={sheet === 'chats'}
+        conversations={conversations}
+        currentId={conversation?.id ?? null}
+        clearableTitle={
+          conversation !== null && messages.length > 0
+            ? (conversation.title ?? 'this chat')
+            : null
+        }
+        onSelect={openConversation}
+        onNew={newChat}
+        onClear={() => setSheet('confirm')}
+        onClose={() => setSheet('none')}
+      />
+
+      <ConfirmSheet
+        visible={sheet === 'confirm'}
+        title="Clear this chat?"
+        body={`Everything in “${conversation?.title ?? 'this chat'}” is deleted from your account. Your other chats are untouched. This cannot be undone.`}
+        confirmLabel="Delete this chat"
+        busy={isClearing}
+        onConfirm={clearCurrentChat}
+        onCancel={() => setSheet('chats')}
+      />
     </View>
   );
 }
@@ -217,7 +353,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
     paddingHorizontal: Layout.gutter,
     paddingBottom: 14,
     backgroundColor: AuraColors.surface.default,
@@ -230,7 +366,7 @@ const styles = StyleSheet.create({
     lineHeight: 20.4,
     color: AuraColors.content.default,
   },
-  headerBadge: {
+  headerAction: {
     width: 36,
     height: 36,
     borderRadius: Radius.iconSquare,

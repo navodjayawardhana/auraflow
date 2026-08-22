@@ -21,7 +21,11 @@ class StoreMealRequest extends FormRequest
             // 8000 is well past any single meal; it exists to catch a slipped decimal
             // rather than to police what anyone eats.
             'kcal' => ['required', 'integer', 'min:0', 'max:8000'],
-            'source' => ['required', Rule::in([MealEntry::SOURCE_LOOKUP, MealEntry::SOURCE_ESTIMATE])],
+            'source' => ['required', Rule::in([
+                MealEntry::SOURCE_LOOKUP,
+                MealEntry::SOURCE_ESTIMATE,
+                MealEntry::SOURCE_PHOTO,
+            ])],
             'barcode' => ['nullable', 'string', 'regex:/^\d{6,14}$/'],
             'protein_g' => ['nullable', 'integer', 'min:0', 'max:1000'],
             'carbs_g' => ['nullable', 'integer', 'min:0', 'max:1000'],
@@ -41,6 +45,15 @@ class StoreMealRequest extends FormRequest
                     $validator->errors()->add(
                         'barcode',
                         'A looked-up meal must carry the barcode it was looked up from.',
+                    );
+                }
+
+                // The mirror image of the rule above. A barcode on a photo estimate would
+                // let a guess inherit the provenance of a scanned product.
+                if ($this->input('source') === MealEntry::SOURCE_PHOTO && $this->filled('barcode')) {
+                    $validator->errors()->add(
+                        'barcode',
+                        'A photo estimate is not a barcode lookup.',
                     );
                 }
             },

@@ -41,6 +41,15 @@ return [
     ],
 
     /*
+     * The keyless fallback. No account and no quota to sign up for, which is exactly why
+     * it is second in the chain rather than absent: a fresh checkout still fills the
+     * weather chip. See App\Infrastructure\Weather\ChainedWeatherProvider.
+     */
+    'openmeteo' => [
+        'base_url' => env('OPENMETEO_BASE_URL', 'https://api.open-meteo.com/v1'),
+    ],
+
+    /*
      * Gemini, for the daily lifestyle summary. Server-side for the same reason as the
      * weather key, plus one more: an LLM key in a shipped bundle is a bill anyone can run
      * up. Free tier at aistudio.google.com.
@@ -49,6 +58,13 @@ return [
         'key' => env('GEMINI_API_KEY'),
         'model' => env('GEMINI_MODEL', 'gemini-3.6-flash'),
         'base_url' => env('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com/v1beta'),
+
+        /*
+         * Meal photo recognitions per minute, per user. See the 'meal-photo' limiter in
+         * AppServiceProvider. Twelve is generous for someone logging meals and tight for
+         * anyone testing the flow, which is why it is an env var rather than a constant.
+         */
+        'photo_rate_limit' => env('GEMINI_PHOTO_RATE_LIMIT', 12),
     ],
 
     'slack' => [
