@@ -4,7 +4,11 @@ Date: 2026-08-21
 
 ## Status
 
-Accepted.
+Accepted. Two parts of it are superseded by ADR&nbsp;0008, which widens the closed set from
+one day to a fortnight-wide grounding pack and replaces "a `ready` brief is never
+rewritten" with a fingerprint of the context it was written from. Everything below about
+where the guardrails live, and why they are tested, still holds — and 0008 adds to them
+rather than relaxing them.
 
 ## Context
 

@@ -34,6 +34,7 @@ class DailyBrief extends Model
         'status',
         'body',
         'model',
+        'context_fingerprint',
         'failure_reason',
         'generated_at',
     ];

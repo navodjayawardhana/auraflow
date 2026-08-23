@@ -5,12 +5,18 @@ namespace App\Domain\Nutrition\ValueObject;
 use DateTimeImmutable;
 
 /**
- * One meal, reduced to the parts that aggregate.
+ * One meal, reduced to the parts that aggregate — and, since the assistant, its name.
  *
  * Deliberately not the Eloquent row: the aggregator is arithmetic over a list, and a list
  * of these can be written out by hand in a test with the expected totals worked out
- * alongside it. A name, an id and a barcode change nothing about a sum.
+ * alongside it. An id and a barcode change nothing about a sum, and are still absent.
  *
+ * The name is the one exception, added when a second consumer appeared. It changes nothing
+ * about a sum either — `NutritionAggregator` never reads it — but "what did I eat
+ * yesterday" cannot be answered from a total, and the alternative was a second value
+ * object over the same table that would have to be kept in step with this one.
+ *
+
  * The day is `eaten_on`, not the date part of `eaten_at`. The two can disagree by a day
  * either way — the column is written from the eater's own clock while the timestamp is
  * stored as an instant — and the day a meal belongs to is the one the person was living
@@ -25,6 +31,8 @@ final class LoggedMeal
         public readonly ?int $proteinG = null,
         public readonly ?int $carbsG = null,
         public readonly ?int $fatG = null,
+        /** Optional so every existing fixture, which is about arithmetic, still reads. */
+        public readonly ?string $name = null,
     ) {
     }
 
@@ -36,6 +44,7 @@ final class LoggedMeal
         ?int $proteinG = null,
         ?int $carbsG = null,
         ?int $fatG = null,
+        ?string $name = null,
     ): self {
         return new self(
             CalendarDate::fromIso($isoDate),
@@ -44,6 +53,7 @@ final class LoggedMeal
             $proteinG,
             $carbsG,
             $fatG,
+            $name,
         );
     }
 

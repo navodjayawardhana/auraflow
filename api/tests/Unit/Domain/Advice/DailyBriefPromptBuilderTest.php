@@ -3,7 +3,14 @@
 namespace Tests\Unit\Domain\Advice;
 
 use App\Domain\Advice\Service\DailyBriefPromptBuilder;
+use App\Domain\Advice\Service\GroundingPackRenderer;
 use App\Domain\Advice\ValueObject\DailyContext;
+use App\Domain\Advice\ValueObject\DayPart;
+use App\Domain\Advice\ValueObject\GroundingPack;
+use App\Domain\Advice\ValueObject\HistoryDay;
+use App\Domain\Advice\ValueObject\RecentMeal;
+use App\Domain\Nutrition\ValueObject\MealSource;
+use App\Domain\Wellbeing\ValueObject\RestingHeartRateSource;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -19,7 +26,20 @@ class DailyBriefPromptBuilderTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->builder = new DailyBriefPromptBuilder();
+        $this->builder = new DailyBriefPromptBuilder(new GroundingPackRenderer());
+    }
+
+    /**
+     * The prompt for a day with nothing behind it.
+     *
+     * The builder takes a whole grounding pack now, but most of what is asserted below is
+     * still about a single day's figures, and rewriting every case to build a fortnight it
+     * does not use would bury the assertion that matters. So the day is wrapped and the
+     * cases read as they did.
+     */
+    private function promptFor(DailyContext $context, ?DayPart $dayPart = null): string
+    {
+        return $this->builder->userPrompt(new GroundingPack(today: $context, dayPart: $dayPart));
     }
 
     // --- The instruction half ---
@@ -52,7 +72,7 @@ class DailyBriefPromptBuilderTest extends TestCase
 
     public function test_should_describe_a_provisional_score_as_provisional(): void
     {
-        $prompt = $this->builder->userPrompt(new DailyContext(
+        $prompt = $this->promptFor(new DailyContext(
             date: '2026-08-21',
             recoveryScore: 62,
             recoveryIsProvisional: true,
@@ -66,7 +86,7 @@ class DailyBriefPromptBuilderTest extends TestCase
     {
         // The one property that matters most: a figure the app does not have must not
         // appear in the prompt at all, because a model shown an empty slot will fill it.
-        $prompt = $this->builder->userPrompt(new DailyContext(
+        $prompt = $this->promptFor(new DailyContext(
             date: '2026-08-21',
             recoveryScore: 75,
         ));
@@ -80,7 +100,7 @@ class DailyBriefPromptBuilderTest extends TestCase
 
     public function test_should_include_measurements_that_were_recorded(): void
     {
-        $prompt = $this->builder->userPrompt(new DailyContext(
+        $prompt = $this->promptFor(new DailyContext(
             date: '2026-08-21',
             recoveryScore: 75,
             sleepMinutes: 450,
@@ -108,14 +128,14 @@ class DailyBriefPromptBuilderTest extends TestCase
     {
         // Android only counts while the app is foregrounded. Handing the model a partial
         // figure without saying so would invite it to reason about a sedentary day.
-        $prompt = $this->builder->userPrompt(new DailyContext(date: '2026-08-21', steps: 900));
+        $prompt = $this->promptFor(new DailyContext(date: '2026-08-21', steps: 900));
 
         $this->assertStringContainsString('floor rather than a total', $prompt);
     }
 
     public function test_should_qualify_the_focus_window_as_a_weak_suggestion(): void
     {
-        $prompt = $this->builder->userPrompt(new DailyContext(
+        $prompt = $this->promptFor(new DailyContext(
             date: '2026-08-21',
             bestFocusWindow: '09:00-11:00',
         ));
@@ -126,7 +146,7 @@ class DailyBriefPromptBuilderTest extends TestCase
 
     public function test_should_ask_for_calm_wording_when_resting_heart_rate_is_elevated(): void
     {
-        $prompt = $this->builder->userPrompt(new DailyContext(
+        $prompt = $this->promptFor(new DailyContext(
             date: '2026-08-21',
             recoveryScore: 41,
             illnessWarning: true,
@@ -137,13 +157,131 @@ class DailyBriefPromptBuilderTest extends TestCase
 
     public function test_should_state_plainly_when_no_score_exists(): void
     {
-        $prompt = $this->builder->userPrompt(new DailyContext(
+        $prompt = $this->promptFor(new DailyContext(
             date: '2026-08-21',
             recoveryUnavailableReason: 'No sleep was recorded for this night.',
         ));
 
         $this->assertStringContainsString('not available today', $prompt);
         $this->assertStringContainsString('No sleep was recorded', $prompt);
+    }
+
+    // --- The rules that only history makes necessary ---
+
+    public function test_should_forbid_treating_a_gap_in_the_history_as_a_zero(): void
+    {
+        // The failure this guards is fluent and invisible: a fortnight with four recorded
+        // days reads as ten days of inactivity unless the model is told otherwise, and it
+        // will describe those ten days in perfectly warm prose.
+        $instruction = preg_replace('/\s+/', ' ', $this->builder->systemInstruction());
+
+        $this->assertStringContainsString('A gap in the history is a gap', $instruction);
+        $this->assertStringContainsString('not a day of zero', $instruction);
+    }
+
+    public function test_should_forbid_explaining_one_series_by_another(): void
+    {
+        $instruction = preg_replace('/\s+/', ' ', $this->builder->systemInstruction());
+
+        $this->assertStringContainsString('Two series that move together do not explain each other', $instruction);
+        $this->assertStringContainsString('may not offer a mechanism', $instruction);
+    }
+
+    public function test_should_forbid_pooling_measurements_of_different_kinds(): void
+    {
+        $instruction = preg_replace('/\s+/', ' ', $this->builder->systemInstruction());
+
+        $this->assertStringContainsString('Never pool measurements of different kinds', $instruction);
+        $this->assertStringContainsString('A partial step count is a floor', $instruction);
+    }
+
+    public function test_should_allow_counting_what_it_was_given_but_nothing_further(): void
+    {
+        // Without this the honest reading of "invent no number" forbids "three of the last
+        // seven nights were under six hours", which is the whole reason to hand over a
+        // history at all.
+        $instruction = preg_replace('/\s+/', ' ', $this->builder->systemInstruction());
+
+        $this->assertStringContainsString('You may count and compare the figures you are given', $instruction);
+        $this->assertStringContainsString('plain count or difference of numbers that do', $instruction);
+    }
+
+    public function test_should_tell_the_model_to_say_when_the_answer_is_not_there(): void
+    {
+        $instruction = preg_replace('/\s+/', ' ', $this->builder->systemInstruction());
+
+        $this->assertStringContainsString('say so plainly rather than reaching for a plausible answer', $instruction);
+    }
+
+    // --- The pack in the prompt ---
+
+    public function test_should_label_estimated_calories_as_estimated(): void
+    {
+        // The failure in one line: a model handed "1,800 kcal" says "you ate 1,800
+        // calories", and a photograph's guess has just acquired the authority of a label.
+        $prompt = $this->builder->userPrompt(new GroundingPack(
+            today: new DailyContext(date: '2026-08-21', recoveryScore: 70),
+            history: [new HistoryDay(
+                date: '2026-08-20',
+                kcal: 1800,
+                mealCount: 3,
+                estimatedKcal: 1200,
+                estimatedMealCount: 2,
+            )],
+            recentMeals: [new RecentMeal('2026-08-21', 'Rice and curry', 640, MealSource::Photo)],
+        ));
+
+        $this->assertStringContainsString('food 1800 kcal over 3 meals, est 1200 kcal', $prompt);
+        $this->assertStringContainsString('Rice and curry, 640 kcal (a vision model\'s guess from a photograph, not measured)', $prompt);
+    }
+
+    public function test_should_say_how_each_resting_heart_rate_was_taken(): void
+    {
+        $prompt = $this->builder->userPrompt(new GroundingPack(
+            today: new DailyContext(
+                date: '2026-08-21',
+                restingHeartRate: 64.0,
+                restingHeartRateSource: RestingHeartRateSource::SeatedSpot,
+            ),
+            history: [new HistoryDay(
+                date: '2026-08-20',
+                restingHeartRate: 56.2,
+                restingHeartRateSource: RestingHeartRateSource::Overnight,
+            )],
+        ));
+
+        // Both readings are in the prompt and neither is bare. A seated 64 trended against
+        // an overnight 56 is a two-bpm-a-day climb that never happened.
+        $this->assertStringContainsString('a seated morning capture', $prompt);
+        $this->assertStringContainsString('resting HR 56.2 overnight', $prompt);
+        $this->assertStringContainsString('must never be averaged together', $prompt);
+    }
+
+    public function test_should_not_print_days_on_which_nothing_was_recorded(): void
+    {
+        $prompt = $this->builder->userPrompt(new GroundingPack(
+            today: new DailyContext(date: '2026-08-21', recoveryScore: 70),
+            history: [
+                new HistoryDay(date: '2026-08-19'),
+                new HistoryDay(date: '2026-08-20', sleepMinutes: 400),
+            ],
+        ));
+
+        $this->assertStringContainsString('2026-08-20', $prompt);
+        $this->assertStringNotContainsString('2026-08-19', $prompt);
+        // The window is still stated, so the model can see that a day is missing rather
+        // than inferring the history simply began on the 20th.
+        $this->assertStringContainsString('there are 1 of 2 days below', $prompt);
+    }
+
+    public function test_should_tell_the_model_what_time_of_day_it_is(): void
+    {
+        // A brief written at nine in the evening that suggests how to plan the morning is
+        // the complaint this exists to answer.
+        $prompt = $this->promptFor(new DailyContext(date: '2026-08-21', recoveryScore: 70), DayPart::Evening);
+
+        $this->assertStringContainsString('It is the evening', $prompt);
+        $this->assertStringNotContainsString('It is the morning', $prompt);
     }
 
     // --- The gate ---

@@ -2,15 +2,28 @@
 
 namespace App\Domain\Advice\ValueObject;
 
+use App\Domain\Wellbeing\ValueObject\RestingHeartRateSource;
+
 /**
- * Everything the briefing is allowed to know about a day.
+ * Everything the briefing is allowed to know about *today*.
  *
  * Deliberately a closed set. The prompt builder can only describe what appears here, so
  * widening what the model may talk about is a deliberate change to this class rather
  * than something that happens by accident when a controller passes more along.
+ *
+ * This used to be the whole of what the model saw, and is now one field of
+ * {@see GroundingPack} — history, meals, sessions and targets live there. The split is
+ * along the line the two consumers actually care about: this is the day, and a day is
+ * what the briefing is about and what the fingerprint is mostly taken over.
  */
 final class DailyContext
 {
+    /**
+     * The cold-start hydration figure, named so a caller with no plan can pass it
+     * deliberately rather than reproduce the literal.
+     */
+    public const DEFAULT_WATER_TARGET_ML = 2000;
+
     public function __construct(
         public readonly string $date,
         public readonly ?int $recoveryScore = null,
@@ -21,6 +34,15 @@ final class DailyContext
         public readonly ?int $deepSleepMinutes = null,
         public readonly ?int $remSleepMinutes = null,
         public readonly ?float $restingHeartRate = null,
+        /**
+         * How that rate was taken, because it is half of what the rate means.
+         *
+         * An overnight 58 and a seated 58 are different findings about the same person —
+         * `RestingHeartRate::deviationFrom` throws rather than compare them — and a model
+         * given a fortnight of both without being told which is which will average them
+         * into a trend that describes the measuring rather than the person.
+         */
+        public readonly ?RestingHeartRateSource $restingHeartRateSource = null,
         public readonly ?int $steps = null,
         /**
          * Whether that count is the day or only the witnessed part of it.
@@ -31,7 +53,16 @@ final class DailyContext
          */
         public readonly ?bool $stepsAreComplete = null,
         public readonly ?int $waterMl = null,
-        public readonly int $waterTargetMl = 2000,
+        /**
+         * The user's own hydration goal where they have a plan, and this literal where
+         * they do not.
+         *
+         * The default is a cold-start value rather than the app's opinion: `PlanTargets`
+         * carries the derived goal along with the provenance that says whether it is
+         * theirs, and the caller passes it in. Left unset it is a round number nobody
+         * derived, which is why the prompt never calls it a target of theirs.
+         */
+        public readonly int $waterTargetMl = self::DEFAULT_WATER_TARGET_ML,
         public readonly ?string $weatherDescription = null,
         public readonly ?float $temperatureC = null,
         public readonly ?string $locationContext = null,

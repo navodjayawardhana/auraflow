@@ -33,7 +33,7 @@ import {
 import { AuraColors } from '@/constants/theme';
 import { useAuth } from '@/context/auth-context';
 import { useContextAwareness } from '@/hooks/use-context-awareness';
-import { useIot } from '@/context/iot-context';
+import { useLiveVitals } from '@/hooks/use-live-vitals';
 import { useCachedResource } from '@/hooks/use-cached-resource';
 import { useOutboxFlush } from '@/hooks/use-outbox-flush';
 import { usePlan } from '@/hooks/use-plan';
@@ -43,7 +43,6 @@ import { fetchBrief, refreshBrief, type DailyBrief } from '@/services/brief-serv
 import { estimateActiveKcal } from '@/services/energy';
 import { activeKcalCaption } from '@/services/plan-targets';
 import { fetchHealthSnapshots } from '@/services/health-snapshot-service';
-import { usableHeartRate, usableSpo2 } from '@/services/iot-payloads';
 import { fetchRecovery, recentDates, todayIsoDate } from '@/services/recovery-service';
 import { fetchWeather } from '@/services/weather-service';
 
@@ -109,9 +108,12 @@ export default function TodayScreen() {
   // server — `targets` is the cold-start constants, so this screen degrades to exactly
   // what it showed before the plan existed rather than to a blank.
   const { targets, refresh: refreshPlan } = usePlan();
-  const { biometrics, isBiometricsStale, selectedDeviceId } = useIot();
-  const liveHeartRate = isBiometricsStale ? null : usableHeartRate(biometrics);
-  const liveSpo2 = isBiometricsStale ? null : usableSpo2(biometrics);
+  const {
+    heartRate: liveHeartRate,
+    spo2: liveSpo2,
+    source: vitalsSource,
+    hasNode,
+  } = useLiveVitals();
 
   const { coordinates, context } = useContextAwareness();
   const weatherFetcher = useCallback(
@@ -142,11 +144,17 @@ export default function TodayScreen() {
   }, [loadBrief]);
 
   useEffect(() => {
-    if (brief?.status !== 'pending') return;
+    // Also while a rewrite is in flight. The server re-examines settled advice when the
+    // day it was written from has materially moved -- a brief written at breakfast still
+    // claiming 250 ml of water at nine in the evening -- and it answers this request with
+    // the old text because the new one is not written yet. Without these few extra polls
+    // the rewrite would land after the client stopped asking, and the reader would meet
+    // it tomorrow. The card is unchanged meanwhile: the current advice stays readable.
+    if (brief?.status !== 'pending' && brief?.rewriting !== true) return;
 
     const timer = setInterval(loadBrief, 4000);
     return () => clearInterval(timer);
-  }, [brief?.status, loadBrief]);
+  }, [brief?.status, brief?.rewriting, loadBrief]);
 
   const retryBrief = useCallback(async () => {
     setBrief((current) => (current ? { ...current, status: 'pending' } : current));
@@ -276,7 +284,7 @@ export default function TodayScreen() {
                   and three others below it, have nothing to show. */}
               <FirstRunGuide
                 hasLoggedSleep={tonight?.sleep_minutes != null}
-                hasNode={selectedDeviceId !== null}
+                hasNode={hasNode}
                 hasContext={context !== null}
               />
 
@@ -291,7 +299,7 @@ export default function TodayScreen() {
               <MorningCheckinCard
                 restingHeartRate={tonight?.resting_heart_rate ?? null}
                 source={tonight?.resting_hr_source ?? null}
-                hasNode={selectedDeviceId !== null}
+                hasNode={hasNode}
               />
 
               {/* The score is drawn in the hero, so on an available day no recovery card is
@@ -383,7 +391,7 @@ export default function TodayScreen() {
               </View>
 
               {liveHeartRate !== null ? (
-                <LiveNodeStrip heartRate={liveHeartRate} spo2={liveSpo2} />
+                <LiveNodeStrip heartRate={liveHeartRate} spo2={liveSpo2} source={vitalsSource} />
               ) : null}
 
               <DailyBriefCard brief={brief} onRetry={retryBrief} />

@@ -12,6 +12,15 @@ export interface DailyBrief {
   model: string | null;
   reason: string | null;
   generated_at: string | null;
+  /**
+   * A re-examination is in flight for a brief that is already readable.
+   *
+   * Not a status, and deliberately kept apart from `pending`: the text below is still the
+   * current advice and should stay on screen. The server rewrites settled advice when the
+   * day it was written from has materially moved, and without this the rewrite lands after
+   * the client has stopped asking — so the user would meet their new brief tomorrow.
+   */
+  rewriting?: boolean;
 }
 
 /**
