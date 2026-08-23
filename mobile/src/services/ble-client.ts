@@ -1,4 +1,5 @@
 import { Buffer } from 'buffer';
+import { PermissionsAndroid, Platform, type Permission } from 'react-native';
 import { BleManager, type Device, type Subscription } from 'react-native-ble-plx';
 
 import { isBiometrics } from '@/services/iot-payloads';
@@ -68,11 +69,38 @@ export interface BleConnection {
   disconnect: () => Promise<void>;
 }
 
+/**
+ * What the lamp characteristic carries: the same two fields the MQTT state topic leads
+ * with, minus the diagnostics MQTT rides along with. Narrower than `LightState` because
+ * `rssi` and `uptime_s` are Wi-Fi facts, and this is the path that exists for when there
+ * is no Wi-Fi.
+ */
+export interface BleLightState {
+  mode: LightMode;
+  brightness: number;
+}
+
+const LIGHT_MODES: LightMode[] = ['off', 'focus', 'break', 'sleep', 'alert'];
+
+function isBleLightState(value: unknown): value is BleLightState {
+  if (typeof value !== 'object' || value === null) return false;
+  const record = value as Record<string, unknown>;
+
+  return (
+    typeof record.mode === 'string' &&
+    (LIGHT_MODES as string[]).includes(record.mode) &&
+    typeof record.brightness === 'number' &&
+    Number.isFinite(record.brightness)
+  );
+}
+
 export interface BleHandlers {
   /** Heart rate from the standard service, which notifies on every fresh reading. */
   onHeartRate?: (bpm: number) => void;
   /** The fuller picture — SpO2, contact quality — from the custom service. */
   onVitals?: (vitals: BiometricsTelemetry) => void;
+  /** The lamp as the node has it, so a phone with no broker still sees the real state. */
+  onLight?: (light: BleLightState) => void;
   onDisconnect?: () => void;
   onError?: (message: string) => void;
 }
@@ -147,7 +175,25 @@ export async function connect(
 ): Promise<BleConnection> {
   bleManager().stopDeviceScan();
 
-  let device: Device = await bleManager().connectToDevice(deviceId);
+  let device: Device = await bleManager().connectToDevice(deviceId, {
+    /*
+     * The vitals characteristic carries around 150 bytes of JSON, and Android's default
+     * ATT MTU of 23 leaves 20 for the payload — so without this every notification would
+     * arrive truncated to a fragment that fails `isBiometrics` and is dropped, which looks
+     * exactly like a node that is not sending anything. 247 is one LE data-length packet
+     * and well inside what the ESP32 stack grants.
+     *
+     * Not guaranteed: the peripheral may hold the MTU lower. The standard heart-rate
+     * characteristic is two bytes and unaffected either way.
+     */
+    requestMTU: 247,
+    /*
+     * Without this a connection to a node that has lost power never settles — Android
+     * keeps the attempt open indefinitely and the UI sits on "connecting" forever. A
+     * failure is what lets the caller retry or fall back.
+     */
+    timeout: 10_000,
+  });
   device = await device.discoverAllServicesAndCharacteristics();
 
   const subscriptions: Subscription[] = [];
@@ -180,6 +226,36 @@ export async function connect(
     }),
   );
 
+  const applyLight = (base64: string | null | undefined) => {
+    if (base64 == null) return;
+
+    try {
+      const parsed: unknown = JSON.parse(Buffer.from(base64, 'base64').toString());
+      if (isBleLightState(parsed)) handlers.onLight?.(parsed);
+    } catch {
+      // As above: a bad frame is a dropped update, not a broken link.
+    }
+  };
+
+  subscriptions.push(
+    device.monitorCharacteristicForService(SVC_AURAFLOW, CHR_LAMP, (error, characteristic) => {
+      if (error !== null) return;
+      applyLight(characteristic?.value);
+    }),
+  );
+
+  // Read once as well as subscribing. The firmware keeps this characteristic's value
+  // current whether or not a phone is listening, so reading it is how a client that
+  // connected mid-session learns the lamp's state now rather than at its next change —
+  // the BLE equivalent of MQTT's retained state topic, and the reason the lamp controls
+  // are not blank on a connection made with no network at all.
+  device
+    .readCharacteristicForService(SVC_AURAFLOW, CHR_LAMP)
+    .then((characteristic) => applyLight(characteristic.value))
+    .catch(() => {
+      // The notification above still covers every subsequent change.
+    });
+
   subscriptions.push(
     bleManager().onDeviceDisconnected(deviceId, () => {
       subscriptions.forEach((s) => s.remove());
@@ -211,8 +287,18 @@ export async function connect(
   };
 }
 
-/** Bluetooth can be off, unauthorised, or simply unsupported — three different fixes. */
-export async function radioState(): Promise<'ready' | 'off' | 'unauthorised' | 'unsupported'> {
+/**
+ * Why the radio cannot be used, if it cannot. Every value here has a different fix, which
+ * is the whole reason they are not collapsed into a boolean.
+ *
+ * `unavailable` and `unsupported` are kept apart even though neither can be fixed from
+ * inside the app, because they are fixed by different people: `unavailable` is Expo Go and
+ * wants a development build, `unsupported` is a phone whose radio does not do BLE and
+ * wants a different phone.
+ */
+export type RadioState = 'ready' | 'off' | 'unauthorised' | 'unsupported' | 'unavailable';
+
+export async function radioState(): Promise<RadioState> {
   try {
     const state = await bleManager().state();
 
@@ -227,8 +313,73 @@ export async function radioState(): Promise<'ready' | 'off' | 'unauthorised' | '
         return 'unsupported';
     }
   } catch {
-    // Unlinked rather than unavailable, but from a caller's point of view they are the
-    // same answer: this build cannot talk to the radio, and no setting will change that.
-    return 'unsupported';
+    // The constructor is the only thing that throws here, and it throws for exactly one
+    // reason: no native module in this binary.
+    return 'unavailable';
+  }
+}
+
+/**
+ * `granted` and `denied` are the two an app can act on; `blocked` is Android's
+ * "don't ask again", which no further prompt will change — only Settings will.
+ *
+ * `not-required` is iOS, where the prompt belongs to the system rather than to us and
+ * refusal comes back through `radioState` as `unauthorised` instead.
+ */
+export type PermissionState = 'granted' | 'denied' | 'blocked' | 'not-required';
+
+/**
+ * Which manifest permissions actually have to be held to scan, which is a function of the
+ * Android version and not of what the manifest declares.
+ *
+ * Android 12 split Bluetooth out of location: from API 31 scanning needs BLUETOOTH_SCAN
+ * and connecting needs BLUETOOTH_CONNECT, and because the manifest declares the scan
+ * permission `neverForLocation` no location grant is asked for at all. Below 31 there is
+ * no such split — a BLE scan is treated as a way of inferring position, so the only way to
+ * get one is ACCESS_FINE_LOCATION.
+ */
+function requiredAndroidPermissions(): Permission[] {
+  if (Number(Platform.Version) >= 31) {
+    return [
+      PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
+      PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
+    ];
+  }
+
+  return [PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION];
+}
+
+/** Are the grants already in hand? Asks the system, never the user. */
+export async function permissionState(): Promise<PermissionState> {
+  if (Platform.OS !== 'android') return 'not-required';
+
+  const held = await Promise.all(requiredAndroidPermissions().map((p) => PermissionsAndroid.check(p)));
+
+  // `denied` rather than `blocked`: a check cannot tell a first run from a refusal, and
+  // guessing wrong the pessimistic way would send someone to Settings to fix something a
+  // prompt would have fixed.
+  return held.every(Boolean) ? 'granted' : 'denied';
+}
+
+/**
+ * Asks, and reports the answer as a state rather than throwing.
+ *
+ * A refusal is a legitimate thing for a person to do with a Bluetooth prompt, and the app
+ * has a working MQTT path to fall back to — so this is a fork in the UI, not an error.
+ */
+export async function requestPermissions(): Promise<PermissionState> {
+  if (Platform.OS !== 'android') return 'not-required';
+
+  try {
+    const results = await PermissionsAndroid.requestMultiple(requiredAndroidPermissions());
+    const answers = Object.values(results);
+
+    if (answers.every((a) => a === PermissionsAndroid.RESULTS.GRANTED)) return 'granted';
+    if (answers.some((a) => a === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN)) return 'blocked';
+    return 'denied';
+  } catch {
+    // The dialog itself failing is indistinguishable from a refusal as far as what happens
+    // next, and treating it as one keeps the caller to a single unhappy path.
+    return 'denied';
   }
 }

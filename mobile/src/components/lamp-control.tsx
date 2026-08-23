@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Font, Surfaces, Type } from '@/constants/design';
 import { AuraColors } from '@/constants/theme';
-import { useIot } from '@/context/iot-context';
+import { useLiveVitals } from '@/hooks/use-live-vitals';
 import type { LightMode } from '@/types';
 
 const MODES: { mode: LightMode; label: string; icon: keyof typeof Feather.glyphMap }[] = [
@@ -17,11 +17,13 @@ const MODES: { mode: LightMode; label: string; icon: keyof typeof Feather.glyphM
 const BRIGHTNESS = [25, 50, 75, 100];
 
 export function LampControl() {
-  const { light, setLight, isDeviceOnline } = useIot();
+  const { lamp: light, setLight, isNodeReachable } = useLiveVitals();
 
-  // Everything reflects the retained state topic rather than local optimism: the node's
-  // physical button changes the mode too, and a UI that disagreed with the lamp in the
-  // room would be worse than one that lags by a few hundred milliseconds.
+  // Everything reflects what the node says its lamp is doing rather than local optimism:
+  // the node's physical button changes the mode too, and a UI that disagreed with the lamp
+  // in the room would be worse than one that lags by a few hundred milliseconds. Both
+  // transports carry that echo — MQTT on the retained state topic, BLE on the lamp
+  // characteristic — so the control works, and stays honest, with no network at all.
   const mode = light?.mode ?? null;
   const brightness = light?.brightness ?? null;
 
@@ -88,7 +90,7 @@ export function LampControl() {
         <Text style={styles.momentary}>Alert is momentary — it reverts after a few seconds.</Text>
       ) : null}
 
-      {!isDeviceOnline ? (
+      {!isNodeReachable ? (
         <Text style={Type.caption}>Commands will apply when the node comes back online.</Text>
       ) : null}
     </View>

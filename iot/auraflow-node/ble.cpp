@@ -181,6 +181,21 @@ void publishBiometrics(const BioReading& reading) {
       json += reading.spo2;
     }
 
+    // The same two the MQTT builder publishes, in the same place, because the app counts
+    // beats off with them while a reading resolves. Omitting them here made the wait look
+    // different depending on which radio the phone happened to be using — the card fell
+    // back to "measuring, hold still" over BLE and counted "2 of 3" over Wi-Fi, for one
+    // measurement on one sensor.
+    {
+      float medianMs, loMs, hiMs;
+      int intervals;
+      Sensors::beatDebug(intervals, medianMs, loMs, hiMs);
+      json += ",\"beats\":";
+      json += intervals;
+      json += ",\"beats_needed\":";
+      json += HR_BEAT_MIN_INTERVALS;
+    }
+
     json += ",\"hr_valid\":";
     json += reading.heartRateValid ? "true" : "false";
     json += ",\"hr_maxim_valid\":";

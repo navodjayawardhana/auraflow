@@ -3,6 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Font, GradientAxis, Radius, Shadows, Unit } from '@/constants/design';
+import type { VitalsSource } from '@/services/vitals-merge';
 
 /**
  * Live vitals from the node, on Today.
@@ -15,10 +16,17 @@ import { Font, GradientAxis, Radius, Shadows, Unit } from '@/constants/design';
 export function LiveNodeStrip({
   heartRate,
   spo2,
+  source,
 }: {
   heartRate: number;
   spo2: number | null;
+  source: VitalsSource;
 }) {
+  // The badge already existed to say the number is current; over Bluetooth it says how it
+  // got here as well. Same badge, one word different — a second indicator for the same
+  // fact would be two things to read where there was one.
+  const badge = source === 'ble' ? 'BLUETOOTH' : 'LIVE';
+
   return (
     <View
       style={styles.strip}
@@ -26,7 +34,7 @@ export function LiveNodeStrip({
       accessibilityLiveRegion="polite"
       accessibilityLabel={`Live heart rate ${heartRate} beats per minute${
         spo2 !== null ? `, oxygen saturation ${spo2} percent` : ''
-      }`}>
+      }${source === 'ble' ? ', over Bluetooth' : ''}`}>
       <LinearGradient
         colors={['#0f172a', '#14306b']}
         start={GradientAxis.deg120.start}
@@ -54,7 +62,7 @@ export function LiveNodeStrip({
 
       <View style={styles.badge}>
         <View style={styles.badgeDot} />
-        <Text style={styles.badgeLabel}>LIVE</Text>
+        <Text style={styles.badgeLabel}>{badge}</Text>
       </View>
     </View>
   );

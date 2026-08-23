@@ -6,7 +6,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { PpgTrace } from '@/components/ppg-trace';
 import { Font, GradientAxis, Radius, Shadows } from '@/constants/design';
 import { AuraColors } from '@/constants/theme';
-import { useIot } from '@/context/iot-context';
+import { useLiveVitals } from '@/hooks/use-live-vitals';
 import {
   beatProgress,
   isSettling,
@@ -42,7 +42,16 @@ function Badge({
 }
 
 export function LiveBiometricsCard() {
-  const { biometrics, isBiometricsStale, isDeviceOnline, status } = useIot();
+  // One reading, from whichever transport is live. The card reads `source` for a single
+  // line of footer text and is otherwise written as though there were only ever one path
+  // to the node — which, as far as everything below is concerned, there is.
+  const {
+    frame: biometrics,
+    isStale: isBiometricsStale,
+    isNodeReachable,
+    isConnecting,
+    source,
+  } = useLiveVitals();
 
   /**
    * The streaming estimate where there is one, the reference algorithm's where there is not.
@@ -116,8 +125,8 @@ export function LiveBiometricsCard() {
   const displayBpm = shown === null ? null : Math.round(shown);
 
   function footer() {
-    if (status === 'connecting') return 'Connecting to your node…';
-    if (!isDeviceOnline) return 'Node offline — power it and check its Wi-Fi';
+    if (isConnecting) return 'Connecting to your node…';
+    if (!isNodeReachable) return 'Node offline — power it, and check Bluetooth or its Wi-Fi';
     if (!hasFinger) return 'Rest a finger on the MAX30102 pad';
     if (isBiometricsStale) return 'Waiting for a fresh reading';
     // Ahead of the weak-signal hint deliberately: telling someone to press harder while
@@ -140,6 +149,11 @@ export function LiveBiometricsCard() {
     // at rest, so a reading that sits still for a while is the algorithm's resolution
     // rather than the heart's, and a person watching it deserves to know which.
     if (isReferenceRate) return 'Finger on sensor · reference estimate, to the nearest few bpm';
+    // Said in the same breath as the update rate, in the same place the reference estimate
+    // is named, because it is the same kind of fact: which thing produced this number. It
+    // is also the demonstration — a reading arriving with no network at all is the point of
+    // the Bluetooth path, and it is invisible unless something says so.
+    if (source === 'ble') return 'Finger on sensor · over Bluetooth, no network needed';
     return 'Finger on sensor · updating every 1.5s';
   }
 
@@ -165,7 +179,7 @@ export function LiveBiometricsCard() {
         {isLive ? (
           <Badge icon="activity" label="Streaming" tone="live" />
         ) : (
-          <Badge icon="wifi-off" label={isDeviceOnline ? 'Idle' : 'Offline'} tone="idle" />
+          <Badge icon="wifi-off" label={isNodeReachable ? 'Idle' : 'Offline'} tone="idle" />
         )}
       </View>
 
