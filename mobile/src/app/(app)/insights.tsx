@@ -4,16 +4,38 @@ import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { CoveragePanel } from '@/components/coverage-panel';
 import { OfflineBanner } from '@/components/offline-banner';
+import { PlanAdherencePanel } from '@/components/plan-adherence-panel';
 import { PrimaryButton } from '@/components/primary-button';
-import { RecoveryTrendChart } from '@/components/recovery-trend-chart';
+import { RecoveryDriversPanel } from '@/components/recovery-drivers-panel';
+import { RecoveryTrendChart, type RecoveryPoint } from '@/components/recovery-trend-chart';
+import { SignalTrendsCard, type SignalRow } from '@/components/signal-trends-card';
 import { Font, Layout, Surfaces, Type } from '@/constants/design';
 import { AuraColors, IconTones } from '@/constants/theme';
 import { useCachedResource } from '@/hooks/use-cached-resource';
-import { fetchRecoveryRange, recentDates, todayIsoDate } from '@/services/recovery-service';
-import type { RecoveryReading } from '@/types';
+import { usePlan } from '@/hooks/use-plan';
+import { fetchInsights, type InsightsSeries } from '@/services/insights-service';
+import {
+  coverageNote,
+  coverageOf,
+  goalAdherence,
+  recoveryDrivers,
+  sleepAgainstNeed,
+  summariseSignal,
+} from '@/services/insights-summary';
+import { todayIsoDate } from '@/services/recovery-service';
 
-const WINDOW_DAYS = 7;
+/**
+ * A fortnight, not a week.
+ *
+ * Three things wanted the same number and all three wanted fourteen: it is the window a
+ * personal resting-HR baseline is built over, it is the shortest span a rank correlation
+ * can be drawn from at this app's floor of ten paired days, and it is long enough that a
+ * single bad night stops setting the average. A week could not support the correlation
+ * panel at all.
+ */
+const WINDOW_DAYS = 14;
 
 function SummaryTile({
   icon,
@@ -58,40 +80,92 @@ export default function InsightsScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const today = todayIsoDate();
-  const fetcher = useCallback(() => fetchRecoveryRange(recentDates(WINDOW_DAYS)), []);
+  const fetcher = useCallback(() => fetchInsights(WINDOW_DAYS), []);
 
-  const { data, status, cachedAt, isStale, refresh } = useCachedResource<RecoveryReading[]>(
-    `recovery.range.${WINDOW_DAYS}`,
+  const { data, status, cachedAt, isStale, refresh } = useCachedResource<InsightsSeries>(
+    `insights.${WINDOW_DAYS}`,
     fetcher,
   );
 
+  /*
+   * The targets, and whether they are the user's or the constants.
+   *
+   * Read through the same hook the dashboard uses rather than asked for again here, so the
+   * two screens cannot disagree about what the goal is — and so the substitution when no
+   * plan exists happens in the one expression that knows a substitution happened.
+   */
+  const { targets, refresh: refreshPlan } = usePlan();
+
   async function handleRefresh() {
     setIsRefreshing(true);
-    await refresh();
+    await Promise.all([refresh(), refreshPlan()]);
     setIsRefreshing(false);
   }
 
-  const readings = data ?? [];
-  const scored = readings.filter((r) => r.available);
+  const series = data;
+  const scored = series?.days.filter((day) => day.recovery_score !== null) ?? [];
 
   const average =
     scored.length > 0
-      ? Math.round(scored.reduce((sum, r) => sum + (r.available ? r.score : 0), 0) / scored.length)
+      ? Math.round(scored.reduce((sum, day) => sum + (day.recovery_score ?? 0), 0) / scored.length)
       : null;
 
-  // First half against second half — coarse on purpose. A seven-point series does not
-  // support anything more sophisticated, and a regression slope here would be false rigour.
+  // First half against second half — coarse on purpose. A fourteen-point series with gaps
+  // in it does not support anything more sophisticated, and a regression slope here would
+  // be false rigour of exactly the kind the panel below spends a paragraph warning about.
   const trend = (() => {
     if (scored.length < 4) return null;
 
     const half = Math.floor(scored.length / 2);
-    const mean = (list: RecoveryReading[]) =>
-      list.reduce((sum, r) => sum + (r.available ? r.score : 0), 0) / list.length;
+    const mean = (list: typeof scored) =>
+      list.reduce((sum, day) => sum + (day.recovery_score ?? 0), 0) / list.length;
 
     return Math.round(mean(scored.slice(half)) - mean(scored.slice(0, half)));
   })();
 
-  const provisionalCount = scored.filter((r) => r.available && r.provisional).length;
+  const provisionalCount = scored.filter((day) => day.recovery_provisional).length;
+
+  const points: RecoveryPoint[] =
+    series?.days.map((day) => ({
+      date: day.date,
+      score: day.recovery_score,
+      provisional: day.recovery_provisional,
+    })) ?? [];
+
+  const signalRows: SignalRow[] = series
+    ? [
+        {
+          summary: summariseSignal(series, 'sleepHours'),
+          icon: 'moon',
+          tone: 'stage',
+          unit: 'h',
+          format: (mean) => mean.toFixed(1),
+        },
+        {
+          summary: summariseSignal(series, 'restingHeartRate'),
+          icon: 'heart',
+          tone: 'vital',
+          unit: 'bpm',
+          format: (mean) => mean.toFixed(0),
+        },
+        {
+          summary: summariseSignal(series, 'steps'),
+          icon: 'activity',
+          tone: 'brand',
+          unit: 'a day',
+          format: (mean) => Math.round(mean).toLocaleString(),
+          target: targets.stepGoal,
+        },
+        {
+          summary: summariseSignal(series, 'water'),
+          icon: 'droplet',
+          tone: 'accent',
+          unit: 'ml a day',
+          format: (mean) => Math.round(mean).toLocaleString(),
+          target: targets.waterMl,
+        },
+      ]
+    : [];
 
   return (
     <View style={styles.screen}>
@@ -108,13 +182,16 @@ export default function InsightsScreen() {
 
         {status === 'loading' ? (
           <View style={styles.skeleton} />
-        ) : status === 'error' ? (
+        ) : status === 'error' || series === null ? (
           <View style={styles.card}>
             <Text style={Type.cardTitle}>Couldn&apos;t load your trend</Text>
             <PrimaryButton label="Retry" onPress={refresh} />
           </View>
         ) : (
           <>
+            {/* Coverage first: it is the frame every figure below is read inside. */}
+            <CoveragePanel coverage={coverageOf(series)} />
+
             <Animated.View entering={FadeInUp.duration(400)} style={styles.card}>
               <View style={styles.cardHead}>
                 <Text style={Type.cardTitle}>Recovery</Text>
@@ -131,13 +208,13 @@ export default function InsightsScreen() {
                         { color: trend >= 0 ? AuraColors.success : AuraColors.caution },
                       ]}>
                       {trend >= 0 ? '+' : ''}
-                      {trend} this week
+                      {trend} across the window
                     </Text>
                   </View>
                 ) : null}
               </View>
 
-              <RecoveryTrendChart readings={readings} today={today} />
+              <RecoveryTrendChart points={points} today={today} />
             </Animated.View>
 
             <View style={styles.grid}>
@@ -147,7 +224,9 @@ export default function InsightsScreen() {
                 tone="brand"
                 label="Average"
                 value={average === null ? '—' : String(average)}
-                caption={average === null ? 'no scores yet' : 'across recorded days'}
+                caption={
+                  average === null ? 'no scores yet' : coverageNote(scored.length, WINDOW_DAYS)
+                }
               />
               <SummaryTile
                 index={1}
@@ -156,7 +235,7 @@ export default function InsightsScreen() {
                 label="Recorded"
                 value={String(scored.length)}
                 denominator={`/${WINDOW_DAYS}`}
-                caption="nights with a score"
+                caption="days with a score"
               />
             </View>
 
@@ -170,6 +249,17 @@ export default function InsightsScreen() {
                 </Text>
               </Animated.View>
             ) : null}
+
+            <SignalTrendsCard rows={signalRows} />
+
+            <PlanAdherencePanel
+              steps={goalAdherence(series, 'steps', targets.stepGoal, targets.source)}
+              water={goalAdherence(series, 'water', targets.waterMl, targets.source)}
+              sleep={sleepAgainstNeed(series, targets.sleepNeedHours)}
+              source={targets.source}
+            />
+
+            <RecoveryDriversPanel drivers={recoveryDrivers(series)} />
 
             {scored.length === 0 ? (
               <Text style={styles.empty}>

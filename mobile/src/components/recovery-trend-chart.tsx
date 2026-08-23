@@ -2,7 +2,6 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { Font } from '@/constants/design';
 import { AuraColors } from '@/constants/theme';
-import type { RecoveryReading } from '@/types';
 
 const CHART_HEIGHT = 176;
 const BAR_MAX = 130;
@@ -15,7 +14,22 @@ function dayLabel(isoDate: string): string {
 }
 
 /**
- * Seven days of recovery.
+ * One day of the trend.
+ *
+ * Structural rather than the `RecoveryReading` the endpoint returns, because the chart
+ * needs three fields and the reading carries seven -- an unavailable reason and a
+ * last-known score among them, neither of which a bar can draw. Taking the wider type
+ * would mean any other source of daily scores had to fabricate those fields to be drawn.
+ */
+export interface RecoveryPoint {
+  date: string;
+  /** Null on a day that could not be scored. Drawn as a stub, never as a zero-height bar. */
+  score: number | null;
+  provisional: boolean;
+}
+
+/**
+ * A window of recovery, one bar a day.
  *
  * Provisional days are violet rather than a faded blue: a score computed without a
  * personal heart-rate baseline is a different measurement, not a weaker one, and fading
@@ -23,12 +37,16 @@ function dayLabel(isoDate: string): string {
  * readable without a tap.
  */
 export function RecoveryTrendChart({
-  readings,
+  points,
   today,
 }: {
-  readings: RecoveryReading[];
+  points: RecoveryPoint[];
   today: string;
 }) {
+  // A fortnight of bars in the width a week had. The value above each bar is the first
+  // thing to become unreadable, so it is dropped rather than shrunk into a smear.
+  const isDense = points.length > 8;
+
   return (
     <View>
       <View style={styles.chart}>
@@ -39,11 +57,11 @@ export function RecoveryTrendChart({
           ))}
         </View>
 
-        <View style={styles.bars}>
-          {readings.map((reading) => {
-            const score = reading.available ? reading.score : null;
-            const isToday = reading.date === today;
-            const isProvisional = reading.available && reading.provisional;
+        <View style={[styles.bars, isDense && styles.barsDense]}>
+          {points.map((point) => {
+            const { score, date } = point;
+            const isToday = date === today;
+            const isProvisional = score !== null && point.provisional;
 
             const fill = isProvisional
               ? AuraColors.provisional
@@ -52,10 +70,12 @@ export function RecoveryTrendChart({
                 : '#93c5fd';
 
             return (
-              <View key={reading.date} style={styles.column}>
-                <Text style={[styles.value, isToday && styles.valueToday]}>
-                  {score === null ? '' : Math.round(score)}
-                </Text>
+              <View key={date} style={styles.column}>
+                {isDense ? null : (
+                  <Text style={[styles.value, isToday && styles.valueToday]}>
+                    {score === null ? '' : Math.round(score)}
+                  </Text>
+                )}
                 <View
                   style={[
                     styles.bar,
@@ -65,9 +85,7 @@ export function RecoveryTrendChart({
                     },
                   ]}
                 />
-                <Text style={[styles.day, isToday && styles.dayToday]}>
-                  {dayLabel(reading.date)}
-                </Text>
+                <Text style={[styles.day, isToday && styles.dayToday]}>{dayLabel(date)}</Text>
               </View>
             );
           })}
@@ -105,6 +123,7 @@ const styles = StyleSheet.create({
   gridline: { height: 1, backgroundColor: '#f1f5f9' },
   baseline: { backgroundColor: AuraColors.surface.selected },
   bars: { flexDirection: 'row', alignItems: 'flex-end', gap: 9 },
+  barsDense: { gap: 4 },
   column: { flex: 1, alignItems: 'center', gap: 4 },
   value: {
     fontFamily: Font.semibold,
