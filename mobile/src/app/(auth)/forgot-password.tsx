@@ -1,6 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,34 +12,43 @@ import { PrimaryButton } from '@/components/primary-button';
 import { TextField } from '@/components/text-field';
 import { Font, GradientAxis, Gradients, Layout, Type } from '@/constants/design';
 import { AuraColors } from '@/constants/theme';
-import { useAuth } from '@/context/auth-context';
 import { ApiError } from '@/services/api-client';
+import { requestPasswordReset } from '@/services/auth-service';
+import { RESET_CODE_TTL_MINUTES, rememberPendingReset } from '@/services/pending-reset';
 
-const HERO_HEIGHT = 372;
+/** One field, so the hero can take the space the sign-up form needs for four. */
+const HERO_HEIGHT = 268;
 
-export default function LoginScreen() {
-  const { signIn } = useAuth();
+export default function ForgotPasswordScreen() {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
 
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
+  const [fieldError, setFieldError] = useState<string | undefined>();
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleSubmit() {
-    setFieldErrors({});
+    setFieldError(undefined);
     setFormError(null);
     setIsSubmitting(true);
 
     try {
-      await signIn(email, password);
+      await requestPasswordReset({ email: email.trim() });
+
+      // Written before navigating, so the marker exists even if the OS reclaims the app
+      // while the person is reading their mail on the very next screen.
+      await rememberPendingReset(email.trim());
+
+      // `replace`, not `push`. Going back to this screen from the code screen would offer
+      // a second "send code" button that quietly invalidates the code they are holding.
+      // "Send a new code" lives on the next screen instead, where it says what it does.
+      router.replace({ pathname: '/(auth)/reset-password', params: { email: email.trim() } });
     } catch (error) {
       if (error instanceof ApiError && error.isValidation) {
-        setFieldErrors({
-          email: error.fieldError('email'),
-          password: error.fieldError('password'),
-        });
+        // A 429 arrives here too — the API reports its throttle as a field error on
+        // `email`, exactly as the login route does, so there is no separate branch.
+        setFieldError(error.fieldError('email'));
       } else if (error instanceof ApiError) {
         setFormError(error.message);
       } else {
@@ -60,21 +69,19 @@ export default function LoginScreen() {
         style={styles.hero}>
         <HeroDecoration height={HERO_HEIGHT} />
 
-        <View style={[styles.heroContent, { paddingTop: insets.top + 30 }]}>
+        <View style={[styles.heroContent, { paddingTop: insets.top + 24 }]}>
           <View style={styles.lockup}>
-            <LogoMark size={46} color="#ffffff" />
-            <View style={styles.wordmark}>
-              <Text style={styles.wordmarkText}>
-                Aura<Text style={styles.wordmarkFlow}>Flow</Text>
-              </Text>
-              <Text style={styles.tagline}>WORK WITH YOUR BODY</Text>
-            </View>
+            <LogoMark size={38} color="#ffffff" />
+            <Text style={styles.wordmarkText}>
+              Aura<Text style={styles.wordmarkFlow}>Flow</Text>
+            </Text>
           </View>
 
           <View style={styles.welcome}>
-            <Text style={styles.headline}>Welcome back</Text>
+            <Text style={styles.headline}>Forgot your password?</Text>
             <Text style={styles.subtitle}>
-              Your recovery score is waiting. Sign in to see how ready your body is today.
+              Tell us your email address and we&apos;ll send you a {RESET_CODE_TTL_MINUTES}-minute
+              code to get back in.
             </Text>
           </View>
         </View>
@@ -96,54 +103,45 @@ export default function LoginScreen() {
             placeholder="you@example.com"
             value={email}
             onChangeText={setEmail}
-            error={fieldErrors.email}
+            error={fieldError}
             keyboardType="email-address"
             autoCapitalize="none"
             autoComplete="email"
+            autoFocus
             icon="mail"
             tone="brand"
+            onSubmitEditing={email ? handleSubmit : undefined}
+            returnKeyType="send"
           />
-
-          <TextField
-            label="Password"
-            placeholder="••••••••"
-            isPassword
-            value={password}
-            onChangeText={setPassword}
-            error={fieldErrors.password}
-            autoComplete="password"
-            icon="lock"
-            tone="accent"
-          />
-
-          {/*
-            Above the button, not below it. Somebody who cannot remember their password
-            needs this before they tap "Sign in" and spend one of the five attempts the
-            login limiter allows — putting it under the button means they find it after
-            they have already locked themselves out.
-          */}
-          <Link href="/(auth)/forgot-password" style={styles.forgot}>
-            Forgot password?
-          </Link>
 
           <View style={styles.submit}>
             <PrimaryButton
-              label="Sign in"
+              // The label carries the progress. The button shows a spinner while the
+              // request is in flight, and a person who has just tapped "send" wants to
+              // know a mail is being sent, not read the word "loading".
+              label={isSubmitting ? 'Sending your code…' : 'Send me a code'}
               onPress={handleSubmit}
               loading={isSubmitting}
-              disabled={!email || !password}
+              disabled={!email}
             />
           </View>
 
+          {/*
+            The hedge is deliberate and it is the same one the server gives back. Telling
+            somebody "no account uses that address" would turn this form into a free
+            membership list, so the app must not promise a mail is coming either.
+          */}
           <View style={styles.privacy}>
             <Feather name="shield" size={13} color={AuraColors.content.muted} />
-            <Text style={Type.caption}>Your health data is encrypted and private</Text>
+            <Text style={[Type.caption, styles.privacyText]}>
+              If the address is registered, a code is on its way. We never say whether it is.
+            </Text>
           </View>
 
           <Text style={styles.switchLine}>
-            Don&apos;t have an account?{' '}
-            <Link href="/(auth)/register" style={styles.switchLink}>
-              Sign up
+            Remembered it?{' '}
+            <Link href="/(auth)/login" style={styles.switchLink}>
+              Back to sign in
             </Link>
           </Text>
         </ScrollView>
@@ -156,27 +154,20 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: AuraColors.surface.default },
   flex: { flex: 1 },
   hero: { height: HERO_HEIGHT, overflow: 'hidden' },
-  heroContent: { paddingHorizontal: Layout.gutter, gap: 26 },
-  lockup: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  wordmark: { gap: 3 },
+  heroContent: { paddingHorizontal: Layout.gutter, gap: 20 },
+  lockup: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   wordmarkText: {
     fontFamily: Font.bold,
-    fontSize: 27,
+    fontSize: 22,
     letterSpacing: -0.5,
     color: '#ffffff',
   },
   wordmarkFlow: { fontFamily: Font.regular, color: '#7ef9ff' },
-  tagline: {
-    fontFamily: Font.semibold,
-    fontSize: 10,
-    letterSpacing: 3,
-    color: 'rgba(255,255,255,0.6)',
-  },
   welcome: { gap: 8 },
   headline: {
     fontFamily: Font.bold,
-    fontSize: 30,
-    lineHeight: 34.5,
+    fontSize: 28,
+    lineHeight: 32,
     letterSpacing: -0.7,
     color: '#ffffff',
   },
@@ -185,20 +176,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
     color: 'rgba(255,255,255,0.76)',
-    maxWidth: 268,
+    maxWidth: 280,
   },
   form: { paddingHorizontal: Layout.gutter, paddingTop: 22, paddingBottom: 40, gap: 16 },
-  forgot: {
-    fontFamily: Font.semibold,
-    fontSize: 13,
-    textAlign: 'right',
-    color: AuraColors.brand.default,
-    // Pulls the link up against the password field it belongs to, out of the form's
-    // uniform 16pt rhythm — it reads as part of that field rather than a row of its own.
-    marginTop: -6,
-  },
   submit: { marginTop: 4 },
-  privacy: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
+  privacy: { flexDirection: 'row', alignItems: 'flex-start', gap: 7, paddingHorizontal: 4 },
+  privacyText: { flex: 1 },
   switchLine: {
     fontFamily: Font.regular,
     fontSize: 14,

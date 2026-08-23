@@ -3,7 +3,6 @@
 namespace App\Http\Requests\Api\V1;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rules\Password;
 
 class RegisterRequest extends FormRequest
 {
@@ -17,11 +16,9 @@ class RegisterRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
-            // Length carries far more entropy than composition rules, which mostly push
-            // people towards predictable substitutions. `uncompromised()` checks the
-            // haveibeenpwned k-anonymity range API -- only a hash prefix leaves the
-            // server, never the password.
-            'password' => ['required', 'confirmed', Password::min(10)->uncompromised()],
+            // Shared with the password reset, which is the other place a password is set.
+            // See NewPasswordRules for what they are and why they live in one file.
+            'password' => NewPasswordRules::rules(),
             'device_name' => ['sometimes', 'string', 'max:255'],
         ];
     }
