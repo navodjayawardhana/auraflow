@@ -2,7 +2,11 @@
 
 namespace App\Providers;
 
+use App\Domain\Planning\Repository\WellbeingPlanRepository;
+use App\Domain\Profile\Repository\UserProfileRepository;
 use App\Domain\Wellbeing\Repository\DailyHealthSnapshotRepository;
+use App\Infrastructure\Planning\Persistence\EloquentWellbeingPlanRepository;
+use App\Infrastructure\Profile\Persistence\EloquentUserProfileRepository;
 use App\Infrastructure\Wellbeing\Persistence\EloquentDailyHealthSnapshotRepository;
 use Illuminate\Support\ServiceProvider;
 
@@ -24,6 +28,8 @@ class DomainServiceProvider extends ServiceProvider
      */
     private array $repositories = [
         DailyHealthSnapshotRepository::class => EloquentDailyHealthSnapshotRepository::class,
+        UserProfileRepository::class => EloquentUserProfileRepository::class,
+        WellbeingPlanRepository::class => EloquentWellbeingPlanRepository::class,
     ];
 
     public function register(): void

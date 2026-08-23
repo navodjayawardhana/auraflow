@@ -19,7 +19,6 @@ import { OfflineBanner } from '@/components/offline-banner';
 import { RecoveryCard } from '@/components/recovery-card';
 import { RingLegend } from '@/components/ring-legend';
 import { SleepStageBar } from '@/components/sleep-stage-bar';
-import { STEP_GOAL, WATER_GOAL_ML } from '@/constants/goals';
 import {
   Font,
   GradientAxis,
@@ -35,10 +34,12 @@ import { useContextAwareness } from '@/hooks/use-context-awareness';
 import { useIot } from '@/context/iot-context';
 import { useCachedResource } from '@/hooks/use-cached-resource';
 import { useOutboxFlush } from '@/hooks/use-outbox-flush';
+import { usePlan } from '@/hooks/use-plan';
 import { useSheetDrag } from '@/hooks/use-sheet-drag';
 import { useSteps } from '@/hooks/use-steps';
 import { fetchBrief, refreshBrief, type DailyBrief } from '@/services/brief-service';
 import { estimateActiveKcal } from '@/services/energy';
+import { activeKcalCaption } from '@/services/plan-targets';
 import { fetchHealthSnapshots } from '@/services/health-snapshot-service';
 import { usableHeartRate, usableSpo2 } from '@/services/iot-payloads';
 import { fetchRecovery, recentDates, todayIsoDate } from '@/services/recovery-service';
@@ -102,6 +103,10 @@ export default function TodayScreen() {
   const tonight = history.find((s) => s.date === today) ?? null;
 
   const steps = useSteps();
+  // Every goal below comes from here. When there is no plan — new account, unreachable
+  // server — `targets` is the cold-start constants, so this screen degrades to exactly
+  // what it showed before the plan existed rather than to a blank.
+  const { targets, refresh: refreshPlan } = usePlan();
   const { biometrics, isBiometricsStale, selectedDeviceId } = useIot();
   const liveHeartRate = isBiometricsStale ? null : usableHeartRate(biometrics);
   const liveSpo2 = isBiometricsStale ? null : usableSpo2(biometrics);
@@ -152,8 +157,8 @@ export default function TodayScreen() {
   }, [today, loadBrief]);
 
   const refreshAll = useCallback(async () => {
-    await Promise.all([refresh(), refreshSnapshots(), loadBrief()]);
-  }, [refresh, refreshSnapshots, loadBrief]);
+    await Promise.all([refresh(), refreshSnapshots(), refreshPlan(), loadBrief()]);
+  }, [refresh, refreshSnapshots, refreshPlan, loadBrief]);
 
   const { pending } = useOutboxFlush(refreshAll);
 
@@ -213,8 +218,8 @@ export default function TodayScreen() {
             <HeroRings
               score={score}
               isProvisional={isProvisional}
-              stepsProgress={stepsAvailable ? steps.today / STEP_GOAL : null}
-              waterProgress={waterMl === null ? null : waterMl / WATER_GOAL_ML}
+              stepsProgress={stepsAvailable ? steps.today / targets.stepGoal : null}
+              waterProgress={waterMl === null ? null : waterMl / targets.waterMl}
             />
           </View>
         </Animated.View>
@@ -269,9 +274,11 @@ export default function TodayScreen() {
 
               <RingLegend
                 steps={stepsAvailable ? steps.today : null}
-                stepGoal={STEP_GOAL}
+                stepGoal={targets.stepGoal}
                 waterMl={waterMl}
-                waterGoalMl={WATER_GOAL_ML}
+                waterGoalMl={targets.waterMl}
+                goalSource={targets.source}
+                onOpenPlan={() => router.push('/plan')}
               />
 
               <View style={styles.grid}>
@@ -283,7 +290,7 @@ export default function TodayScreen() {
                   tone="brand"
                   state={stepsAvailable ? 'measured' : 'unavailable'}
                   value={stepsAvailable ? steps.today.toLocaleString() : '—'}
-                  progress={stepsAvailable ? steps.today / STEP_GOAL : undefined}
+                  progress={stepsAvailable ? steps.today / targets.stepGoal : undefined}
                   caption={
                     steps.status === 'counting'
                       ? 'counted while AuraFlow is open'
@@ -300,9 +307,13 @@ export default function TodayScreen() {
                   icon="zap"
                   tone="accent"
                   state={stepsAvailable ? 'estimated' : 'unavailable'}
-                  value={stepsAvailable ? String(estimateActiveKcal(steps.today)) : '—'}
+                  value={
+                    stepsAvailable
+                      ? String(estimateActiveKcal(steps.today, targets.weightKg))
+                      : '—'
+                  }
                   unit="kcal"
-                  caption="estimated from steps, not measured"
+                  caption={activeKcalCaption(targets)}
                 />
               </View>
 
@@ -325,8 +336,8 @@ export default function TodayScreen() {
                   state={waterMl != null ? 'measured' : 'unavailable'}
                   value={waterMl != null ? waterMl.toLocaleString() : '—'}
                   unit="ml"
-                  progress={waterMl == null ? undefined : waterMl / WATER_GOAL_ML}
-                  caption={`of ${WATER_GOAL_ML.toLocaleString()} ml today`}
+                  progress={waterMl == null ? undefined : waterMl / targets.waterMl}
+                  caption={`of ${targets.waterMl.toLocaleString()} ml today`}
                 />
               </View>
               </View>

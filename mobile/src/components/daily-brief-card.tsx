@@ -91,8 +91,14 @@ export function DailyBriefCard({
         <View style={styles.headText}>
           <Text style={Type.cardTitle}>Your brief</Text>
           <Text style={Type.caption}>
+            {/*
+                Which model wrote it stays in the payload and in the database -- advice from
+                a model since replaced has to remain identifiable, which is what that column
+                is for. It just does not belong on the card: a person reading their morning
+                brief needs to know a machine wrote it, not which company's.
+            */}
             {status === 'ready' && time
-              ? `written ${time}${brief.model ? ` · ${brief.model}` : ''}`
+              ? `written ${time} · generated, not written by a person`
               : status === 'pending'
                 ? 'from this morning’s figures'
                 : 'not written today'}

@@ -140,8 +140,9 @@ export type ActivityLevel = 'sedentary' | 'light' | 'moderate' | 'active' | 'ver
 
 /**
  * Which cut-offs a BMI is read against. WHO's 2004 consultation put the South Asian
- * overweight threshold several points below the European one, so the scale is part of the
- * profile rather than a global constant — the same 24.0 means different things by it.
+ * overweight threshold several points below the European one, so the scale is stored on
+ * the profile rather than chosen per device — the same body must not read healthy on a
+ * phone and overweight on a tablet. The server defaults it to `who_asian`.
  */
 export type BmiScale = 'who_standard' | 'who_asian';
 export type BmiBand = 'underweight' | 'healthy' | 'overweight' | 'obese';
@@ -158,18 +159,25 @@ export interface Profile {
   activity_level: ActivityLevel;
   /** Derived server-side and read-only. Null when height or weight is missing. */
   bmi: number | null;
+  /** The band on `bmi_scale`. `bmi_bands` carries every scale's reading of the same value. */
   bmi_band: BmiBand | null;
   bmi_scale: BmiScale;
+  bmi_bands: Record<BmiScale, BmiBand> | null;
   updated_at: string;
 }
 
-/** Every field optional — a partial save is the ordinary case, not an edge one. */
+/**
+ * Every field optional, and the difference between absent and null is load-bearing: the
+ * server merges on the keys present, leaves absent ones alone, and clears explicit nulls.
+ * Clearing `sex` returns `unspecified` rather than null.
+ */
 export interface UpdateProfileInput {
   date_of_birth?: string | null;
-  sex?: Sex;
+  sex?: Sex | null;
   height_cm?: number | null;
   weight_kg?: number | null;
-  activity_level?: ActivityLevel;
+  activity_level?: ActivityLevel | null;
+  bmi_scale?: BmiScale;
 }
 
 /** Inclusive bpm bounds. A tuple in the contract, kept as one here. */
@@ -187,46 +195,87 @@ export interface HeartRateZones {
  * Rendered, not logged. A daily goal the user cannot trace back to a published formula is
  * health advice with no author, which is the one thing this project will not ship.
  */
+/** `user_edited` displaces the formula the moment someone types over the number. */
+export type StepGoalSource = 'measured_7d' | 'population_default' | 'user_edited';
+
+/**
+ * `mass_only` is Holliday–Segar scaled by body mass; `sex_reference_intake` is the EFSA
+ * adult figure for a known sex. There is no climate term — the server declined to invent
+ * a per-degree coefficient no source publishes.
+ */
+export type WaterSource =
+  | 'mass_only'
+  | 'sex_reference_intake'
+  | 'population_default'
+  | 'user_edited';
+
+export type SleepNeedSource = 'age_band' | 'population_default' | 'user_edited';
+
 export interface PlanBasis {
   bmr_kcal: number | null;
   tdee_kcal: number | null;
   bmr_formula: 'mifflin_st_jeor' | null;
   max_hr_formula: 'tanaka' | null;
   hr_zone_formula: 'karvonen' | null;
+  /** Reported even with no BMR to multiply — it is a fact about what the user answered. */
+  activity_factor: number | null;
+  max_hr_bpm: number | null;
   resting_hr_bpm: number | null;
   resting_hr_source: 'measured_14d' | 'population_default' | null;
-  step_goal_source: 'measured_7d' | 'population_default';
-  water_source: 'mass_and_climate' | 'population_default';
+  step_goal_source: StepGoalSource;
+  water_source: WaterSource;
+  sleep_need_source: SleepNeedSource;
+  /** The NSF band as published. The single figure above it is our midpoint of this. */
+  sleep_need_range: [number, number] | null;
   /** Profile fields the plan wanted and did not have, e.g. `["date_of_birth"]`. */
   missing: string[];
 }
 
+/**
+ * One version of the targets. Immutable server-side: an override produces the next plan
+ * rather than changing this one, which is what makes the history readable.
+ *
+ * Two figures are nullable, and they are the two that would be health advice if they were
+ * guessed: an energy target needs age, sex, height and mass, and a heart-rate zone needs an
+ * age. There is no population substitute for either that is not a fabricated person, so the
+ * server sends null and names the gap in `basis.missing`.
+ */
 export interface Plan {
   version: number;
-  /** `edited` from the moment the user overrides any single field. */
+  /** `edited` from the moment the user overrides any single field, and sticky after that. */
   source: 'derived' | 'edited';
   step_goal: number;
   water_ml: number;
-  active_kcal_goal: number;
+  active_kcal_goal: number | null;
   sleep_need_hours: number;
-  hr_zones: HeartRateZones;
+  hr_zones: HeartRateZones | null;
   basis: PlanBasis;
+  /** Which fields the user set by hand in *this* version. Present on every plan. */
+  edited_fields: string[];
   created_at: string;
 }
 
-export interface PlanVersion extends Plan {
-  /** Which fields the user set by hand in this version. */
-  edited_fields: string[];
-}
+/** The four goals the server will accept by hand. Heart-rate zones are not among them. */
+export const OVERRIDABLE_FIELDS = [
+  'step_goal',
+  'water_ml',
+  'active_kcal_goal',
+  'sleep_need_hours',
+] as const;
 
-/** Only what the user actually changed — the server keeps deriving the rest. */
-export interface PlanOverrideInput {
-  step_goal?: number;
-  water_ml?: number;
-  active_kcal_goal?: number;
-  sleep_need_hours?: number;
-  hr_zones?: HeartRateZones;
-}
+export type OverridableField = (typeof OVERRIDABLE_FIELDS)[number];
+
+/**
+ * Only what the user actually changed — the server keeps deriving the rest, and records
+ * the difference as `edited_fields`.
+ */
+export type PlanOverrideInput = Partial<Record<OverridableField, number>> & {
+  /**
+   * This device's id for the edit. With it, a replay from the outbox returns the version
+   * the key already produced instead of minting a second one.
+   */
+  client_uuid?: string;
+};
 
 export type RecoveryReading =
   | {
