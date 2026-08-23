@@ -122,8 +122,39 @@ constexpr unsigned long DEVICE_PUBLISH_MS = 30000;  // node health telemetry
 constexpr unsigned long BIO_PUBLISH_MS    = 1500;   // HR/SpO2 while a finger is on
 constexpr unsigned long FADE_INTERVAL_MS  = 15;
 constexpr unsigned long ALERT_DURATION_MS = 6000;
-constexpr unsigned long RECONNECT_MS      = 3000;
 constexpr unsigned long DISPLAY_MS        = 500;    // OLED full frame ~7 ms over SPI
+
+// ---- networking, which is optional ----------------------------------------
+// The node is a sensor first and a networked thing second. It boots, senses, drives the
+// lamp, draws the OLED and serves BLE with no network at all; Wi-Fi and MQTT attach
+// themselves to a running node when they can and are absent when they cannot.
+//
+// Leave WIFI_SSID empty in secrets.h to turn the radio off entirely. That is a supported
+// configuration, not a broken one — it is the configuration the phone-over-Bluetooth
+// demo runs in. The test for it is `WIFI_CONFIGURED` in the sketch rather than here,
+// because this header is included before secrets.h and by four files that have no
+// business seeing credentials.
+
+// How long to let an association attempt run before starting it again.
+//
+// `WiFi.begin()` is asynchronous and keeps trying on its own, but a wrong password or a
+// vanished access point leaves it retrying a hopeless attempt indefinitely. Re-issuing
+// picks up an access point that has since appeared. Twenty seconds is long enough for a
+// slow DHCP lease and short enough that someone switching on a hotspot mid-demo sees the
+// node join within a breath or two.
+constexpr unsigned long WIFI_RETRY_MS = 20000;
+
+// The first broker attempt, and the ceiling the backoff climbs to.
+//
+// `mqtt.connect()` blocks for up to its socket timeout, and the sensor driver only
+// buffers 160 ms — so every failed attempt costs samples. At a flat three seconds against
+// a four-second timeout the node would spend essentially all of its time inside a
+// connect() that is not going to succeed, which is exactly the state a node configured
+// for the home network and demonstrated in a lecture theatre is in. Backing off to a
+// minute means an unreachable broker costs a fraction of a percent of the sample stream
+// instead of most of it.
+constexpr unsigned long MQTT_RETRY_MIN_MS = 3000;
+constexpr unsigned long MQTT_RETRY_MAX_MS = 60000;
 
 // How often to log the idle IR level when nothing is on the sensor.
 //

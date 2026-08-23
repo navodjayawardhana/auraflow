@@ -20,9 +20,28 @@
 #include "sensors.h"
 
 struct DisplayState {
+  /**
+   * Whether this node has a network at all.
+   *
+   * False when secrets.h leaves the SSID empty, which is a configuration and not a
+   * fault. Three empty signal bars are the right picture for a node that is trying to
+   * reach a network and failing; they are the wrong picture for one that was never
+   * asked to, and on the only screen in the room during a demo that difference is worth
+   * two pixels of code.
+   */
+  bool        networkEnabled;
   bool        wifiUp;
   bool        mqttUp;
   int         rssi;
+  /**
+   * Whether a phone is holding a BLE connection.
+   *
+   * This header has claimed since it was written that the OLED shows this. It did not —
+   * there was no field to show. It matters now that the node runs without a network,
+   * because otherwise the screen has nothing to say about the one link that is actually
+   * carrying the vitals.
+   */
+  bool        bleConnected;
   bool        haveBio;
   BioReading  bio;
   const char* lightMode;

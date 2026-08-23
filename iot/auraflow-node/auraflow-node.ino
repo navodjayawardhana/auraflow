@@ -72,6 +72,17 @@ unsigned long lastBioMs        = 0;
 unsigned long lastIdleLogMs    = 0;
 unsigned long lastReconnectMs  = 0;
 
+// ---------------------------------------------------------------- networking
+// Whether this build has a network at all. An empty SSID is a supported configuration —
+// see secrets.example.h. Tested here rather than in config.h because that header is
+// included before secrets.h, and by four translation units that have no business seeing
+// credentials.
+constexpr bool WIFI_CONFIGURED = sizeof(WIFI_SSID) > 1;
+
+unsigned long lastWifiAttemptMs = 0;
+unsigned long mqttRetryMs       = MQTT_RETRY_MIN_MS;
+bool          wasWifiUp         = false;
+
 // ---------------------------------------------------------------- publishing
 void publishLightState() {
   if (!mqtt.connected()) return;
@@ -98,6 +109,21 @@ void publishLightState() {
 // measures about itself — there is no sensor on this build that can see the
 // room, and nothing in this payload pretends to.
 void publishDevice() {
+  const bool online = mqtt.connected();
+
+  // The serial line goes out whichever way, because on a node with no broker it is the
+  // only health report there is, and "is the sensor still there?" is the question the
+  // watchdog exists to answer.
+  Serial.printf("[device] %s heap=%lu uptime=%lus pulse=%d rate=%.2f dropped=%lu\n",
+                online ? "online" : (WIFI_CONFIGURED ? "no broker" : "ble-only"),
+                (unsigned long)ESP.getFreeHeap(),
+                (unsigned long)(millis() / 1000),
+                Sensors::pulseSensorPresent(),
+                Sensors::sampleRateHz(),
+                (unsigned long)Sensors::droppedSamples());
+
+  if (!online) return;
+
   JsonDocument doc;
   doc["rssi"]           = WiFi.RSSI();
   doc["ip"]             = WiFi.localIP().toString();
@@ -176,10 +202,17 @@ void publishBiometrics(const BioReading& b) {
   doc["simulated"] = true;
 #endif
 
-  char buf[256];
-  const size_t n = serializeJson(doc, buf, sizeof(buf));
-  mqtt.publish(topicBio.c_str(), (const uint8_t*)buf, n, false);
+  if (mqtt.connected()) {
+    char buf[256];
+    const size_t n = serializeJson(doc, buf, sizeof(buf));
+    mqtt.publish(topicBio.c_str(), (const uint8_t*)buf, n, false);
+  }
 
+  // Below the broker guard on purpose. `iot/analysis/session/log_session.ps1` reads the
+  // agreement session off this line, and the session that matters most — a node on a
+  // bench with a watch, nowhere near the demo network — is exactly the one with no
+  // broker. Silencing the log when MQTT is down would make the evidence unobtainable in
+  // the case it is collected in.
   if (b.fingerPresent) {
     // The detector's internals ride along on the serial line only. Tuning the gate or the
     // refractory from the published rate alone is guesswork — what matters is how many
@@ -305,28 +338,89 @@ void setup() {
   topicBio        = base + "/telemetry/biometrics";
   topicStatus     = base + "/status";
 
-  Display::message("AuraFlow", "connecting wifi...");
-
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  Serial.print("[wifi] connecting");
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(400);
-    Serial.print('.');
-  }
-  Serial.printf("\n[wifi] %s  rssi=%d\n",
-                WiFi.localIP().toString().c_str(), WiFi.RSSI());
-
   randomSeed(micros());
+
+  if (!WIFI_CONFIGURED) {
+    // Not a failure and not a fallback. A node with no SSID is a sensor with a Bluetooth
+    // link, which is a complete product on its own and the one the phone demo uses.
+    Serial.println("[wifi] no SSID configured — running BLE only");
+    Display::message("AuraFlow", "bluetooth only");
+    return;
+  }
+
+  // Started, not waited for. This used to spin in a `while` until the access point
+  // answered, which meant a node that could not see its network never reached the sensor
+  // loop, never lit the lamp, never drew the OLED and never advertised — the entire
+  // device held hostage by the one part of it that is optional. Wi-Fi now catches up with
+  // a node that is already running.
+  WiFi.mode(WIFI_STA);
+  WiFi.setAutoReconnect(true);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  lastWifiAttemptMs = millis();
+  Serial.println("[wifi] associating in the background");
+  Display::message("AuraFlow", "starting...");
+
   mqtt.setServer(MQTT_HOST, MQTT_PORT);
   mqtt.setCallback(onMessage);
   mqtt.setBufferSize(512);
   mqtt.setKeepAlive(30);
   // The default socket timeout is 15 seconds and connect() blocks for all of it. The
   // sensor driver buffers 160 ms, so one failed attempt at the default would cost the
-  // best part of four hundred samples. Four seconds still clears a slow DNS lookup.
+  // best part of four hundred samples. Four seconds still clears a slow DNS lookup, and
+  // the backoff in `serviceNetwork()` is what stops even four seconds being paid often.
   mqtt.setSocketTimeout(4);
-  connectMqtt();
+}
+
+// Wi-Fi and the broker, both without ever blocking the sensor loop.
+//
+// Called once a pass. Everything here is on a timer; nothing here waits for anything
+// except the one `mqtt.connect()` that is worth up to four seconds, and the backoff
+// makes that rare.
+void serviceNetwork() {
+  if (!WIFI_CONFIGURED) return;
+
+  const unsigned long now = millis();
+
+  if (WiFi.status() != WL_CONNECTED) {
+    if (wasWifiUp) {
+      wasWifiUp = false;
+      Serial.println("[wifi] lost");
+    }
+    // `setAutoReconnect` covers a network that dropped and came back. Re-issuing
+    // `begin()` covers the case it does not: an access point that was not there when the
+    // node booted.
+    if (now - lastWifiAttemptMs > WIFI_RETRY_MS) {
+      lastWifiAttemptMs = now;
+      WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    }
+    return;
+  }
+
+  if (!wasWifiUp) {
+    wasWifiUp = true;
+    // Reset the backoff: a fresh network is a genuinely new chance for the broker, and
+    // making it wait out a minute earned on a different network is just a slow demo.
+    mqttRetryMs = MQTT_RETRY_MIN_MS;
+    lastReconnectMs = 0;
+    Serial.printf("[wifi] %s  rssi=%d\n",
+                  WiFi.localIP().toString().c_str(), WiFi.RSSI());
+  }
+
+  if (mqtt.connected()) {
+    mqtt.loop();
+    return;
+  }
+
+  if (lastReconnectMs != 0 && now - lastReconnectMs < mqttRetryMs) return;
+  lastReconnectMs = now;
+
+  if (connectMqtt()) {
+    mqttRetryMs = MQTT_RETRY_MIN_MS;
+  } else {
+    // Doubling rather than a flat interval, because a broker that refused one attempt
+    // usually refuses the next twenty, and each refusal is paid for in samples.
+    mqttRetryMs = min(mqttRetryMs * 2, MQTT_RETRY_MAX_MS);
+  }
 }
 
 void loop() {
@@ -336,49 +430,56 @@ void loop() {
   // gap inside the budget in the cases that would otherwise lose signal silently.
   Sensors::update();
 
-  if (!mqtt.connected()) {
-    if (millis() - lastReconnectMs > RECONNECT_MS) {
-      lastReconnectMs = millis();
-      connectMqtt();
-    }
-  } else {
-    mqtt.loop();
+  serviceNetwork();
 
-    // The lamp can change from MQTT, from the button, or on its own when an
-    // alert expires. One comparison here covers all three.
-    if (Light::mode() != publishedMode ||
-        Light::brightness() != publishedBrightness) {
-      if (publishedMode == LIGHT_ALERT && Light::mode() != LIGHT_ALERT) {
-        pendingSource = "alert-expired";
-      }
+  // Everything below used to sit in the `else` of `if (!mqtt.connected())`, which made
+  // the broker the gatekeeper of the node's own behaviour: without it the cadence timers
+  // never ran, the serial `[bio]` line the analysis scripts parse never printed, and the
+  // idle IR log — the one thing that tells you a sensor is alive and merely untouched —
+  // was silent in precisely the situation where someone is asking why nothing is
+  // happening. The publishes are gated individually now, and the node is not.
+
+  // The lamp can change from MQTT, from the button, or on its own when an
+  // alert expires. One comparison here covers all three.
+  if (Light::mode() != publishedMode ||
+      Light::brightness() != publishedBrightness) {
+    if (publishedMode == LIGHT_ALERT && Light::mode() != LIGHT_ALERT) {
+      pendingSource = "alert-expired";
+    }
+    // Off-broker this only records what was published, so a node that later connects
+    // sends its current state rather than replaying a change nobody heard.
+    if (mqtt.connected()) {
       publishLightState();
+    } else {
+      publishedMode       = Light::mode();
+      publishedBrightness = Light::brightness();
     }
+  }
 
-    if (millis() - lastDeviceMs > DEVICE_PUBLISH_MS) {
-      lastDeviceMs = millis();
-      publishDevice();
-    }
+  if (millis() - lastDeviceMs > DEVICE_PUBLISH_MS) {
+    lastDeviceMs = millis();
+    publishDevice();
+  }
 
-    if (haveBio) {
-      // Publish on a fixed cadence while a finger is on the sensor, plus once
-      // immediately whenever the finger goes on or comes off, so the app can
-      // show "measuring…" without waiting out the interval.
-      const bool changed = lastBio.fingerPresent != lastFingerState;
-      if (changed || (lastBio.fingerPresent && millis() - lastBioMs > BIO_PUBLISH_MS)) {
-        lastFingerState = lastBio.fingerPresent;
-        lastBioMs       = millis();
-        publishBiometrics(lastBio);
-      }
+  if (haveBio) {
+    // Publish on a fixed cadence while a finger is on the sensor, plus once
+    // immediately whenever the finger goes on or comes off, so the app can
+    // show "measuring…" without waiting out the interval.
+    const bool changed = lastBio.fingerPresent != lastFingerState;
+    if (changed || (lastBio.fingerPresent && millis() - lastBioMs > BIO_PUBLISH_MS)) {
+      lastFingerState = lastBio.fingerPresent;
+      lastBioMs       = millis();
+      publishBiometrics(lastBio);
     }
+  }
 
-    // Serial only, and only while idle. An empty sensor publishes nothing — correctly,
-    // there is nothing to say — but that leaves the log silent in exactly the case where
-    // someone is asking why nothing is happening. The IR level answers it outright.
-    if (haveBio && !lastBio.fingerPresent && millis() - lastIdleLogMs > IDLE_LOG_MS) {
-      lastIdleLogMs = millis();
-      Serial.printf("[bio] no finger — ir=%lu (contact floor %lu)\n",
-                    (unsigned long)lastBio.irMean, (unsigned long)FINGER_IR_FLOOR);
-    }
+  // Serial only, and only while idle. An empty sensor publishes nothing — correctly,
+  // there is nothing to say — but that leaves the log silent in exactly the case where
+  // someone is asking why nothing is happening. The IR level answers it outright.
+  if (haveBio && !lastBio.fingerPresent && millis() - lastIdleLogMs > IDLE_LOG_MS) {
+    lastIdleLogMs = millis();
+    Serial.printf("[bio] no finger — ir=%lu (contact floor %lu)\n",
+                  (unsigned long)lastBio.irMean, (unsigned long)FINGER_IR_FLOOR);
   }
 
   Sensors::update();
@@ -413,9 +514,12 @@ void loop() {
   }
 
   DisplayState ds;
-  ds.wifiUp     = WiFi.status() == WL_CONNECTED;
+  ds.networkEnabled = WIFI_CONFIGURED;
+  ds.wifiUp     = WIFI_CONFIGURED && WiFi.status() == WL_CONNECTED;
   ds.mqttUp     = mqtt.connected();
-  ds.rssi       = WiFi.RSSI();
+  // Meaningless while disassociated, and the panel would draw a bar count from it.
+  ds.rssi       = ds.wifiUp ? WiFi.RSSI() : 0;
+  ds.bleConnected = Ble::isConnected();
   ds.haveBio    = haveBio;
   ds.bio        = lastBio;
   ds.lightMode  = Light::nameOf(Light::mode());
