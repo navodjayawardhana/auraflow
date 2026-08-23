@@ -8,6 +8,7 @@ use App\Application\Wellbeing\UseCase\RecordHealthSnapshotUseCase;
 use App\Domain\Wellbeing\Exception\InvalidHeartRateException;
 use App\Domain\Wellbeing\Exception\InvalidSleepSummaryException;
 use App\Domain\Wellbeing\Model\DailyHealthSnapshot;
+use App\Domain\Wellbeing\ValueObject\RestingHeartRateSource;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\ListHealthSnapshotsRequest;
 use App\Http\Requests\Api\V1\StoreHealthSnapshotRequest;
@@ -36,7 +37,11 @@ final class HealthSnapshotController extends Controller
                 deepSleepMinutes: $request->input('deep_sleep_minutes') === null ? null : $request->integer('deep_sleep_minutes'),
                 remSleepMinutes: $request->input('rem_sleep_minutes') === null ? null : $request->integer('rem_sleep_minutes'),
                 restingHeartRate: $request->input('resting_heart_rate') === null ? null : $request->float('resting_heart_rate'),
+                restingHrSource: $request->input('resting_hr_source') === null
+                    ? null
+                    : RestingHeartRateSource::from($request->string('resting_hr_source')->toString()),
                 steps: $request->input('steps') === null ? null : $request->integer('steps'),
+                stepsAreComplete: $request->input('steps_are_complete') === null ? null : $request->boolean('steps_are_complete'),
                 waterMl: $request->input('water_ml') === null ? null : $request->integer('water_ml'),
             ));
         } catch (InvalidSleepSummaryException $e) {
@@ -77,7 +82,12 @@ final class HealthSnapshotController extends Controller
             'deep_sleep_minutes' => $sleep?->deepMinutes() === null ? null : (int) round($sleep->deepMinutes()),
             'rem_sleep_minutes' => $sleep?->remMinutes() === null ? null : (int) round($sleep->remMinutes()),
             'resting_heart_rate' => $snapshot->restingHeartRate()?->bpm(),
+            // Back out the way it came in. A client charting a fortnight of these has to be
+            // able to see where the method changed, because the step at that point is the
+            // measurement moving rather than the person.
+            'resting_hr_source' => $snapshot->restingHeartRate()?->source()->value,
             'steps' => $snapshot->steps(),
+            'steps_are_complete' => $snapshot->stepsAreComplete(),
             'water_ml' => $snapshot->waterMl(),
         ];
     }

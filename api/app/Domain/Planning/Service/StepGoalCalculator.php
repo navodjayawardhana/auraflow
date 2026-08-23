@@ -44,7 +44,13 @@ final class StepGoalCalculator
      * Median rather than mean, because one 26,000-step wedding, or one day the watch sat
      * on a charger, would drag a mean far enough to set next week's goal wrongly.
      *
-     * @param  int[]  $dailySteps
+     * A median is robust to an outlier and defenceless against a bias: seven days that
+     * each undercount by half produce a confident median of half the person's walking,
+     * and the goal derived from it is one they already clear. Filtering that out is the
+     * caller's job because only the caller can see the provenance -- TrailingWindowReader
+     * admits complete days alone.
+     *
+     * @param  int[]  $dailySteps  whole days only
      */
     public function medianDailySteps(array $dailySteps): ?int
     {

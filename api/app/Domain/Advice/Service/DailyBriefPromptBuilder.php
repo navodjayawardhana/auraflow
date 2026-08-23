@@ -101,10 +101,15 @@ final class DailyBriefPromptBuilder
         }
 
         if ($context->steps !== null) {
-            $lines[] = sprintf(
-                'Steps so far: %d. This is only counted while the app is open, so treat it as a floor rather than a total.',
-                $context->steps,
-            );
+            // Two different sentences for the same integer. Where the operating system
+            // kept the count, it is the day and may be spoken of as one; where the app
+            // did, it is whatever the user's screen time happened to cover.
+            $lines[] = $context->stepsAreComplete === true
+                ? sprintf('Steps so far: %d, counted by the phone all day.', $context->steps)
+                : sprintf(
+                    'Steps so far: %d. This is only counted while the app is open, so treat it as a floor rather than a total.',
+                    $context->steps,
+                );
         }
 
         if ($context->waterMl !== null) {

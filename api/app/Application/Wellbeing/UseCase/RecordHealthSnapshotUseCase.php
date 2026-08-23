@@ -30,10 +30,14 @@ final class RecordHealthSnapshotUseCase
             UserId::fromString($request->userId),
             new DateTimeImmutable($request->date),
             $this->toSleep($request),
-            $request->restingHeartRate === null
+            // The source is not defaulted when absent. The form request has already refused
+            // a rate that did not state one, so a null here means no rate at all -- and if
+            // that ever stops being true, the type error is the point.
+            $request->restingHeartRate === null || $request->restingHrSource === null
                 ? null
-                : RestingHeartRate::fromBpm($request->restingHeartRate),
+                : RestingHeartRate::fromBpm($request->restingHeartRate, $request->restingHrSource),
             $request->steps,
+            $request->stepsAreComplete,
             $request->waterMl,
         );
 

@@ -93,41 +93,63 @@ async function writeQueue(queue: QueuedWrite[]): Promise<void> {
 }
 
 /**
- * Two entries are the same write only when replaying both would be wrong.
+ * One write absorbing another, where replaying both would be wrong.
  *
- * Snapshots collapse per date: logging the same night twice offline should send the later
- * figures, not two conflicting writes. Profiles collapse outright — the form submits every
- * field it manages, so the last edit made offline is the whole answer and sending the
- * earlier one first would only make the server derive a plan nobody asked for.
+ * Snapshots absorb per date, and by field rather than wholesale. Every writer of a day
+ * sends only what it knows — a night from the log screen, a running water total, a step
+ * count from the sync — and the endpoint merges them for exactly that reason. Dropping
+ * the earlier entry would therefore lose a night the moment a glass of water or a walk
+ * was recorded for the same date offline, which with a step count arriving every few
+ * hundred steps is not a corner case. Later fields win; untouched ones survive.
  *
- * Sessions never collapse — two sets before lunch are two sessions — and their client id
- * is what keeps a *replay* from becoming a third. Plan overrides do not collapse either,
- * and for a subtler reason: each one is a diff against the plan the device is still
- * showing, so two edits made offline touch fields that are not necessarily the same ones.
- * Keeping only the later would silently drop the earlier field.
+ * Profiles absorb outright — the form submits every field it manages, so the last edit
+ * made offline is the whole answer and sending the earlier one first would only make the
+ * server derive a plan nobody asked for.
+ *
+ * Sessions never absorb — two sets before lunch are two sessions — and their client id
+ * is what keeps a *replay* from becoming a third. Plan overrides do not either, and for a
+ * subtler reason: each one is a diff against the plan the device is still showing, so two
+ * edits made offline touch fields that are not necessarily the same ones. Keeping only
+ * the later would silently drop the earlier field.
  */
-function isSupersededBy(existing: QueuedPayload, incoming: QueuedPayload): boolean {
-  if (existing.kind === 'profile' && incoming.kind === 'profile') return true;
+function absorbed(existing: QueuedPayload, incoming: QueuedPayload): QueuedPayload | null {
+  if (existing.kind === 'profile' && incoming.kind === 'profile') return incoming;
 
-  return (
+  if (
     existing.kind === 'health-snapshot' &&
     incoming.kind === 'health-snapshot' &&
     existing.body.recorded_on === incoming.body.recorded_on
-  );
+  ) {
+    return { kind: 'health-snapshot', body: { ...existing.body, ...incoming.body } };
+  }
+
+  return null;
 }
 
 export async function enqueue(payload: QueuedPayload): Promise<void> {
   const queue = await readQueue();
 
-  const kept = queue.filter((q) => !isSupersededBy(q.payload, payload));
+  // In place, keeping the entry's position. A write that has been waiting since this
+  // morning is still this morning's write; moving it to the back would let a later
+  // exercise session overtake it for no reason.
+  for (const entry of queue) {
+    const merged = absorbed(entry.payload, payload);
 
-  kept.push({
-    id: `${payload.kind}-${Date.now()}-${kept.length}`,
+    if (merged !== null) {
+      entry.payload = merged;
+      await writeQueue(queue);
+
+      return;
+    }
+  }
+
+  queue.push({
+    id: `${payload.kind}-${Date.now()}-${queue.length}`,
     createdAt: new Date().toISOString(),
     payload,
   });
 
-  await writeQueue(kept);
+  await writeQueue(queue);
 }
 
 export async function pendingCount(): Promise<number> {

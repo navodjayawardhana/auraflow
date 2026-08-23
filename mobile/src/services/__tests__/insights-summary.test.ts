@@ -17,6 +17,9 @@ function day(date: string, overrides: Partial<InsightsDay> = {}): InsightsDay {
     sleep_minutes: null,
     resting_heart_rate: null,
     steps: null,
+    // Whole days by default. A fixture that states a step count means a day's steps
+    // unless it says otherwise, which the partial-day cases below do explicitly.
+    steps_are_complete: true,
     water_ml: null,
     meal_count: 0,
     estimated_meal_count: 0,
@@ -69,6 +72,23 @@ describe('coverageOf', () => {
 
     expect(coverage.rows.find((row) => row.key === 'steps')?.days).toBe(1);
     expect(coverage.rows.find((row) => row.key === 'water')?.days).toBe(1);
+  });
+
+  it('leaves a partially witnessed day out of the step row and names it separately', () => {
+    const [a, b, c] = dates(3);
+
+    const coverage = coverageOf(
+      series([
+        day(a, { steps: 9200 }),
+        day(b, { steps: 1800, steps_are_complete: false }),
+        day(c, { steps: 2400, steps_are_complete: null }),
+      ]),
+    );
+
+    // Only the day that covers a day. The other two hold a floor of unknown size, and a
+    // count with nothing said about it is read the same way as one that admits it.
+    expect(coverage.rows.find((row) => row.key === 'steps')?.days).toBe(1);
+    expect(coverage.stepDaysPartial).toBe(2);
   });
 
   it('says how many of the fed days lean on an estimate', () => {
@@ -125,6 +145,24 @@ describe('summariseSignal', () => {
     expect(summary.mean).toBeNull();
     expect(summary.recordedDays).toBe(0);
   });
+
+  it('averages whole days of steps and drops the witnessed fragments', () => {
+    const [a, b, c] = dates(3);
+
+    const summary = summariseSignal(
+      series([
+        day(a, { steps: 9000 }),
+        day(b, { steps: 11_000 }),
+        day(c, { steps: 900, steps_are_complete: false }),
+      ]),
+      'steps',
+    );
+
+    // 10,000 over two days, not 6,967 over three. The fragment is not a small day.
+    expect(summary.mean).toBe(10_000);
+    expect(summary.recordedDays).toBe(2);
+    expect(summary.values).toEqual([9000, 11_000, null]);
+  });
 });
 
 describe('coverageNote', () => {
@@ -169,6 +207,26 @@ describe('goalAdherence', () => {
     expect(adherence.windowDays).toBe(14);
     expect(adherence.target).toBe(10_000);
     expect(adherence.source).toBe('plan');
+  });
+
+  it('never counts a partly witnessed day as having met a step goal', () => {
+    const [a, b, c] = dates(3);
+
+    const adherence = goalAdherence(
+      series([
+        day(a, { steps: 10_500 }),
+        // Above the target and still not a day that met it: the true figure is at least
+        // this and unknowable, so the honest answer is that this day cannot be judged.
+        day(b, { steps: 10_400, steps_are_complete: false }),
+        day(c, { steps: 4000 }),
+      ]),
+      'steps',
+      10_000,
+      'plan',
+    );
+
+    expect(adherence.metDays).toBe(1);
+    expect(adherence.recordedDays).toBe(2);
   });
 
   it('reports no met days and no recorded days for an untouched signal', () => {

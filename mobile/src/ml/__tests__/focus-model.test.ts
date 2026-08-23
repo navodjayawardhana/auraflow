@@ -9,6 +9,7 @@ function night(overrides: Partial<HealthSnapshot> & { date: string }): HealthSna
     deep_sleep_minutes: null,
     rem_sleep_minutes: null,
     resting_heart_rate: null,
+    resting_hr_source: null,
     steps: null,
     water_ml: null,
     ...overrides,

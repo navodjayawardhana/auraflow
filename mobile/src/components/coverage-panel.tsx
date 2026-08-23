@@ -57,6 +57,14 @@ export function CoveragePanel({ coverage, index = 0 }: { coverage: Coverage; ind
         })}
       </View>
 
+      {coverage.stepDaysPartial > 0 ? (
+        <Text style={Type.caption}>
+          {coverage.stepDaysPartial} further {coverage.stepDaysPartial === 1 ? 'day holds' : 'days hold'}{' '}
+          steps counted only while the app was open — a floor, not a day, so they are left out
+          of the step figures rather than averaged in.
+        </Text>
+      ) : null}
+
       {coverage.mealDaysWithEstimate > 0 ? (
         <Text style={Type.caption}>
           {coverage.mealDaysWithEstimate} of the fed days include something nobody measured —

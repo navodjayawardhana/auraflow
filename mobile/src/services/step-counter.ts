@@ -80,6 +80,82 @@ async function queryObservedSteps(from: Date, to: Date): Promise<number | null> 
   }
 }
 
+/**
+ * How far back the platform's own history can be asked about.
+ *
+ * Seven is not a choice so much as the edge of what exists. Apple, quoted in the
+ * expo-sensors docs for `getStepCountAsync`: "Only the past seven days worth of data is
+ * stored and available for you to retrieve. Specifying a start date that is more than
+ * seven days in the past returns only the available data."
+ *
+ * "Only the available data" is the dangerous half. Beyond the window the query succeeds
+ * and answers zero, which is indistinguishable from a day spent sitting down — so the
+ * days past this boundary are unknowable rather than empty, and the sync never writes a
+ * zero it read from history.
+ */
+export const HISTORY_DAYS = 7;
+
+/**
+ * What the platform's history says about one whole calendar day.
+ *
+ * Null on Android and on any day beyond the retention window, which is what keeps a
+ * refused permission or an unremembered day out of the record as a gap rather than a
+ * zero.
+ */
+export async function observedStepsForDay(date: Date): Promise<number | null> {
+  const start = new Date(date);
+  start.setHours(0, 0, 0, 0);
+
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+
+  // Never claim a future window. Today's "end of day" has not happened, and asking for it
+  // is asking the pedometer about time that does not exist yet.
+  const now = new Date();
+
+  return queryObservedSteps(start, end > now ? now : end);
+}
+
+export interface StoredDayTotal {
+  date: string;
+  steps: number;
+}
+
+/**
+ * The days this app counted for itself and has not yet handed over.
+ *
+ * Only ever the Android path's leftovers: a day that ended while the phone was asleep,
+ * or several of them if the app was not opened. They are read before `pruneOldDays`
+ * removes them, because the buckets are the only record that those steps happened at all.
+ */
+export async function storedDayTotals(
+  userId: string | number,
+  now = Date.now(),
+): Promise<StoredDayTotal[]> {
+  const today = todayIsoDate(new Date(now));
+
+  try {
+    const keys = await AsyncStorage.getAllKeys();
+    const mine = keys.filter(
+      (k) => k.startsWith(`${KEY_PREFIX}.${userId}.`) && !k.endsWith(today),
+    );
+
+    const totals: StoredDayTotal[] = [];
+
+    for (const key of mine) {
+      const date = key.slice(key.lastIndexOf('.') + 1);
+      const record = await readDay(userId, date);
+      const steps = Object.values(record.buckets).reduce((sum, value) => sum + value, 0);
+
+      if (steps > 0) totals.push({ date, steps });
+    }
+
+    return totals;
+  } catch {
+    return [];
+  }
+}
+
 export async function isPedometerAvailable(): Promise<boolean> {
   try {
     return await Pedometer.isAvailableAsync();

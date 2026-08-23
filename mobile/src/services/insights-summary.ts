@@ -41,7 +41,13 @@ function valueOf(day: InsightsDay, key: SignalKey): number | null {
     case 'restingHeartRate':
       return day.resting_heart_rate;
     case 'steps':
-      return day.steps;
+      // A day the phone only half watched is not a day's steps, and there is no honest
+      // way to average it with days that are. It is dropped here rather than in each
+      // consumer — the same treatment the provisional recovery scores get below, and for
+      // the same reason: two different measurements sharing a column have no coherent
+      // mean, no coherent adherence and no coherent ordering. What was witnessed is not
+      // discarded silently: `coverageOf` counts those days and the panel names them.
+      return day.steps_are_complete === true ? day.steps : null;
     case 'water':
       return day.water_ml;
   }
@@ -71,6 +77,16 @@ export interface Coverage {
    * are not equally known, and a single count cannot say which one this is.
    */
   mealDaysWithEstimate: number;
+  /**
+   * Days that hold a step count covering only part of the day.
+   *
+   * Not in the step row's `days`, because they are not days of steps — a phone that only
+   * counts while it is being looked at reports a fraction it cannot size. Reported beside
+   * the row for the same reason `mealDaysWithEstimate` is: something was recorded, and a
+   * panel that showed nothing at all would be understating what is known as badly as one
+   * that counted them in full would be overstating it.
+   */
+  stepDaysPartial: number;
 }
 
 /**
@@ -98,6 +114,9 @@ export function coverageOf(series: InsightsSeries): Coverage {
       },
     ],
     mealDaysWithEstimate: series.days.filter((day) => day.estimated_meal_count > 0).length,
+    stepDaysPartial: series.days.filter(
+      (day) => day.steps !== null && day.steps_are_complete !== true,
+    ).length,
   };
 }
 

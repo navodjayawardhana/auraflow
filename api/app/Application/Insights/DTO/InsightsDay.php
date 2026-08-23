@@ -24,6 +24,16 @@ final class InsightsDay
         public readonly ?int $sleepMinutes,
         public readonly ?float $restingHeartRate,
         public readonly ?int $steps,
+        /**
+         * Whether that count is a day or only the part of one a phone was watching.
+         *
+         * Carried rather than folded into `steps` for the same reason
+         * `estimated_meal_count` is carried beside `meal_count`: a fortnight of iOS
+         * totals and a fortnight of Android foreground samples produce identical
+         * columns and are not equally known. Null where the count arrived without
+         * saying -- an old row, an import -- which the client reads as partial.
+         */
+        public readonly ?bool $stepsAreComplete,
         public readonly ?int $waterMl,
         public readonly int $mealCount,
         /**
@@ -48,6 +58,7 @@ final class InsightsDay
             'sleep_minutes' => $this->sleepMinutes,
             'resting_heart_rate' => $this->restingHeartRate,
             'steps' => $this->steps,
+            'steps_are_complete' => $this->stepsAreComplete,
             'water_ml' => $this->waterMl,
             'meal_count' => $this->mealCount,
             'estimated_meal_count' => $this->estimatedMealCount,

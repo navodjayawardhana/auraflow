@@ -75,10 +75,28 @@ final class EloquentDailyHealthSnapshotRepository implements DailyHealthSnapshot
             // "Absent" therefore means "leave alone" rather than "clear". Clearing a
             // value is not currently expressible, and until something needs to, adding a
             // way would only be a sharper edge to cut on.
-            $existing->fill(array_filter(
-                $attributes,
-                static fn ($value) => $value !== null,
-            ))->save();
+            $fill = array_filter($attributes, static fn ($value) => $value !== null);
+
+            // Steps and their completeness are one fact and are written as one, including
+            // when the completeness is null. Left to the rule above, a count arriving
+            // without a stated provenance would inherit whatever the previous write said:
+            // an Android phone's partial afternoon total silently wearing yesterday's
+            // "this is the whole day", which is the single reading that would put an
+            // undercount into a step-goal median.
+            if (array_key_exists('steps', $fill)) {
+                $fill['steps_are_complete'] = $attributes['steps_are_complete'];
+            }
+
+            // A resting rate and how it was taken are one fact too, written together for the
+            // same reason. Left to the merge rule, a morning check-in landing on a day that
+            // already held a watch reading would overwrite the number and keep the word
+            // `overnight` beside it -- a seated figure filed in the overnight baseline, which
+            // is the exact defect this column was added to end.
+            if (array_key_exists('resting_heart_rate', $fill)) {
+                $fill['resting_hr_source'] = $attributes['resting_hr_source'];
+            }
+
+            $existing->fill($fill)->save();
 
             return;
         }

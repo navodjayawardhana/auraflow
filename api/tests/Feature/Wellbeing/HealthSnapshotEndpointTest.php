@@ -26,6 +26,10 @@ class HealthSnapshotEndpointTest extends TestCase
             'deep_sleep_minutes' => 90,
             'rem_sleep_minutes' => 100,
             'resting_heart_rate' => 58.4,
+            // Paired with the rate, because the endpoint refuses one without the other --
+            // a bpm figure that does not say how it was taken cannot be pooled with
+            // anything, so it is not a valid payload to build fixtures on.
+            'resting_hr_source' => 'overnight',
         ], $overrides);
     }
 
@@ -109,10 +113,16 @@ class HealthSnapshotEndpointTest extends TestCase
             ->postJson('/api/v1/health-snapshots', [
                 'recorded_on' => now()->format('Y-m-d'),
                 'steps' => 6420,
+                // Required alongside the count: the same integer is a whole day from a
+                // platform with a pedometer history and a fraction of one from a phone
+                // that only counts while it is open. StepProvenanceTest covers what
+                // depends on the distinction.
+                'steps_are_complete' => true,
                 'water_ml' => 1500,
             ])
             ->assertCreated()
             ->assertJsonPath('data.steps', 6420)
+            ->assertJsonPath('data.steps_are_complete', true)
             ->assertJsonPath('data.water_ml', 1500);
     }
 
@@ -134,6 +144,7 @@ class HealthSnapshotEndpointTest extends TestCase
             ->postJson('/api/v1/health-snapshots', [
                 'recorded_on' => now()->subDay()->format('Y-m-d'),
                 'resting_heart_rate' => 61.0,
+                'resting_hr_source' => 'overnight',
             ])
             ->assertCreated()
             ->assertJsonPath('data.sleep_minutes', null);

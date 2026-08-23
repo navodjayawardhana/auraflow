@@ -13,6 +13,7 @@ use App\Domain\Wellbeing\Service\IllnessDetector;
 use App\Domain\Wellbeing\Service\RecoveryScoreCalculator;
 use App\Domain\Wellbeing\ValueObject\RestingHeartRate;
 use App\Domain\Wellbeing\ValueObject\RestingHeartRateBaseline;
+use App\Domain\Wellbeing\ValueObject\RestingHeartRateSource;
 use App\Domain\Wellbeing\ValueObject\SleepSummary;
 use App\Domain\Wellbeing\ValueObject\UserId;
 use DateTimeImmutable;
@@ -57,7 +58,7 @@ class CalculateRecoveryScoreUseCaseTest extends TestCase
             UserId::fromString(self::USER),
             new DateTimeImmutable($date),
             $sleepHours === null ? null : SleepSummary::of($sleepHours, 60.0, 90.0),
-            $restingBpm === null ? null : RestingHeartRate::fromBpm($restingBpm),
+            $restingBpm === null ? null : RestingHeartRate::fromBpm($restingBpm, RestingHeartRateSource::Overnight),
         ));
     }
 
@@ -223,7 +224,7 @@ class CalculateRecoveryScoreUseCaseTest extends TestCase
             UserId::fromString('someone-else'),
             new DateTimeImmutable('2026-03-10'),
             SleepSummary::of(8.0, 60.0, 90.0),
-            RestingHeartRate::fromBpm(45.0),
+            RestingHeartRate::fromBpm(45.0, RestingHeartRateSource::Overnight),
         ));
         $this->givenDay(self::TODAY, 7.5, 60.0);
 
@@ -347,4 +348,3 @@ class CalculateRecoveryScoreUseCaseTest extends TestCase
         $this->assertSame(self::TODAY, $result->date);
     }
 }
-

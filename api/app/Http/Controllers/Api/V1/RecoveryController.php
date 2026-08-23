@@ -52,6 +52,12 @@ final class RecoveryController extends Controller
                 'provisional' => $result->provisional,
                 'components_used' => $result->componentsUsed,
                 'illness_warning' => $result->illnessWarning,
+                // Which kind of resting rate the 0.80-weighted component rests on, or null
+                // where it did not run. Surfaced for the same reason `provisional` is: the
+                // client has a limitation to disclose and cannot work out on its own which
+                // one applies. E-015 validated this score on overnight rates; a seated
+                // baseline is a different input and that number does not cover it.
+                'resting_hr_source' => $result->restingHrSource?->value,
             ],
         ]);
     }

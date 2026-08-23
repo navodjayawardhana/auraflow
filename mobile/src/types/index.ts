@@ -14,6 +14,17 @@ export interface ApiEnvelope<T> {
 }
 
 /**
+ * How a resting heart rate was taken.
+ *
+ * `overnight` is a wearable's nightly estimate; `seated_spot` is a morning check-in, awake
+ * and sitting with a finger on the node's pad. The second reads several bpm above the first
+ * for the same person, so the server keeps a separate baseline for each and never averages
+ * across them. Anything that charts, compares or explains a resting rate needs to know
+ * which it is holding.
+ */
+export type RestingHrSource = 'overnight' | 'seated_spot';
+
+/**
  * One night's raw signals. Every field but the date is nullable: a watch worn by day
  * but not overnight reports a resting heart rate with no sleep, and the recovery
  * score's components degrade independently by design.
@@ -24,6 +35,8 @@ export interface HealthSnapshot {
   deep_sleep_minutes: number | null;
   rem_sleep_minutes: number | null;
   resting_heart_rate: number | null;
+  /** Non-null exactly when `resting_heart_rate` is — the two are one fact. */
+  resting_hr_source: RestingHrSource | null;
   steps: number | null;
   water_ml: number | null;
 }
@@ -39,7 +52,19 @@ export interface RecordHealthSnapshotInput {
   deep_sleep_minutes?: number;
   rem_sleep_minutes?: number;
   resting_heart_rate?: number;
+  /**
+   * Required by the server whenever a rate is sent, for the same reason
+   * `steps_are_complete` is: the same number means two different things depending on how it
+   * was taken, and a baseline pooled across both describes neither.
+   */
+  resting_hr_source?: RestingHrSource;
   steps?: number;
+  /**
+   * Whether `steps` covers the whole day. Required by the server whenever a count is
+   * sent, because the same integer is a day on iOS and only the foregrounded part of one
+   * on Android, and nothing downstream can tell which it received.
+   */
+  steps_are_complete?: boolean;
   water_ml?: number;
 }
 
@@ -86,6 +111,15 @@ export interface BiometricsTelemetry {
   hr_bpm_maxim?: number;
 
   spo2_pct?: number;
+  /**
+   * Beat intervals collected, and how many the node reports on. The wait before a first
+   * reading is inherent -- a second before beats are looked for, three intervals to gather,
+   * then a publish period -- so the card counts them off rather than saying "measuring"
+   * into the silence. Absent on firmware older than the field.
+   */
+  beats?: number;
+  beats_needed?: number;
+
   hr_valid: boolean;
   hr_maxim_valid?: boolean;
   spo2_valid: boolean;
@@ -303,4 +337,13 @@ export type RecoveryReading =
       provisional: boolean;
       components_used: number;
       illness_warning: boolean;
+      /**
+       * Which kind of resting-rate baseline the autonomic component was measured against,
+       * or null where that component did not run.
+       *
+       * The app cannot present the score honestly without it: the project's validation of
+       * this score (E-015) used overnight rates, and a score resting on seated mornings is
+       * outside what that measured. See SeatedBaselineNote.
+       */
+      resting_hr_source: RestingHrSource | null;
     };

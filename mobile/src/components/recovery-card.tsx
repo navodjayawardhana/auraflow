@@ -12,6 +12,7 @@ import Animated, {
 
 import { PrimaryButton } from '@/components/primary-button';
 import { ScoreRing } from '@/components/score-ring';
+import { SeatedBaselineNote } from '@/components/seated-baseline-note';
 import { Font, Radius, Surfaces, Type } from '@/constants/design';
 import { AuraColors } from '@/constants/theme';
 import type { RecoveryReading } from '@/types';
@@ -72,6 +73,16 @@ function AvailableState({ reading }: { reading: Extract<RecoveryReading, { avail
         </View>
       ) : null}
 
+      {/* Below the ring and above the warning: it qualifies the number, so it has to be read
+          before anything is concluded from it. A score whose autonomic component was measured
+          against seated check-ins is outside what E-015 evaluated, and nothing else on this
+          card would tell the reader that. */}
+      {reading.resting_hr_source === 'seated_spot' ? (
+        <View style={styles.note}>
+          <SeatedBaselineNote />
+        </View>
+      ) : null}
+
       {reading.illness_warning ? (
         <View style={styles.warning}>
           <Feather name="alert-circle" size={14} color={AuraColors.caution} />
@@ -109,6 +120,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     backgroundColor: AuraColors.surface.selected,
   },
+  note: { width: '100%' },
   provisionalPill: {
     paddingHorizontal: 12,
     paddingVertical: 5,

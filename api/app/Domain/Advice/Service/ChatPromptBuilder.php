@@ -88,7 +88,9 @@ final class ChatPromptBuilder
             $lines[] = sprintf('- Resting heart rate %.1f bpm', $context->restingHeartRate);
         }
         if ($context->steps !== null) {
-            $lines[] = sprintf('- Steps %d (counted only while the app was open, so a floor not a total)', $context->steps);
+            $lines[] = $context->stepsAreComplete === true
+                ? sprintf('- Steps %d (the phone counted all day)', $context->steps)
+                : sprintf('- Steps %d (counted only while the app was open, so a floor not a total)', $context->steps);
         }
         if ($context->waterMl !== null) {
             $lines[] = sprintf('- Water %d ml of a %d ml target', $context->waterMl, $context->waterTargetMl);
