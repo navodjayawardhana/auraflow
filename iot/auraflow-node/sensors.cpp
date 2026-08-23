@@ -27,6 +27,8 @@ int      sinceLastCompute = 0;
  * what the algorithm actually needs: every sample in the window is signal.
  */
 int fingerRun = 0;
+/** Consecutive samples below the release level. Reset by any sample above it. */
+int contactGap = 0;
 
 BioReading latest      = {};
 bool       latestFresh = false;
@@ -340,16 +342,28 @@ void pushSample(uint32_t red, uint32_t ir) {
 }
 
 void observeContact(uint32_t ir) {
-  if (ir > FINGER_IR_FLOOR) {
+  // Once contact is established the bar drops to the release level, so holding on is
+  // easier than getting on. Without that gap a finger sitting exactly at the floor
+  // oscillates across it and the reading strobes.
+  const uint32_t threshold = fingerRun > 0 ? FINGER_IR_RELEASE : FINGER_IR_FLOOR;
+
+  if (ir > threshold) {
+    contactGap = 0;
     if (fingerRun < BIO_BUFFER) fingerRun++;
     return;
   }
 
-  if (fingerRun != 0) {
-    fingerRun = 0;
-    // The interval spanning a break in contact is not a beat interval.
-    resetBeatDetector();
-  }
+  if (fingerRun == 0) return;
+
+  // Below the release level, but not for long enough to believe. `fingerRun` is left
+  // untouched rather than decremented: a blip should cost nothing, and rewinding the
+  // settle window would make a four-second measurement unreachable on a restless hand.
+  if (++contactGap < FINGER_LOST_SAMPLES) return;
+
+  fingerRun  = 0;
+  contactGap = 0;
+  // The interval spanning a break in contact is not a beat interval.
+  resetBeatDetector();
 }
 
 /** Everything that has to start again when the time base is no longer trustworthy. */
@@ -357,6 +371,7 @@ void restartWindow() {
   sampleCount      = 0;
   sinceLastCompute = 0;
   fingerRun        = 0;
+  contactGap       = 0;
   resetBeatDetector();
   resetSpo2Filter();
   resetSampleClock();

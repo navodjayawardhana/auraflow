@@ -35,6 +35,12 @@ interface HeroRingsProps {
   /** 0–100, or null when today has no score yet. */
   score: number | null;
   isProvisional?: boolean;
+  /**
+   * Shown greyed in place of the dash when today cannot be scored. Its own date comes with
+   * it and is rendered — a recovery score belongs to one morning, and an undated one sitting
+   * where today's goes is a different claim entirely.
+   */
+  lastKnown?: { date: string; score: number } | null;
   /** null when the signal cannot be measured at all — never pass 0 for that. */
   stepsProgress: number | null;
   waterProgress: number | null;
@@ -105,6 +111,7 @@ function Ring({
 export function HeroRings({
   score,
   isProvisional = false,
+  lastKnown = null,
   stepsProgress,
   waterProgress,
 }: HeroRingsProps) {
@@ -141,12 +148,27 @@ export function HeroRings({
       </Svg>
 
       <View style={styles.centre} pointerEvents="none">
-        <Text style={Type.heroMetric}>{score === null ? '—' : Math.round(score)}</Text>
+        {/*
+            A dash is the truth and tells you nothing. The last score that could be worked
+            out, greyed and dated, says the same thing and adds what is known — while the
+            ring track behind it stays empty, because that is about today.
+        */}
+        <Text style={[Type.heroMetric, score === null && lastKnown !== null && styles.stale]}>
+          {score !== null ? Math.round(score) : lastKnown !== null ? Math.round(lastKnown.score) : '—'}
+        </Text>
         <Text style={styles.label}>RECOVERY</Text>
 
         {isProvisional ? (
           <View style={styles.pill}>
             <Text style={styles.pillLabel}>PROVISIONAL</Text>
+          </View>
+        ) : score === null && lastKnown !== null ? (
+          <View style={styles.pill}>
+            <Text style={styles.pillLabel}>
+              {new Date(`${lastKnown.date}T00:00:00`)
+                .toLocaleDateString(undefined, { weekday: 'short' })
+                .toUpperCase()}
+            </Text>
           </View>
         ) : null}
       </View>
@@ -155,6 +177,7 @@ export function HeroRings({
 }
 
 const styles = StyleSheet.create({
+  stale: { opacity: 0.45 },
   wrap: { width: SIZE, height: SIZE, alignItems: 'center', justifyContent: 'center' },
   centre: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', gap: 2 },
   label: {

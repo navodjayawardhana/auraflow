@@ -76,7 +76,7 @@ export function DailyBriefCard({
             />
           ) : null}
           <Feather
-            name={status === 'failed' ? 'alert-triangle' : 'zap'}
+            name={status === 'failed' ? 'alert-triangle' : status === 'waiting' ? 'clock' : 'zap'}
             size={14}
             color={
               status === 'ready'
@@ -101,11 +101,13 @@ export function DailyBriefCard({
               ? `written ${time} · generated, not written by a person`
               : status === 'pending'
                 ? 'from this morning’s figures'
-                : 'not written today'}
+                : status === 'waiting'
+                  ? 'waiting for something to go on'
+                  : 'not written today'}
           </Text>
         </View>
 
-        {status !== 'failed' ? (
+        {status === 'ready' || status === 'pending' ? (
           <View style={styles.statusPill}>
             <Text style={styles.statusLabel}>{status === 'ready' ? 'Ready' : 'Writing…'}</Text>
           </View>
@@ -125,6 +127,18 @@ export function DailyBriefCard({
               </Text>
             ))}
         </View>
+      ) : null}
+
+      {/*
+          Deliberately not the failure treatment. Nothing has gone wrong -- the day is
+          simply empty so far, and it will write itself the moment that stops being true.
+          A retry button here would imply the user has something to fix.
+      */}
+      {status === 'waiting' ? (
+        <Text style={Type.prose}>
+          {brief.reason ?? 'Nothing recorded today to brief on yet.'} Log a night, a meal or a
+          glass of water and it will write itself.
+        </Text>
       ) : null}
 
       {status === 'failed' ? (

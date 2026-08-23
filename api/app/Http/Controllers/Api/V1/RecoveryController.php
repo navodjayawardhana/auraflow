@@ -33,6 +33,10 @@ final class RecoveryController extends Controller
                     'score' => null,
                     'available' => false,
                     'reason' => $result->unavailableReason,
+                    // The last day that could be scored, so the dashboard can show something
+                    // dated rather than a bare dash. Null when nothing in the last fortnight
+                    // scores either.
+                    'last_known' => $result->lastKnown?->toArray(),
                 ],
             ]);
         }

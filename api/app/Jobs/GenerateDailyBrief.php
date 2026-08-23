@@ -8,6 +8,7 @@ use App\Infrastructure\Advice\GeminiClient;
 use App\Models\DailyBrief;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
@@ -53,14 +54,41 @@ class GenerateDailyBrief implements ShouldQueue
 
         if (! $context->isSufficient()) {
             $brief->update([
-                'status' => DailyBrief::STATUS_FAILED,
-                'failure_reason' => 'Not enough recorded today to brief on.',
+                'status' => DailyBrief::STATUS_WAITING,
+                'failure_reason' => 'Nothing recorded today to brief on yet.',
             ]);
 
             return;
         }
 
-        $body = $gemini->generate($prompts->systemInstruction(), $prompts->userPrompt($context));
+        try {
+            $body = $gemini->generate($prompts->systemInstruction(), $prompts->userPrompt($context));
+        } catch (Throwable $error) {
+            /*
+             * Recorded here rather than left to `failed()`, which only the queue calls.
+             *
+             * On a synchronous queue the rethrow lands in the HTTP response that asked for
+             * the brief, and the client turns a 500 into no card at all -- so the reader
+             * loses the explanation along with the briefing. Catching it keeps the request
+             * successful and the row truthful, which is the whole point of having a status
+             * on it.
+             *
+             * The provider's own words stay in the log. They name the vendor and describe
+             * token budgets, neither of which is any use to someone holding a phone.
+             */
+            Log::warning('The daily brief could not be generated.', [
+                'user_id' => $this->userId,
+                'date' => $this->date,
+                'reason' => $error->getMessage(),
+            ]);
+
+            $brief->update([
+                'status' => DailyBrief::STATUS_FAILED,
+                'failure_reason' => 'The brief could not be written just now.',
+            ]);
+
+            return;
+        }
 
         $brief->update([
             'status' => DailyBrief::STATUS_READY,

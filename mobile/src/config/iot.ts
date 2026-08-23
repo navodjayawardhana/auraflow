@@ -50,11 +50,16 @@ export function deviceIdFromStatusTopic(topic: string): string | null {
 }
 
 /**
- * The firmware publishes biometrics every 5s while a finger is present, so three missed
- * frames means the reading on screen is no longer current. A stale vital sign displayed
- * as live is the failure mode worth designing against.
+ * Three missed frames at the firmware's 1.5s biometric cadence (`BIO_PUBLISH_MS`). A stale
+ * vital sign displayed as live is the failure mode worth designing against, and fifteen
+ * seconds — which this was, from when the node published every five — is ten frames of a
+ * number that may have stopped being true.
+ *
+ * Kept at three rather than one because the fix for a reading that flickers belongs in the
+ * node's contact detection, not in a client that hides the flicker by holding old values
+ * for longer.
  */
-export const STALE_AFTER_MS = 15_000;
+export const STALE_AFTER_MS = 5_000;
 
 /** Matches the firmware's own keepalive, so both ends agree on when a peer is gone. */
 export const KEEPALIVE_SECONDS = 30;

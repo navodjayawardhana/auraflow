@@ -43,6 +43,7 @@ function session(clientUuid: string): QueuedPayload {
     kind: 'exercise-session',
     body: {
       exercise: 'squat',
+      source: 'pose',
       total_reps: 10,
       good_form_reps: 8,
       duration_seconds: 120,

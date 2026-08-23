@@ -42,6 +42,7 @@ describe('RecoveryCard', () => {
           available: false,
           score: null,
           reason: 'No sleep was recorded for this night.',
+          last_known: null,
         }}
         onRetry={jest.fn()}
       />,

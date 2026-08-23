@@ -14,7 +14,7 @@ import {
 
 export type StepStatus = 'checking' | 'unavailable' | 'denied' | 'counting';
 
-const EMPTY: StepSummary = { today: 0, lastHour: 0, coverageMinutes: 0 };
+const EMPTY: StepSummary = { today: 0, lastHour: 0, coverageMinutes: 0, isComplete: false };
 
 /**
  * Live step count, with the state the UI needs to be honest about it.
@@ -82,6 +82,25 @@ export function useSteps() {
 
     return () => listener.remove();
   }, [refresh]);
+
+  /**
+   * A ticker, because the subscription cannot be the only thing that moves the number.
+   *
+   * `watchStepCount` fires when the platform decides to, and on iOS the count that matters
+   * does not come from it at all — it comes from asking the pedometer's own history, which
+   * nothing was doing between callbacks. So someone walking with the screen open watched a
+   * figure the operating system had already updated and the app had not thought to re-read.
+   *
+   * Six seconds is under the interval at which a walking person notices a counter is stuck,
+   * and the read behind it is two pedometer queries and one cache hit. iOS suspends JS
+   * timers in the background, so this stops costing anything the moment it stops mattering.
+   */
+  useEffect(() => {
+    if (status !== 'counting') return;
+
+    const ticker = setInterval(refresh, 6000);
+    return () => clearInterval(ticker);
+  }, [status, refresh]);
 
   return { status, ...summary, refresh };
 }

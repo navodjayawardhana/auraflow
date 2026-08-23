@@ -30,12 +30,24 @@ final class TrailingWindowReader
 
     public function before(UserId $userId, DateTimeImmutable $date): TrailingWindow
     {
-        $preceding = $this->snapshots->findPrecedingDays(
+        return $this->fromSnapshots($this->snapshots->findPrecedingDays(
             $userId,
             $date,
             RestingHeartRateBaseline::WINDOW_DAYS,
-        );
+        ));
+    }
 
+    /**
+     * The same reduction, over days already in hand.
+     *
+     * Scoring several past days at once would otherwise mean a query per day, or a second
+     * copy of this loop written against an array. The second copy is the worse of the two:
+     * a baseline computed two different ways is a baseline that disagrees with itself.
+     *
+     * @param  list<\App\Domain\Wellbeing\Model\DailyHealthSnapshot>  $preceding
+     */
+    public function fromSnapshots(array $preceding): TrailingWindow
+    {
         $restingRates = [];
         $stagedNights = [];
         $dailySteps = [];

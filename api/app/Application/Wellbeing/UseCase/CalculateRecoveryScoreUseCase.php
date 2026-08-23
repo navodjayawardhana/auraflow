@@ -3,12 +3,16 @@
 namespace App\Application\Wellbeing\UseCase;
 
 use App\Application\Wellbeing\DTO\CalculateRecoveryScoreRequest;
+use App\Application\Wellbeing\DTO\LastKnownScore;
 use App\Application\Wellbeing\DTO\RecoveryScoreResult;
+use App\Application\Wellbeing\Service\RecoveryScoreSeriesReader;
 use App\Application\Wellbeing\Service\TrailingWindowReader;
 use App\Domain\Planning\Repository\WellbeingPlanRepository;
+use App\Domain\Wellbeing\Exception\InsufficientBaselineHistoryException;
 use App\Domain\Wellbeing\Repository\DailyHealthSnapshotRepository;
 use App\Domain\Wellbeing\Service\IllnessDetector;
 use App\Domain\Wellbeing\Service\RecoveryScoreCalculator;
+use App\Domain\Wellbeing\ValueObject\RestingHeartRateBaseline;
 use App\Domain\Wellbeing\ValueObject\UserId;
 use DateTimeImmutable;
 
@@ -35,6 +39,7 @@ final class CalculateRecoveryScoreUseCase
         private readonly IllnessDetector $illnessDetector,
         private readonly TrailingWindowReader $trailingWindow,
         private readonly WellbeingPlanRepository $plans,
+        private readonly RecoveryScoreSeriesReader $series,
     ) {
     }
 
@@ -45,10 +50,11 @@ final class CalculateRecoveryScoreUseCase
 
         $today = $this->snapshots->findForDate($userId, $date);
 
-        if ($today === null || ! $today->hasSleep()) {
+        if ($today === null) {
             return RecoveryScoreResult::unavailable(
                 $date->format('Y-m-d'),
-                'No sleep was recorded for this night.',
+                'Nothing was recorded for this night.',
+                $this->lastKnownBefore($userId, $date),
             );
         }
 
@@ -58,14 +64,38 @@ final class CalculateRecoveryScoreUseCase
         $window = $this->trailingWindow->before($userId, $date);
         $architecture = $window->sleepArchitecture;
 
-        $score = $this->calculator->calculate(
-            $today->sleep(),
-            $today->restingHeartRate(),
-            $window->restingHeartRate,
-            $this->plans->findCurrent($userId)?->sleepNeedHours(),
-            $architecture?->deepMinutes(),
-            $architecture?->remMinutes(),
-        );
+        /*
+         * A night that was not logged is a missing component, not a missing score.
+         *
+         * The gate here used to demand sleep, which refused to score a snapshot carrying
+         * only a resting heart rate -- and the log-night form lets someone save exactly
+         * that. It was the app declining to use the one input the evidence favours: the
+         * autonomic component carries 0.80 of the weight, and resting-HR z alone matched
+         * the full score's rank correlation against self-reported readiness (E-015,
+         * rho 0.123 either way). The domain already drops what it cannot compute and
+         * reweights around the rest, so it is left to say what it can.
+         */
+        try {
+            $score = $this->calculator->calculate(
+                $today->sleep(),
+                $today->restingHeartRate(),
+                $window->restingHeartRate,
+                $this->plans->findCurrent($userId)?->sleepNeedHours(),
+                $architecture?->deepMinutes(),
+                $architecture?->remMinutes(),
+            );
+        } catch (InsufficientBaselineHistoryException) {
+            // Something was recorded, but no component survived. Naming which one is
+            // missing is the difference between an answer and a shrug.
+            return RecoveryScoreResult::unavailable(
+                $date->format('Y-m-d'),
+                $today->hasRestingHeartRate()
+                    ? 'A resting heart rate needs '.RestingHeartRateBaseline::MIN_DAYS
+                        ." earlier nights to compare against. Log a night's sleep for a score today."
+                    : 'No sleep or resting heart rate was recorded for this night.',
+                $this->lastKnownBefore($userId, $date),
+            );
+        }
 
         $warning = $this->illnessDetector->isWarranted($today->restingHeartRate(), $window->restingHeartRate);
 
@@ -76,5 +106,33 @@ final class CalculateRecoveryScoreUseCase
             $score->componentsUsed(),
             $warning,
         );
+    }
+
+    /**
+     * The most recent day before this one that can still be scored.
+     *
+     * Scores are derived on read and never stored, so "the last one" has to be worked out
+     * again rather than looked up. Affordable because the series reader fetches the whole
+     * stretch once and reduces each day's baseline from the part of it that precedes that
+     * day, rather than a query per candidate.
+     *
+     * Bounded at the baseline window. Past a fortnight a stale score stops being context and
+     * starts being archaeology, and the dash is the more honest answer.
+     */
+    private function lastKnownBefore(UserId $userId, DateTimeImmutable $date): ?LastKnownScore
+    {
+        $scored = $this->series->scoreDays(
+            $userId,
+            $date->modify(sprintf('-%d days', RestingHeartRateBaseline::WINDOW_DAYS)),
+            $date->modify('-1 day'),
+        );
+
+        // The most recent that scores, not the best that does -- the series comes back
+        // oldest first, so the answer is its last entry.
+        $latest = end($scored);
+
+        return $latest === false
+            ? null
+            : new LastKnownScore($latest->date, $latest->score, $latest->provisional);
     }
 }
