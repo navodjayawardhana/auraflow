@@ -18,6 +18,8 @@ import {
 import { AuraColors, IconTones } from '@/constants/theme';
 import { useAuth } from '@/context/auth-context';
 import { useContextAwareness } from '@/hooks/use-context-awareness';
+import { usePlan } from '@/hooks/use-plan';
+import { BMI_SCALE_LABELS } from '@/services/body-metrics';
 
 function LinkRow({
   icon,
@@ -60,8 +62,23 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { user, signOut, signOutEverywhere } = useAuth();
   const { places } = useContextAwareness();
+  const { plan, profile, targets } = usePlan();
 
   const initial = user?.name?.trim().charAt(0).toUpperCase() ?? '?';
+
+  // Each row says what the screen behind it currently holds, so "not filled in" is visible
+  // from here rather than only after tapping through to an empty form.
+  const bodyDetail =
+    profile === null || profile.weight_kg === null
+      ? 'Not filled in — your targets are population defaults'
+      : profile.bmi === null
+        ? `${profile.weight_kg} kg · height missing, so no BMI`
+        : `BMI ${profile.bmi.toFixed(1)} · ${profile.bmi_band ?? 'unbanded'} on ${BMI_SCALE_LABELS[profile.bmi_scale]} cut-offs`;
+
+  const planDetail =
+    plan === null
+      ? `Not worked out yet — ${targets.stepGoal.toLocaleString()} steps, ${targets.waterMl.toLocaleString()} ml`
+      : `Version ${plan.version} · ${plan.source === 'edited' ? 'edited by you' : 'derived'}`;
 
   return (
     <View style={styles.screen}>
@@ -84,6 +101,23 @@ export default function ProfileScreen() {
         </Animated.View>
 
         <Animated.View entering={FadeInUp.delay(80).duration(400)} style={styles.card}>
+          <LinkRow
+            icon="user"
+            tone="brand"
+            title="Your body"
+            detail={bodyDetail}
+            onPress={() => router.push('/body-profile')}
+          />
+          <LinkRow
+            icon="target"
+            tone="accent"
+            title="Daily targets"
+            detail={planDetail}
+            onPress={() => router.push('/plan')}
+          />
+        </Animated.View>
+
+        <Animated.View entering={FadeInUp.delay(160).duration(400)} style={styles.card}>
           <LinkRow
             icon="map-pin"
             tone="brand"
@@ -110,7 +144,7 @@ export default function ProfileScreen() {
           />
         </Animated.View>
 
-        <Animated.View entering={FadeInUp.delay(160).duration(400)} style={styles.card}>
+        <Animated.View entering={FadeInUp.delay(240).duration(400)} style={styles.card}>
           <Text style={Type.cardTitle}>Your data</Text>
           <Text style={Type.prose}>
             Coordinates and cached figures stay on this device. Signing out clears the cache
@@ -118,7 +152,7 @@ export default function ProfileScreen() {
           </Text>
         </Animated.View>
 
-        <Animated.View entering={FadeInUp.delay(240).duration(400)} style={styles.actions}>
+        <Animated.View entering={FadeInUp.delay(320).duration(400)} style={styles.actions}>
           <PrimaryButton label="Sign out" onPress={signOut} />
           <PrimaryButton
             label="Sign out on all devices"

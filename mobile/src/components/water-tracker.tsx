@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 
-import { GLASS_ML, WATER_GOAL_ML } from '@/constants/goals';
+import { GLASS_ML } from '@/constants/goals';
 import { Font, Surfaces, Type } from '@/constants/design';
 import { AuraColors, IconTones } from '@/constants/theme';
 import { ApiError } from '@/services/api-client';
@@ -11,24 +11,32 @@ import { recordHealthSnapshot } from '@/services/health-snapshot-service';
 import { enqueue } from '@/services/outbox';
 import { todayIsoDate } from '@/services/recovery-service';
 
-const GLASSES = Math.round(WATER_GOAL_ML / GLASS_ML);
-
 export function WaterTracker({
   waterMl,
+  goalMl,
+  goalSource,
   onLogged,
 }: {
   waterMl: number | null;
+  /** The plan's hydration target, or the cold-start default — see `resolveTargets`. */
+  goalMl: number;
+  goalSource: 'plan' | 'fallback';
   onLogged?: () => void;
 }) {
+  // A personalised goal is rarely a round multiple of a glass, so the row is rounded up:
+  // showing seven glasses for a 1,850 ml target would make the target unreachable by the
+  // only control on the card.
+  const glasses = Math.max(Math.ceil(goalMl / GLASS_ML), 1);
+
   // Optimistic, because a tap that waits on a round trip feels broken for something this
   // small. The write is idempotent per (user, day), so a replay through the outbox lands
   // on the same total rather than double-counting.
   const [pending, setPending] = useState<number | null>(null);
   const total = pending ?? waterMl ?? 0;
-  const filled = Math.min(Math.round(total / GLASS_ML), GLASSES);
+  const filled = Math.min(Math.round(total / GLASS_ML), glasses);
 
   async function setTotal(next: number) {
-    const clamped = Math.max(0, Math.min(next, GLASSES * GLASS_ML));
+    const clamped = Math.max(0, Math.min(next, glasses * GLASS_ML));
     setPending(clamped);
 
     const payload = { recorded_on: todayIsoDate(), water_ml: clamped };
@@ -54,12 +62,12 @@ export function WaterTracker({
         </View>
         <Text style={styles.total}>
           {total.toLocaleString()}
-          <Text style={styles.goal}> / {WATER_GOAL_ML.toLocaleString()} ml</Text>
+          <Text style={styles.goal}> / {goalMl.toLocaleString()} ml</Text>
         </Text>
       </View>
 
       <View style={styles.glasses}>
-        {Array.from({ length: GLASSES }, (_, i) => {
+        {Array.from({ length: glasses }, (_, i) => {
           const isFilled = i < filled;
           // Tapping the last filled glass empties it — undo without a separate control.
           const next = isFilled && i === filled - 1 ? i * GLASS_ML : (i + 1) * GLASS_ML;
@@ -70,7 +78,7 @@ export function WaterTracker({
               onPress={() => setTotal(next)}
               accessibilityRole="button"
               accessibilityState={{ selected: isFilled }}
-              accessibilityLabel={`${isFilled ? 'Remove' : 'Log'} glass ${i + 1} of ${GLASSES}`}
+              accessibilityLabel={`${isFilled ? 'Remove' : 'Log'} glass ${i + 1} of ${glasses}`}
               hitSlop={4}
               style={[styles.glass, isFilled && styles.glassFilled]}>
               <Feather
@@ -85,6 +93,13 @@ export function WaterTracker({
 
       <Text style={Type.caption}>
         Tap a glass to log {GLASS_ML} ml. Tap the last filled one to undo.
+      </Text>
+
+      {/* The target is the claim on this card, so it says whose it is. */}
+      <Text style={Type.caption}>
+        {goalSource === 'plan'
+          ? 'Target from your plan — EFSA/IOM intake, scaled to you'
+          : 'Default target — adult adequate intake, not scaled to you'}
       </Text>
     </Animated.View>
   );

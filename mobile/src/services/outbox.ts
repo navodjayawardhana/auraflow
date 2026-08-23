@@ -3,16 +3,20 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiError } from '@/services/api-client';
 import { recordHealthSnapshot } from '@/services/health-snapshot-service';
 import { logExerciseSession, type LogExerciseSessionInput } from '@/services/movement-service';
-import type { RecordHealthSnapshotInput } from '@/types';
+import { overridePlan } from '@/services/plan-service';
+import { saveProfile } from '@/services/profile-service';
+import type { PlanOverrideInput, RecordHealthSnapshotInput, UpdateProfileInput } from '@/types';
 
 /**
  * A durable queue for writes made while offline.
  *
  * Every kind in here has to be safe to send twice, because the queue cannot tell a write
- * that failed from one whose response was lost. The two kinds earn that differently: a
- * health snapshot is idempotent per (user, date) on the server, and an exercise session
- * carries a client-generated id the server dedupes on. Nothing may be added to this queue
- * that lacks one of those properties.
+ * that failed from one whose response was lost. The four kinds earn that differently: a
+ * health snapshot is idempotent per (user, date) on the server, an exercise session carries
+ * a client-generated id the server dedupes on, a profile is a single row per user that a
+ * replay overwrites with the same values, and a plan override carries both a client id and
+ * a server-side no-op rule for a body that matches what is already current. Nothing may be
+ * added to this queue that lacks one of those properties.
  */
 
 const KEY = 'auraflow.outbox.v2';
@@ -22,7 +26,9 @@ const LEGACY_KEY = 'auraflow.outbox.v1';
 
 export type QueuedPayload =
   | { kind: 'health-snapshot'; body: RecordHealthSnapshotInput }
-  | { kind: 'exercise-session'; body: LogExerciseSessionInput };
+  | { kind: 'exercise-session'; body: LogExerciseSessionInput }
+  | { kind: 'profile'; body: UpdateProfileInput }
+  | { kind: 'plan-override'; body: PlanOverrideInput };
 
 interface QueuedWrite {
   id: string;
@@ -90,10 +96,19 @@ async function writeQueue(queue: QueuedWrite[]): Promise<void> {
  * Two entries are the same write only when replaying both would be wrong.
  *
  * Snapshots collapse per date: logging the same night twice offline should send the later
- * figures, not two conflicting writes. Sessions never collapse — two sets before lunch are
- * two sessions — and their client id is what keeps a *replay* from becoming a third.
+ * figures, not two conflicting writes. Profiles collapse outright — the form submits every
+ * field it manages, so the last edit made offline is the whole answer and sending the
+ * earlier one first would only make the server derive a plan nobody asked for.
+ *
+ * Sessions never collapse — two sets before lunch are two sessions — and their client id
+ * is what keeps a *replay* from becoming a third. Plan overrides do not collapse either,
+ * and for a subtler reason: each one is a diff against the plan the device is still
+ * showing, so two edits made offline touch fields that are not necessarily the same ones.
+ * Keeping only the later would silently drop the earlier field.
  */
 function isSupersededBy(existing: QueuedPayload, incoming: QueuedPayload): boolean {
+  if (existing.kind === 'profile' && incoming.kind === 'profile') return true;
+
   return (
     existing.kind === 'health-snapshot' &&
     incoming.kind === 'health-snapshot' &&
@@ -131,6 +146,10 @@ function send(payload: QueuedPayload): Promise<unknown> {
       return recordHealthSnapshot(payload.body);
     case 'exercise-session':
       return logExerciseSession(payload.body);
+    case 'profile':
+      return saveProfile(payload.body);
+    case 'plan-override':
+      return overridePlan(payload.body);
   }
 }
 

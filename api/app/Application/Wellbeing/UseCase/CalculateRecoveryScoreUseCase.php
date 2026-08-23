@@ -4,17 +4,28 @@ namespace App\Application\Wellbeing\UseCase;
 
 use App\Application\Wellbeing\DTO\CalculateRecoveryScoreRequest;
 use App\Application\Wellbeing\DTO\RecoveryScoreResult;
-use App\Domain\Wellbeing\Model\DailyHealthSnapshot;
+use App\Application\Wellbeing\Service\TrailingWindowReader;
+use App\Domain\Planning\Repository\WellbeingPlanRepository;
 use App\Domain\Wellbeing\Repository\DailyHealthSnapshotRepository;
 use App\Domain\Wellbeing\Service\IllnessDetector;
 use App\Domain\Wellbeing\Service\RecoveryScoreCalculator;
-use App\Domain\Wellbeing\ValueObject\RestingHeartRateBaseline;
 use App\Domain\Wellbeing\ValueObject\UserId;
 use DateTimeImmutable;
 
 /**
  * Assembles what the day's score needs and hands it to the domain. Orchestration only:
  * every rule about what a recovery score means lives in the domain services.
+ *
+ * Three of the calculator's parameters were unreachable from here until the plan existed.
+ * `$personalSleepNeedHours` now comes from the user's plan, which derives it from the NSF
+ * age bands; `$personalDeepMinutes` and `$personalRemMinutes` come from their own
+ * preceding fortnight. Before this, every user in the app was scored against 8.0 hours,
+ * 60 minutes of deep and 90 of REM -- population figures that the architecture
+ * component's own docblock already described as "the user's own baseline".
+ *
+ * Each stays optional. A user with no plan and no staged nights is scored exactly as they
+ * were before, on the calculator's cold-start constants, which is what keeps this a
+ * personalisation rather than a new requirement.
  */
 final class CalculateRecoveryScoreUseCase
 {
@@ -22,6 +33,8 @@ final class CalculateRecoveryScoreUseCase
         private readonly DailyHealthSnapshotRepository $snapshots,
         private readonly RecoveryScoreCalculator $calculator,
         private readonly IllnessDetector $illnessDetector,
+        private readonly TrailingWindowReader $trailingWindow,
+        private readonly WellbeingPlanRepository $plans,
     ) {
     }
 
@@ -39,15 +52,22 @@ final class CalculateRecoveryScoreUseCase
             );
         }
 
-        $baseline = $this->buildBaseline($userId, $date);
+        // Null on the cold-start path -- not a failure. The domain turns a missing
+        // resting-HR baseline into a provisional score, and falls back to population
+        // figures for the two sleep baselines.
+        $window = $this->trailingWindow->before($userId, $date);
+        $architecture = $window->sleepArchitecture;
 
         $score = $this->calculator->calculate(
             $today->sleep(),
             $today->restingHeartRate(),
-            $baseline,
+            $window->restingHeartRate,
+            $this->plans->findCurrent($userId)?->sleepNeedHours(),
+            $architecture?->deepMinutes(),
+            $architecture?->remMinutes(),
         );
 
-        $warning = $this->illnessDetector->isWarranted($today->restingHeartRate(), $baseline);
+        $warning = $this->illnessDetector->isWarranted($today->restingHeartRate(), $window->restingHeartRate);
 
         return new RecoveryScoreResult(
             $date->format('Y-m-d'),
@@ -56,29 +76,5 @@ final class CalculateRecoveryScoreUseCase
             $score->componentsUsed(),
             $warning,
         );
-    }
-
-    /**
-     * Null when the user has not worn the device long enough. That is the cold-start
-     * path, not a failure: the domain turns a missing baseline into a provisional score.
-     */
-    private function buildBaseline(UserId $userId, DateTimeImmutable $date): ?RestingHeartRateBaseline
-    {
-        $preceding = $this->snapshots->findPrecedingDays(
-            $userId,
-            $date,
-            RestingHeartRateBaseline::WINDOW_DAYS,
-        );
-
-        $readings = [];
-        foreach ($preceding as $snapshot) {
-            if ($snapshot->hasRestingHeartRate()) {
-                $readings[] = $snapshot->restingHeartRate()->bpm();
-            }
-        }
-
-        return RestingHeartRateBaseline::canBeBuiltFrom($readings)
-            ? RestingHeartRateBaseline::fromPriorReadings($readings)
-            : null;
     }
 }

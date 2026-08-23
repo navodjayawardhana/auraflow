@@ -25,6 +25,11 @@ interface Props {
   /** Inclusive bounds. Days outside them are shown but not selectable. */
   earliest: string;
   latest: string;
+  /**
+   * The jump-to-today shortcut. Off for a date of birth, where today is inside the range
+   * but is not a plausible answer, so offering it in one tap only invites a mistake.
+   */
+  todayShortcut?: boolean;
   onSelect: (iso: string) => void;
   onClose: () => void;
 }
@@ -34,7 +39,31 @@ function monthStartOf(iso: string): string {
   return monthGridFor(iso).monthStart;
 }
 
-export function DatePickerSheet({ visible, value, earliest, latest, onSelect, onClose }: Props) {
+/**
+ * Year steppers are earned by the range rather than requested by the caller.
+ *
+ * A date of birth reaches a century back — twelve hundred taps on a month chevron — while
+ * logging a night reaches thirty days. Two extra controls on the second screen would be
+ * clutter, so the sheet decides from the bounds it was given.
+ */
+const YEAR_STEP_ABOVE_MONTHS = 24;
+
+function monthsBetween(from: string, to: string): number {
+  const a = new Date(`${from}T00:00:00`);
+  const b = new Date(`${to}T00:00:00`);
+
+  return (b.getFullYear() - a.getFullYear()) * 12 + (b.getMonth() - a.getMonth());
+}
+
+export function DatePickerSheet({
+  visible,
+  value,
+  earliest,
+  latest,
+  todayShortcut = true,
+  onSelect,
+  onClose,
+}: Props) {
   const insets = useSafeAreaInsets();
   const [month, setMonth] = useState(value);
 
@@ -46,8 +75,19 @@ export function DatePickerSheet({ visible, value, earliest, latest, onSelect, on
   const { monthStart, weeks } = monthGridFor(month);
   const today = todayIsoDate();
 
-  const canGoBack = monthStartOf(earliest) < monthStart;
-  const canGoForward = monthStart < monthStartOf(latest);
+  const firstMonth = monthStartOf(earliest);
+  const lastMonth = monthStartOf(latest);
+
+  const canGoBack = firstMonth < monthStart;
+  const canGoForward = monthStart < lastMonth;
+  const hasYearSteps = monthsBetween(firstMonth, lastMonth) > YEAR_STEP_ABOVE_MONTHS;
+
+  /** A year's jump lands on the bound rather than overshooting it and being refused. */
+  function stepYear(years: number) {
+    const candidate = shiftMonth(month, years * 12);
+
+    setMonth(candidate < firstMonth ? firstMonth : candidate > lastMonth ? lastMonth : candidate);
+  }
 
   const monthLabel = new Date(`${monthStart}T00:00:00`).toLocaleDateString(undefined, {
     month: 'long',
@@ -65,6 +105,22 @@ export function DatePickerSheet({ visible, value, earliest, latest, onSelect, on
           <View style={styles.handle} />
 
           <View style={styles.monthRow}>
+            {hasYearSteps ? (
+              <Pressable
+                onPress={() => stepYear(-1)}
+                disabled={!canGoBack}
+                accessibilityRole="button"
+                accessibilityLabel="The year before"
+                hitSlop={10}
+                style={styles.monthStep}>
+                <Feather
+                  name="chevrons-left"
+                  size={18}
+                  color={canGoBack ? AuraColors.content.default : AuraColors.surface.selected}
+                />
+              </Pressable>
+            ) : null}
+
             <Pressable
               onPress={() => setMonth(shiftMonth(month, -1))}
               disabled={!canGoBack}
@@ -94,6 +150,22 @@ export function DatePickerSheet({ visible, value, earliest, latest, onSelect, on
                 color={canGoForward ? AuraColors.content.default : AuraColors.surface.selected}
               />
             </Pressable>
+
+            {hasYearSteps ? (
+              <Pressable
+                onPress={() => stepYear(1)}
+                disabled={!canGoForward}
+                accessibilityRole="button"
+                accessibilityLabel="The year after"
+                hitSlop={10}
+                style={styles.monthStep}>
+                <Feather
+                  name="chevrons-right"
+                  size={18}
+                  color={canGoForward ? AuraColors.content.default : AuraColors.surface.selected}
+                />
+              </Pressable>
+            ) : null}
           </View>
 
           <View style={styles.week}>
@@ -151,15 +223,17 @@ export function DatePickerSheet({ visible, value, earliest, latest, onSelect, on
             </View>
           ))}
 
-          <Pressable
-            onPress={() => {
-              onSelect(today);
-              onClose();
-            }}
-            accessibilityRole="button"
-            style={styles.today}>
-            <Text style={styles.todayLabel}>Back to today</Text>
-          </Pressable>
+          {todayShortcut ? (
+            <Pressable
+              onPress={() => {
+                onSelect(today);
+                onClose();
+              }}
+              accessibilityRole="button"
+              style={styles.today}>
+              <Text style={styles.todayLabel}>Back to today</Text>
+            </Pressable>
+          ) : null}
         </Animated.View>
       </Animated.View>
     </Modal>

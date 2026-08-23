@@ -6,6 +6,8 @@ use App\Http\Controllers\Api\V1\DailyBriefController;
 use App\Http\Controllers\Api\V1\ExerciseSessionController;
 use App\Http\Controllers\Api\V1\HealthSnapshotController;
 use App\Http\Controllers\Api\V1\MealController;
+use App\Http\Controllers\Api\V1\PlanController;
+use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\RecoveryController;
 use App\Http\Controllers\Api\V1\WeatherController;
 use Illuminate\Http\Request;
@@ -34,6 +36,23 @@ Route::prefix('v1')->group(function () {
         Route::get('/me', [AuthController::class, 'me'])->name('auth.me');
 
         Route::get('/user', fn (Request $request) => $request->user());
+
+        // The person, and the targets derived from them. Every route here is scoped to
+        // the authenticated user and takes no identifier of its own, so there is no path
+        // by which one account can read or edit another's.
+        Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');
+        Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
+
+        Route::get('/plan', [PlanController::class, 'show'])->name('plan.show');
+        Route::put('/plan', [PlanController::class, 'update'])->name('plan.update');
+        Route::get('/plan/history', [PlanController::class, 'history'])->name('plan.history');
+
+        // Throttled, unlike the reads beside it: a recalculation reads a fortnight of
+        // snapshots and can write a row, and a client that calls it on every screen
+        // focus should be slowed rather than allowed to version the plan into noise.
+        Route::post('/plan/recalculate', [PlanController::class, 'recalculate'])
+            ->middleware('throttle:30,1')
+            ->name('plan.recalculate');
 
         Route::get('/recovery/{date}', [RecoveryController::class, 'show'])
             ->where('date', '\d{4}-\d{2}-\d{2}')

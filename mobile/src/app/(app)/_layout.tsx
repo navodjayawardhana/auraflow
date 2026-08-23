@@ -126,6 +126,9 @@ function AppShell() {
         <Tabs.Screen name="log-meal" options={{ href: null }} />
         <Tabs.Screen name="log-night" options={{ href: null }} />
         <Tabs.Screen name="places" options={{ href: null }} />
+        <Tabs.Screen name="body-profile" options={{ href: null }} />
+        <Tabs.Screen name="plan" options={{ href: null }} />
+        <Tabs.Screen name="plan-history" options={{ href: null }} />
         <Tabs.Screen name="assistant" options={{ href: null }} />
         <Tabs.Screen name="move" options={{ href: null }} />
       </Tabs>
