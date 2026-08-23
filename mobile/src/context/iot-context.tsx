@@ -42,6 +42,12 @@ interface IotContextValue {
 
   isDeviceOnline: boolean;
   biometrics: BiometricsTelemetry | null;
+  /**
+   * When the frame above arrived, epoch ms. Published alongside it because the BLE/MQTT
+   * merge has to age both transports against one clock, and `isBiometricsStale` is an
+   * answer to a different question — this provider's own, asked on its own timer.
+   */
+  biometricsAt: number | null;
   isBiometricsStale: boolean;
   device: DeviceTelemetry | null;
   light: LightState | null;
@@ -59,6 +65,7 @@ export function IotProvider({ children }: { children: ReactNode }) {
   const [biometrics, setBiometrics] = useState<BiometricsTelemetry | null>(null);
   const [device, setDevice] = useState<DeviceTelemetry | null>(null);
   const [light, setLight] = useState<LightState | null>(null);
+  const [biometricsAt, setBiometricsAt] = useState<number | null>(null);
   const [isBiometricsStale, setIsBiometricsStale] = useState(false);
 
   const connection = useRef<MqttConnection | null>(null);
@@ -92,6 +99,7 @@ export function IotProvider({ children }: { children: ReactNode }) {
     setDevice(null);
     setLight(null);
     setIsBiometricsStale(false);
+    setBiometricsAt(null);
     lastBiometricsAt.current = null;
 
     const topics = selectedDeviceId ? topicsFor(selectedDeviceId) : null;
@@ -124,8 +132,10 @@ export function IotProvider({ children }: { children: ReactNode }) {
         if (topic === topics.biometrics) {
           const frame = parseJson(payload, isBiometrics);
           if (frame) {
+            const at = Date.now();
             setBiometrics(frame);
-            lastBiometricsAt.current = Date.now();
+            setBiometricsAt(at);
+            lastBiometricsAt.current = at;
             setIsBiometricsStale(false);
           }
           return;
@@ -216,6 +226,7 @@ export function IotProvider({ children }: { children: ReactNode }) {
         forgetDevice,
         isDeviceOnline,
         biometrics,
+        biometricsAt,
         isBiometricsStale,
         device,
         light,

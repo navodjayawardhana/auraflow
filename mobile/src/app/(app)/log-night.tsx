@@ -19,11 +19,13 @@ import { TextField } from '@/components/text-field';
 import { TimePickerSheet } from '@/components/time-picker-sheet';
 import { Font, Layout, PlaceholderColor, Radius, Shadows, Surfaces, Type } from '@/constants/design';
 import { AuraColors, IconTones } from '@/constants/theme';
-import { useIot } from '@/context/iot-context';
+import { useAuth } from '@/context/auth-context';
+import { useLiveVitals } from '@/hooks/use-live-vitals';
 import { ApiError } from '@/services/api-client';
 import { recordHealthSnapshot } from '@/services/health-snapshot-service';
 import { enqueue } from '@/services/outbox';
 import { shiftIsoDate, todayIsoDate } from '@/services/recovery-service';
+import { noteReminderDone } from '@/services/reminder-sync';
 import { formatDuration, parseTimeOfDay, sleepMinutesBetween } from '@/services/sleep-window';
 
 /**
@@ -101,7 +103,8 @@ export default function LogNightScreen() {
 
   // Only to decide whether the check-in is worth pointing at. The number itself no longer
   // has a way into this form -- see the panel below.
-  const { selectedDeviceId } = useIot();
+  const { user } = useAuth();
+  const { hasNode } = useLiveVitals();
 
   const bed = parseTimeOfDay(bedTime);
   const wake = parseTimeOfDay(wakeTime);
@@ -119,6 +122,17 @@ export default function LogNightScreen() {
   /** The stepper is for nudging one night either way; the calendar is for the rest. */
   function stepDate(days: number) {
     pickDate(shiftIsoDate(recordedOn, days));
+  }
+
+  /**
+   * Only a night filed against today answers today's reminder.
+   *
+   * This screen can back-date, and back-filling last Tuesday is a different act from
+   * logging the night that just ended — it should not silence this evening's prompt for a
+   * night still unrecorded.
+   */
+  function noteNightLogged() {
+    if (user !== null && recordedOn === today) noteReminderDone(user.id, 'log-night');
   }
 
   async function handleSubmit() {
@@ -144,6 +158,7 @@ export default function LogNightScreen() {
 
     try {
       await recordHealthSnapshot(payload);
+      noteNightLogged();
       router.back();
     } catch (error) {
       if (error instanceof ApiError && error.isValidation) {
@@ -156,6 +171,7 @@ export default function LogNightScreen() {
       } else if (error instanceof ApiError && error.status === 0) {
         // Unreachable, not invalid — keep the night and send it on reconnect.
         await enqueue({ kind: 'health-snapshot', body: payload });
+        noteNightLogged();
         router.back();
       } else if (error instanceof ApiError) {
         setFormError(error.message);
@@ -309,7 +325,7 @@ export default function LogNightScreen() {
               this button ever was: a minute reduced to the lowest sustained rate, rather than
               whichever estimate happened to be on screen when a thumb landed.
             */}
-            {selectedDeviceId !== null ? (
+            {hasNode ? (
               <Pressable
                 onPress={() => router.push('/morning-checkin')}
                 accessibilityRole="button"

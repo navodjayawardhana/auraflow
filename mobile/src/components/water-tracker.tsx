@@ -6,10 +6,12 @@ import Animated, { FadeInUp } from 'react-native-reanimated';
 import { GLASS_ML } from '@/constants/goals';
 import { Font, Surfaces, Type } from '@/constants/design';
 import { AuraColors, IconTones } from '@/constants/theme';
+import { useAuth } from '@/context/auth-context';
 import { ApiError } from '@/services/api-client';
 import { recordHealthSnapshot } from '@/services/health-snapshot-service';
 import { enqueue } from '@/services/outbox';
 import { todayIsoDate } from '@/services/recovery-service';
+import { noteReminderDone } from '@/services/reminder-sync';
 
 export function WaterTracker({
   waterMl,
@@ -23,6 +25,8 @@ export function WaterTracker({
   goalSource: 'plan' | 'fallback';
   onLogged?: () => void;
 }) {
+  const { user } = useAuth();
+
   // A personalised goal is rarely a round multiple of a glass, so the row is rounded up:
   // showing seven glasses for a 1,850 ml target would make the target unreachable by the
   // only control on the card.
@@ -40,6 +44,10 @@ export function WaterTracker({
     setPending(clamped);
 
     const payload = { recorded_on: todayIsoDate(), water_ml: clamped };
+
+    // Any water at all answers the reminder for the day; emptying the last glass back to
+    // zero does not. See `deriveDoneDates` for why this under-reminds on purpose.
+    if (user !== null && clamped > 0) noteReminderDone(user.id, 'water');
 
     try {
       await recordHealthSnapshot(payload);
