@@ -357,9 +357,14 @@ inside the plausible range — so it arrives flagged valid, looking exactly like
 real measurement. The same happens in reverse as the finger comes off.
 
 `settled` is false until contact has been unbroken for a whole window. **Ignore
-every vital on a frame where it is false**, whatever the validity flags say. The
-app's `usableHeartRate()` and `usableSpo2()` already do; anything reading the
-broker directly has to as well.
+`hr_bpm_maxim` and `spo2_pct` on a frame where it is false**, whatever their
+validity flags say — those two read the whole buffer, and that is the buffer they
+read. `usableHeartRateMaxim()` and `usableSpo2()` do.
+
+`hr_bpm` is deliberately not one of them and `usableHeartRate()` deliberately does
+not gate on it. It is a streaming estimator over beat intervals with its own gates
+and no window to be half full of anything; making it wait bought no accuracy and
+put three seconds in front of every reading.
 
 ### Two heart rates
 
@@ -389,6 +394,24 @@ few hundredths of 25.00; `dropped_samples` climbing during a session means the
 loop is stalling and the session is thin. Both are worth a screenshot for the
 evaluation — they are the evidence that the readings were taken under a sound
 time base rather than merely assumed to be.
+
+Neither figure is filtered for plausibility. `sample_rate_hz` is the rate measured
+over the last five seconds however far from 25 Hz that lands, and reads `0` when
+nothing is arriving at all: a field that only ever reported 20–30 Hz could never
+show the stall it exists to reveal. The counting starts at the first sample
+actually read rather than at boot, so the seconds `setup()` spends on Wi-Fi and
+MQTT are not charged as a loss the node never suffered.
+
+### When the sensor stops answering
+
+`pulse_sensor` on the device topic is a live answer, not a boot-time one. If no
+sample arrives for 480 ms while the node believes the MAX30102 is there — a
+knocked wire, a browned-out module, a bus left wedged mid-transfer — the link is
+declared lost: `pulse_sensor` goes `false`, the OLED says `no sensor - wiring?`,
+and the bus-clear and re-open run every two seconds until it answers again. No
+reboot, and no reading frozen on screen being presented as a live one.
+
+Provoking it is the quickest proof: pull SDA with the node running.
 
 ## 7. Test without the app
 
