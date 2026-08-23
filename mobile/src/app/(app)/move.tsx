@@ -10,15 +10,16 @@ import { PoseSkeleton } from '@/components/pose-skeleton';
 import { PrimaryButton } from '@/components/primary-button';
 import { Font, Layout, Radius, Surfaces, Type } from '@/constants/design';
 import { AuraColors } from '@/constants/theme';
-import { useIot } from '@/context/iot-context';
 import { useCachedResource } from '@/hooks/use-cached-resource';
+import { useLiveVitals } from '@/hooks/use-live-vitals';
 import { useSquatSession } from '@/hooks/use-squat-session';
 import { RepCounterThresholds } from '@/ml/rep-counter';
 import { prescribeSession } from '@/ml/session-prescription';
 import { ApiError } from '@/services/api-client';
 import { planGuidedRoutine } from '@/services/guided-routine';
-import { usableHeartRate } from '@/services/iot-payloads';
+import { useAuth } from '@/context/auth-context';
 import { logExerciseSession, newSessionId } from '@/services/movement-service';
+import { noteReminderDone } from '@/services/reminder-sync';
 import { enqueue } from '@/services/outbox';
 import { fetchRecovery, todayIsoDate } from '@/services/recovery-service';
 
@@ -35,8 +36,10 @@ export default function MoveScreen() {
   const { data: recovery } = useCachedResource(`recovery.${today}`, recoveryFetcher);
   const prescription = prescribeSession(recovery);
 
-  const { biometrics, isBiometricsStale, setLight } = useIot();
-  const liveHeartRate = isBiometricsStale ? null : usableHeartRate(biometrics);
+  // The session is the reason the Bluetooth path exists — a gym basement has no Wi-Fi and
+  // no broker — and this is the whole of what the screen has to do about it.
+  const { heartRate: liveHeartRate, setLight } = useLiveVitals();
+  const { user } = useAuth();
 
   // Mean over the session rather than the last reading: a single beat at the moment you
   // stopped says less about the set than its average does.
@@ -72,6 +75,16 @@ export default function MoveScreen() {
     'idle',
   );
 
+  /**
+   * A session logged today answers today's movement reminder — from this device only. An
+   * exercise session is not part of a health snapshot, so unlike the other three this one
+   * has no server-side signal to fall back on; a session logged on another handset will
+   * not silence it here.
+   */
+  function noteSessionLogged() {
+    if (user !== null) noteReminderDone(user.id, 'movement');
+  }
+
   async function finish() {
     session.stop();
 
@@ -106,11 +119,13 @@ export default function MoveScreen() {
 
     try {
       await logExerciseSession(payload);
+      noteSessionLogged();
       setSaveState('saved');
     } catch (error) {
       if (error instanceof ApiError && error.status === 0) {
         // Unreachable, not invalid. The client id makes the replay safe.
         await enqueue({ kind: 'exercise-session', body: payload });
+        noteSessionLogged();
         setSaveState('queued');
       } else {
         setSaveState('failed');

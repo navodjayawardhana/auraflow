@@ -5,6 +5,7 @@ import { View } from 'react-native';
 import { NavBar, type NavItem } from '@/components/nav-bar';
 import { QuickActionsSheet, type QuickAction } from '@/components/quick-actions-sheet';
 import { AuraColors } from '@/constants/theme';
+import { BleProvider } from '@/context/ble-context';
 import { IotProvider } from '@/context/iot-context';
 
 /**
@@ -87,8 +88,13 @@ const SCREENS_WITHOUT_NAV_BAR = new Set([
 
 export default function AppLayout() {
   return (
+    // Nested, not siblings: the Bluetooth provider is the inner one only so that
+    // `useLiveVitals` — which merges the two — sits under both. Neither transport reads
+    // the other's state.
     <IotProvider>
-      <AppShell />
+      <BleProvider>
+        <AppShell />
+      </BleProvider>
     </IotProvider>
   );
 }
@@ -146,6 +152,7 @@ function AppShell() {
         <Tabs.Screen name="log-night" options={{ href: null }} />
         <Tabs.Screen name="morning-checkin" options={{ href: null }} />
         <Tabs.Screen name="places" options={{ href: null }} />
+        <Tabs.Screen name="reminders" options={{ href: null }} />
         <Tabs.Screen name="body-profile" options={{ href: null }} />
         <Tabs.Screen name="plan" options={{ href: null }} />
         <Tabs.Screen name="plan-history" options={{ href: null }} />

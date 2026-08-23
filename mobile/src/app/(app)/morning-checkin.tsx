@@ -9,12 +9,14 @@ import { PrimaryButton } from '@/components/primary-button';
 import { SeatedBaselineNote } from '@/components/seated-baseline-note';
 import { Font, Layout, Radius, Shadows, Surfaces, Type, Unit } from '@/constants/design';
 import { AuraColors, IconTones } from '@/constants/theme';
-import { useIot } from '@/context/iot-context';
+import { useAuth } from '@/context/auth-context';
+import { useLiveVitals } from '@/hooks/use-live-vitals';
 import { ApiError } from '@/services/api-client';
 import { recordHealthSnapshot } from '@/services/health-snapshot-service';
 import { usableHeartRate, usableHeartRateMaxim } from '@/services/iot-payloads';
 import { enqueue } from '@/services/outbox';
 import { todayIsoDate } from '@/services/recovery-service';
+import { noteReminderDone } from '@/services/reminder-sync';
 import {
   CAPTURE_MS,
   captureCoverage,
@@ -72,7 +74,17 @@ export default function MorningCheckinScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const { biometrics, isBiometricsStale, isDeviceOnline, status } = useIot();
+  // Whichever transport is live; the capture cannot tell and does not need to. What it
+  // does need is frame identity, and a merged frame changes identity per reading exactly
+  // as a single-transport one did.
+  const { user } = useAuth();
+
+  const {
+    frame: biometrics,
+    isStale: isBiometricsStale,
+    isNodeReachable,
+    isConnecting,
+  } = useLiveVitals();
 
   const [phase, setPhase] = useState<'idle' | 'capturing' | 'done'>('idle');
   const [samples, setSamples] = useState<HeartRateSample[]>([]);
@@ -168,12 +180,16 @@ export default function MorningCheckinScreen() {
 
     try {
       await recordHealthSnapshot(payload);
+      if (user !== null) noteReminderDone(user.id, 'morning-checkin');
       router.back();
     } catch (error) {
       if (error instanceof ApiError && error.status === 0) {
         // Unreachable, not invalid — the minute has already been spent, so it is kept and
         // sent on reconnect rather than asked for again.
         await enqueue({ kind: 'health-snapshot', body: payload });
+        // Marked done on the queued path too. The check-in happened; whether its write has
+        // reached the server yet is not something to remind the user about.
+        if (user !== null) noteReminderDone(user.id, 'morning-checkin');
         router.back();
       } else if (error instanceof ApiError) {
         setSaveError(error.message);
@@ -191,8 +207,8 @@ export default function MorningCheckinScreen() {
   const isSettling = phase === 'capturing' && elapsed < SETTLING_MS;
 
   function guidance() {
-    if (status === 'connecting') return 'Connecting to your node…';
-    if (!isDeviceOnline) return 'Node offline — power it and check its Wi-Fi';
+    if (isConnecting) return 'Connecting to your node…';
+    if (!isNodeReachable) return 'Node offline — power it, and check Bluetooth or its Wi-Fi';
     if (!hasFinger) return 'Rest a finger on the MAX30102 pad to begin';
     if (liveBpm === null) return 'Finding your pulse — hold still';
     return 'Pulse found — start when you are settled';

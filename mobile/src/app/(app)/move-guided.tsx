@@ -9,14 +9,15 @@ import { PoseSkeleton } from '@/components/pose-skeleton';
 import { PrimaryButton } from '@/components/primary-button';
 import { Font, Layout, Radius, Type } from '@/constants/design';
 import { AuraColors } from '@/constants/theme';
-import { useIot } from '@/context/iot-context';
 import { useCachedResource } from '@/hooks/use-cached-resource';
 import { useGuidedSession } from '@/hooks/use-guided-session';
+import { useLiveVitals } from '@/hooks/use-live-vitals';
 import { prescribeSession } from '@/ml/session-prescription';
 import { ApiError } from '@/services/api-client';
 import { ReferenceFrame, ReferenceGroundY, planGuidedRoutine } from '@/services/guided-routine';
-import { usableHeartRate } from '@/services/iot-payloads';
+import { useAuth } from '@/context/auth-context';
 import { logExerciseSession, newSessionId } from '@/services/movement-service';
+import { noteReminderDone } from '@/services/reminder-sync';
 import { enqueue } from '@/services/outbox';
 import { fetchRecovery, todayIsoDate } from '@/services/recovery-service';
 
@@ -51,8 +52,8 @@ export default function GuidedMoveScreen() {
   const prescription = prescribeSession(recovery);
   const routine = planGuidedRoutine(prescription);
 
-  const { biometrics, isBiometricsStale } = useIot();
-  const liveHeartRate = isBiometricsStale ? null : usableHeartRate(biometrics);
+  const { heartRate: liveHeartRate } = useLiveVitals();
+  const { user } = useAuth();
 
   const session = useGuidedSession(routine);
 
@@ -79,6 +80,16 @@ export default function GuidedMoveScreen() {
     (height * 0.42 * ReferenceFrame.width) / ReferenceFrame.height,
   );
   const figureHeight = (figureWidth * ReferenceFrame.height) / ReferenceFrame.width;
+
+  /**
+   * A session logged today answers today's movement reminder — from this device only. An
+   * exercise session is not part of a health snapshot, so unlike the other three this one
+   * has no server-side signal to fall back on; a session logged on another handset will
+   * not silence it here.
+   */
+  function noteSessionLogged() {
+    if (user !== null) noteReminderDone(user.id, 'movement');
+  }
 
   async function finish() {
     session.stop();
@@ -115,10 +126,12 @@ export default function GuidedMoveScreen() {
 
     try {
       await logExerciseSession(payload);
+      noteSessionLogged();
       setSaveState('saved');
     } catch (error) {
       if (error instanceof ApiError && error.status === 0) {
         await enqueue({ kind: 'exercise-session', body: payload });
+        noteSessionLogged();
         setSaveState('queued');
       } else {
         setSaveState('failed');

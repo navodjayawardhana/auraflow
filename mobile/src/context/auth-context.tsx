@@ -4,6 +4,7 @@ import { ApiError, getToken } from '@/services/api-client';
 import * as authService from '@/services/auth-service';
 import { clearNamespace, readCache, writeCache } from '@/services/cache';
 import { forgetPendingReset } from '@/services/pending-reset';
+import { clearCompletion } from '@/services/reminder-completion';
 import type { User } from '@/types';
 
 /**
@@ -130,6 +131,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await clearNamespace(IDENTITY_NAMESPACE);
     if (signedOutUser !== null) {
       await clearNamespace(signedOutUser.id);
+      // Which days this person had already checked in on is the same kind of fact as the
+      // rest of it. The scheduled notifications themselves are cancelled by
+      // `useReminderRuntime`, which watches for the user going null.
+      await clearCompletion(signedOutUser.id);
     }
   }
 
