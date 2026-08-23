@@ -19,6 +19,7 @@ class ExerciseSessionEndpointTest extends TestCase
     {
         return array_merge([
             'exercise' => ExerciseSession::EXERCISE_SQUAT,
+            'source' => ExerciseSession::SOURCE_POSE,
             'total_reps' => 15,
             'good_form_reps' => 12,
             'duration_seconds' => 180,
@@ -38,6 +39,7 @@ class ExerciseSessionEndpointTest extends TestCase
             'performed_on' => substr($at, 0, 10),
             'performed_at' => $at,
             'exercise' => ExerciseSession::EXERCISE_SQUAT,
+            'source' => ExerciseSession::SOURCE_POSE,
             'total_reps' => $reps,
             'good_form_reps' => $reps,
             'duration_seconds' => 120,
@@ -209,6 +211,103 @@ class ExerciseSessionEndpointTest extends TestCase
             ->assertJsonValidationErrors('performed_at');
     }
 
+    // --- Counted versus followed ---
+
+    public function test_should_store_a_guided_session_with_no_form_count(): void
+    {
+        // A tempo cannot see depth. Null is the honest value, and it has to survive the
+        // round trip rather than being normalised to a zero on the way out.
+        $this->actingAs(User::factory()->create(), 'sanctum')
+            ->postJson('/api/v1/exercise-sessions', $this->validPayload([
+                'source' => ExerciseSession::SOURCE_GUIDED,
+                'good_form_reps' => null,
+            ]))
+            ->assertCreated()
+            ->assertJsonPath('data.source', ExerciseSession::SOURCE_GUIDED)
+            ->assertJsonPath('data.good_form_reps', null);
+    }
+
+    public function test_should_reject_a_guided_session_that_claims_reps_at_depth(): void
+    {
+        $this->actingAs(User::factory()->create(), 'sanctum')
+            ->postJson('/api/v1/exercise-sessions', $this->validPayload([
+                'source' => ExerciseSession::SOURCE_GUIDED,
+                'good_form_reps' => 15,
+            ]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('good_form_reps');
+    }
+
+    public function test_should_reject_a_counted_session_with_no_form_count(): void
+    {
+        $payload = $this->validPayload();
+        unset($payload['good_form_reps']);
+
+        $this->actingAs(User::factory()->create(), 'sanctum')
+            ->postJson('/api/v1/exercise-sessions', $payload)
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('good_form_reps');
+    }
+
+    public function test_should_treat_a_write_with_no_source_as_a_counted_one(): void
+    {
+        // The offline outbox can hold a payload written before guided sessions existed.
+        $payload = $this->validPayload();
+        unset($payload['source']);
+
+        $this->actingAs(User::factory()->create(), 'sanctum')
+            ->postJson('/api/v1/exercise-sessions', $payload)
+            ->assertCreated()
+            ->assertJsonPath('data.source', ExerciseSession::SOURCE_POSE);
+    }
+
+    public function test_should_accept_a_march_only_from_a_guided_session(): void
+    {
+        $this->actingAs(User::factory()->create(), 'sanctum')
+            ->postJson('/api/v1/exercise-sessions', $this->validPayload([
+                'exercise' => ExerciseSession::EXERCISE_MARCH,
+                'source' => ExerciseSession::SOURCE_GUIDED,
+                'good_form_reps' => null,
+                'prescribed_intensity' => ExerciseSession::INTENSITY_MOBILITY,
+                'recovery_score' => 40,
+            ]))
+            ->assertCreated()
+            ->assertJsonPath('data.exercise', ExerciseSession::EXERCISE_MARCH);
+    }
+
+    public function test_should_reject_a_march_claimed_as_counted_by_the_camera(): void
+    {
+        // Nothing counts a knee raise from a camera; the pose rule only reads squats.
+        $this->actingAs(User::factory()->create(), 'sanctum')
+            ->postJson('/api/v1/exercise-sessions', $this->validPayload([
+                'exercise' => ExerciseSession::EXERCISE_MARCH,
+            ]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('exercise');
+    }
+
+    public function test_should_report_counted_and_guided_totals_separately(): void
+    {
+        $user = User::factory()->create();
+
+        ExerciseSession::query()->create($this->row($user->id, '2026-08-22 07:00:00', 20));
+        ExerciseSession::query()->create(array_merge(
+            $this->row($user->id, '2026-08-22 18:00:00', 12),
+            ['source' => ExerciseSession::SOURCE_GUIDED, 'good_form_reps' => null],
+        ));
+
+        // 32 reps in one day would read as 32 observed reps. Only 20 of them were seen.
+        $this->actingAs($user, 'sanctum')
+            ->getJson('/api/v1/exercise-sessions')
+            ->assertOk()
+            ->assertJsonPath('meta.counted.sessions', 1)
+            ->assertJsonPath('meta.counted.total_reps', 20)
+            ->assertJsonPath('meta.counted.good_form_reps', 20)
+            ->assertJsonPath('meta.guided.sessions', 1)
+            ->assertJsonPath('meta.guided.total_reps', 12)
+            ->assertJsonMissingPath('meta.guided.good_form_reps');
+    }
+
     // --- Reading ---
 
     public function test_should_list_the_callers_sessions_newest_first(): void
@@ -223,7 +322,8 @@ class ExerciseSessionEndpointTest extends TestCase
             ->assertOk()
             ->assertJsonCount(2, 'data')
             ->assertJsonPath('data.0.total_reps', 20)
-            ->assertJsonPath('meta.total_reps', 30);
+            ->assertJsonPath('meta.counted.total_reps', 30)
+            ->assertJsonPath('meta.guided.total_reps', 0);
     }
 
     public function test_should_filter_to_one_day_when_a_date_is_given(): void

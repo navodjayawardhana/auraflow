@@ -11,6 +11,15 @@ class ExerciseSession extends Model
     /** The only movement the pose counter can read today. */
     public const EXERCISE_SQUAT = 'squat';
 
+    /** Demonstrated by the guided figure only -- nothing counts a knee raise from a camera. */
+    public const EXERCISE_MARCH = 'march';
+
+    /** Every rep observed and graded by the on-device pose model. */
+    public const SOURCE_POSE = 'pose';
+
+    /** Followed along to the animated figure. The reps are assumed, not seen. */
+    public const SOURCE_GUIDED = 'guided';
+
     /** Mirrors SessionIntensity in the app's session-prescription module. */
     public const INTENSITY_FULL = 'full';
 
@@ -26,6 +35,7 @@ class ExerciseSession extends Model
         'performed_on',
         'performed_at',
         'exercise',
+        'source',
         'total_reps',
         'good_form_reps',
         'duration_seconds',
