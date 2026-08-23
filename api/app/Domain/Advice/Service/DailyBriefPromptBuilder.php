@@ -3,17 +3,30 @@
 namespace App\Domain\Advice\Service;
 
 use App\Domain\Advice\ValueObject\DailyContext;
+use App\Domain\Advice\ValueObject\GroundingPack;
+use App\Domain\Wellbeing\ValueObject\RestingHeartRateSource;
 
 /**
- * Turns a day's measurements into the prompt that asks for advice.
+ * Turns a day's measurements, and the fortnight behind them, into the prompt that asks
+ * for advice.
  *
  * This is the testable half of the feature. A language model's reply cannot be asserted
  * against a golden value, but what we *ask* it can be — and the prompt is where the
  * safety rules, the refusal to invent data, and the tone actually live. Everything that
  * decides whether this feature is responsible is in this file, so this file is pure.
+ *
+ * The history arrived after the rules did, and it made them matter more rather than less.
+ * A model holding one day can be wrong about one day; a model holding a fortnight can be
+ * confidently wrong about a trend, offer a mechanism for it, and average a seated heart
+ * rate against an overnight one on the way. Rules 3 to 5 below exist for that, and none
+ * of them was needed when the prompt was one morning's figures.
  */
 final class DailyBriefPromptBuilder
 {
+    public function __construct(private readonly GroundingPackRenderer $renderer)
+    {
+    }
+
     /**
      * The instruction half. Deliberately restrictive.
      *
@@ -37,19 +50,35 @@ final class DailyBriefPromptBuilder
            any medication, supplement or treatment. If the data looks concerning, the only
            acceptable action you may suggest is speaking to a doctor.
         2. Only refer to figures given to you below. Never invent, estimate or infer a
-           number that is not there. If something is missing, either say nothing about it
-           or say plainly that it was not recorded.
-        3. Do not claim causation. Sleep and heart rate are correlated with how someone
-           feels; they do not prove why. Prefer "you may find" over "this means".
-        4. Do not be alarming. A low score is information for planning, not a warning.
-        5. If a figure is marked as an estimate or as provisional, describe it that way.
+           number that is not there. You may count and compare the figures you are given —
+           "three of the last seven nights were under six hours" is a fair reading of the
+           history — but every number you use must either appear below or be a plain count
+           or difference of numbers that do. If something is missing, either say nothing
+           about it or say plainly that it was not recorded.
+        3. A gap in the history is a gap. A day that is not listed is a day nothing was
+           recorded, not a day of zero and not a bad day. Never describe missing data as
+           inactivity, as a decline, or as anything at all.
+        4. Do not claim causation, and take extra care now there is history. Two series
+           that move together do not explain each other. You may say what each did; you
+           may never say that one caused, drove, explained or led to the other, and you
+           may not offer a mechanism for why a trend happened. Prefer "you may find" over
+           "this means".
+        5. Never pool measurements of different kinds. A seated resting heart rate and an
+           overnight one are two different measurements and must not be averaged or
+           trended together. A partial step count is a floor, never a day's total.
+           Estimated calories are not measured ones. Wherever a figure is marked
+           provisional, partial or estimated, say so in the same breath as the number.
+        6. Do not be alarming. A low score is information for planning, not a warning.
+        7. If the figures below do not contain what you would need, say so plainly rather
+           than reaching for a plausible answer.
 
         Structure your reply as exactly three short paragraphs, no labels:
 
         First: what the body is saying today, in one or two sentences, grounded in the
         figures given.
-        Second: one concrete suggestion for how to shape the day around it — when to do
-        demanding work, when to rest, whether to train.
+        Second: one concrete suggestion for how to shape the rest of the day around it —
+        when to do demanding work, when to rest, whether to train. Match it to the time of
+        day you are told it is; advice about a morning is worthless if the morning is over.
         Third: one small, specific thing to pay attention to, drawn from the weakest signal
         in the data.
 
@@ -60,7 +89,35 @@ final class DailyBriefPromptBuilder
     /**
      * The data half. Only what was actually measured, each labelled with what it is.
      */
-    public function userPrompt(DailyContext $context): string
+    public function userPrompt(GroundingPack $pack): string
+    {
+        $lines = $this->todayLines($pack->today);
+
+        if ($pack->dayPart !== null) {
+            // Between today's figures and the history, because it qualifies the first and
+            // not the second: it is the reason the same numbers want different advice at
+            // breakfast and at nine in the evening.
+            $lines[] = $pack->dayPart->describe();
+        }
+
+        $lines[] = '';
+        $lines[] = $this->renderer->render($pack);
+        $lines[] = '';
+        $lines[] = 'Write the briefing now.';
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * Today, in full sentences rather than the history's table.
+     *
+     * Two shapes for the same signals, on purpose. Today is what the briefing is about and
+     * carries the qualifiers a reader of one day needs spelled out; the fortnight behind it
+     * is a table, because fourteen paragraphs of this would be most of the prompt.
+     *
+     * @return list<string>
+     */
+    private function todayLines(DailyContext $context): array
     {
         $lines = ['Today is '.$context->date.'.'];
 
@@ -97,7 +154,14 @@ final class DailyBriefPromptBuilder
         }
 
         if ($context->restingHeartRate !== null) {
-            $lines[] = sprintf('Resting heart rate: %.1f bpm.', $context->restingHeartRate);
+            // The kind of reading, not just the number. A seated morning capture reads
+            // several bpm above the same person's overnight rate, so a briefing that
+            // compares today's figure with the table above has to know which it is holding.
+            $lines[] = sprintf(
+                'Resting heart rate: %.1f bpm, %s.',
+                $context->restingHeartRate,
+                $this->describeRestingHeartRate($context),
+            );
         }
 
         if ($context->steps !== null) {
@@ -135,8 +199,15 @@ final class DailyBriefPromptBuilder
             );
         }
 
-        $lines[] = 'Write the briefing now.';
+        return $lines;
+    }
 
-        return implode("\n", $lines);
+    private function describeRestingHeartRate(DailyContext $context): string
+    {
+        return match ($context->restingHeartRateSource) {
+            RestingHeartRateSource::Overnight => 'measured overnight',
+            RestingHeartRateSource::SeatedSpot => 'a seated morning capture, which reads above the same person\'s overnight rate',
+            null => 'the row does not say how it was taken, so do not compare it with the readings in the history',
+        };
     }
 }

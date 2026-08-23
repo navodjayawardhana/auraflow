@@ -92,7 +92,8 @@ class MealEntry extends Model
     }
 
     /**
-     * The row as the domain sees it: a day, an energy figure and where that figure is from.
+     * The row as the domain sees it: a day, an energy figure, where that figure is from,
+     * and what the user called it.
      *
      * A translation rather than a rule, which is why it can live on the model. It exists
      * so the aggregator never has to know what Eloquent is, and so its tests can be
@@ -107,6 +108,7 @@ class MealEntry extends Model
             $this->protein_g,
             $this->carbs_g,
             $this->fat_g,
+            $this->name,
         );
     }
 }

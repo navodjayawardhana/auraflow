@@ -4,10 +4,11 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Application\Advice\UseCase\AppendChatMessageUseCase;
 use App\Application\Advice\UseCase\BuildConversationHistoryUseCase;
-use App\Application\Advice\UseCase\BuildDailyContextUseCase;
+use App\Application\Advice\UseCase\BuildGroundingPackUseCase;
 use App\Application\Advice\UseCase\ResolveConversationUseCase;
 use App\Application\Advice\UseCase\StartConversationUseCase;
 use App\Domain\Advice\Service\ChatPromptBuilder;
+use App\Domain\Advice\ValueObject\DayPart;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\SendChatMessageRequest;
 use App\Infrastructure\Advice\GeminiClient;
@@ -21,8 +22,9 @@ use Throwable;
  * The assistant.
  *
  * Every read and write is scoped to `$request->user()` — there is no route by which one
- * account can reach another's conversation, and the grounding block is built from that
- * user's own day. The model never sees an identifier, only figures.
+ * account can reach another's conversation, and the grounding pack is built from that
+ * user's own rows, before the model is called and never from anything it produced. The
+ * model never sees an identifier, only figures.
  *
  * A request without a conversation id means "the one they were last in", so a client that
  * has never heard of conversations keeps working unchanged.
@@ -31,7 +33,7 @@ final class ChatController extends Controller
 {
     public function __construct(
         private readonly ChatPromptBuilder $prompts,
-        private readonly BuildDailyContextUseCase $buildContext,
+        private readonly BuildGroundingPackUseCase $buildPack,
         private readonly BuildConversationHistoryUseCase $buildHistory,
         private readonly ResolveConversationUseCase $resolveConversation,
         private readonly StartConversationUseCase $startConversation,
@@ -117,11 +119,17 @@ final class ChatController extends Controller
 
         $question = $this->appendMessage->execute($conversation, ChatMessage::ROLE_USER, $body);
 
-        $context = $this->buildContext->execute((string) $user->id, now()->format('Y-m-d'));
+        $pack = $this->buildPack->execute(
+            (string) $user->id,
+            now()->format('Y-m-d'),
+            DayPart::fromHour((int) now()->format('G')),
+        );
 
-        // Today's figures lead, so the model answers from measurements rather than from
-        // whatever it remembers being told earlier in the thread.
-        $turns = [['role' => 'user', 'body' => $this->prompts->groundingFor($context)]];
+        // Their own figures lead, so the model answers from measurements rather than from
+        // whatever it remembers being told earlier in the thread. Rebuilt on every message
+        // rather than carried with the conversation: a thread opened this morning and
+        // returned to this evening has to answer about this evening.
+        $turns = [['role' => 'user', 'body' => $this->prompts->groundingFor($pack)]];
 
         foreach ($this->buildHistory->execute($conversation) as $turn) {
             $turns[] = $turn;

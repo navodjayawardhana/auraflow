@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Domain\Movement\ValueObject\SessionSource;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -14,11 +15,18 @@ class ExerciseSession extends Model
     /** Demonstrated by the guided figure only -- nothing counts a knee raise from a camera. */
     public const EXERCISE_MARCH = 'march';
 
-    /** Every rep observed and graded by the on-device pose model. */
-    public const SOURCE_POSE = 'pose';
+    /**
+     * Every rep observed and graded by the on-device pose model.
+     *
+     * Taken from the domain enum rather than spelled again here, on the same reasoning
+     * `MealEntry` records: two lists of the same strings drift, and the way they drift is
+     * that a row is written with a `source` the domain does not recognise and is quietly
+     * described as the weaker claim for the rest of its life.
+     */
+    public const SOURCE_POSE = SessionSource::Pose->value;
 
     /** Followed along to the animated figure. The reps are assumed, not seen. */
-    public const SOURCE_GUIDED = 'guided';
+    public const SOURCE_GUIDED = SessionSource::Guided->value;
 
     /** Mirrors SessionIntensity in the app's session-prescription module. */
     public const INTENSITY_FULL = 'full';

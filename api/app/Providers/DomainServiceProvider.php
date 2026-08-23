@@ -6,6 +6,7 @@ use App\Domain\Auth\Repository\AccountRepository;
 use App\Domain\Auth\Repository\PasswordResetChallengeRepository;
 use App\Domain\Auth\Service\ResetCodeHasher;
 use App\Domain\Auth\Service\ResetCodeNotifier;
+use App\Domain\Movement\Repository\CompletedSessionRepository;
 use App\Domain\Nutrition\Repository\LoggedMealRepository;
 use App\Domain\Planning\Repository\WellbeingPlanRepository;
 use App\Domain\Profile\Repository\UserProfileRepository;
@@ -14,6 +15,7 @@ use App\Infrastructure\Auth\HashedResetCodeHasher;
 use App\Infrastructure\Auth\MailResetCodeNotifier;
 use App\Infrastructure\Auth\Persistence\DatabasePasswordResetChallengeRepository;
 use App\Infrastructure\Auth\Persistence\EloquentAccountRepository;
+use App\Infrastructure\Movement\Persistence\EloquentCompletedSessionRepository;
 use App\Infrastructure\Nutrition\Persistence\EloquentLoggedMealRepository;
 use App\Infrastructure\Planning\Persistence\EloquentWellbeingPlanRepository;
 use App\Infrastructure\Profile\Persistence\EloquentUserProfileRepository;
@@ -39,6 +41,7 @@ class DomainServiceProvider extends ServiceProvider
     private array $repositories = [
         AccountRepository::class => EloquentAccountRepository::class,
         DailyHealthSnapshotRepository::class => EloquentDailyHealthSnapshotRepository::class,
+        CompletedSessionRepository::class => EloquentCompletedSessionRepository::class,
         LoggedMealRepository::class => EloquentLoggedMealRepository::class,
         UserProfileRepository::class => EloquentUserProfileRepository::class,
         WellbeingPlanRepository::class => EloquentWellbeingPlanRepository::class,

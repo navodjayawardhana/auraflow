@@ -24,7 +24,14 @@ final class BuildDailyContextUseCase
     ) {
     }
 
-    public function execute(string $userId, string $date): DailyContext
+    /**
+     * @param  int|null  $waterTargetMl  the user's derived hydration goal, where they have a
+     *                                   plan. Passed in rather than read here so the pack
+     *                                   builder's single read of the plan also serves this,
+     *                                   and so a day with no plan keeps the cold-start
+     *                                   default the value object documents.
+     */
+    public function execute(string $userId, string $date, ?int $waterTargetMl = null): DailyContext
     {
         $result = $this->recovery->execute(new CalculateRecoveryScoreRequest($userId, $date));
 
@@ -45,9 +52,14 @@ final class BuildDailyContextUseCase
             deepSleepMinutes: $sleep?->deepMinutes() === null ? null : (int) round($sleep->deepMinutes()),
             remSleepMinutes: $sleep?->remMinutes() === null ? null : (int) round($sleep->remMinutes()),
             restingHeartRate: $snapshot?->restingHeartRate()?->bpm(),
+            // Carried, not dropped. The prompt now shows a fortnight of resting rates
+            // beside this one, and a seated capture trended against overnight readings is
+            // the exact comparison RestingHeartRate::deviationFrom refuses to make.
+            restingHeartRateSource: $snapshot?->restingHeartRate()?->source(),
             steps: $snapshot?->steps(),
             stepsAreComplete: $snapshot?->stepsAreComplete(),
             waterMl: $snapshot?->waterMl(),
+            waterTargetMl: $waterTargetMl ?? DailyContext::DEFAULT_WATER_TARGET_ML,
         );
     }
 }
