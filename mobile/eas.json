@@ -15,11 +15,21 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.labourlynk.com/api/v1",
+        "EXPO_PUBLIC_MQTT_URL": "wss://broker.hivemq.com:8884/mqtt",
+        "EXPO_PUBLIC_IOT_DEVICE_ID": "auraflow-node-01"
       }
     },
     "production": {
       "android": {
         "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.labourlynk.com/api/v1",
+        "EXPO_PUBLIC_MQTT_URL": "wss://broker.hivemq.com:8884/mqtt",
+        "EXPO_PUBLIC_IOT_DEVICE_ID": "auraflow-node-01"
       }
     }
   },
