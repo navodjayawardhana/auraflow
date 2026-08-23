@@ -41,3 +41,7 @@ example
 # generated native folders
 /ios
 /android
+
+# A package this machine's security software will not let npm touch, moved aside
+# so installs can complete. Only `expo start --tunnel` uses it.
+.blocked-ngrok/
