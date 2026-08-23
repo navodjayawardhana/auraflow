@@ -148,6 +148,26 @@ void publishBiometrics(const BioReading& b) {
   if (b.heartRateValid)      doc["hr_bpm"] = round(b.heartRate * 10) / 10.0;
   if (b.heartRateMaximValid) doc["hr_bpm_maxim"] = b.heartRateMaxim;
   if (b.spo2Valid)           doc["spo2_pct"] = b.spo2;
+  /*
+   * How many beat intervals the estimator is holding, out of the three it reports on.
+   *
+   * Published because the wait is the complaint. A finger goes down and nothing appears for
+   * something over six seconds -- a second before beats are even looked for, three
+   * intervals to collect, then up to a publish period -- and a card that says only
+   * "measuring" for all of it gives no way to tell a slow measurement from a stalled one.
+   *
+   * It is also the diagnosis. If this keeps falling back to zero the intervals are being
+   * discarded rather than accumulated, which is a signal problem the person holding the
+   * sensor can act on and nobody else can see.
+   */
+  {
+    float medianMs, loMs, hiMs;
+    int intervals;
+    Sensors::beatDebug(intervals, medianMs, loMs, hiMs);
+    doc["beats"] = intervals;
+    doc["beats_needed"] = HR_BEAT_MIN_INTERVALS;
+  }
+
   doc["hr_valid"]       = b.heartRateValid;
   doc["hr_maxim_valid"] = b.heartRateMaximValid;
   doc["spo2_valid"]     = b.spo2Valid;
@@ -162,19 +182,21 @@ void publishBiometrics(const BioReading& b) {
 
   if (b.fingerPresent) {
     // The detector's internals ride along on the serial line only. Tuning the gate or the
-    // refractory from the published rate alone is guesswork — what matters is the swing
-    // it measured, the DC that swing has to clear, and how many intervals it has kept.
-    float swing, dc, medianMs, loMs, hiMs;
+    // refractory from the published rate alone is guesswork — what matters is how many
+    // intervals the estimator has kept and how far apart they are. Swing and the perfusion
+    // gate are gone from here with the detector that owned them; the library's equivalents
+    // are internal to it and it offers no way to read them.
+    float medianMs, loMs, hiMs;
     int intervals;
-    Sensors::beatDebug(swing, dc, intervals, medianMs, loMs, hiMs);
+    Sensors::beatDebug(intervals, medianMs, loMs, hiMs);
 
     Serial.printf(
         "[bio] hr=%.1f(%d) maxim=%ld(%d) spo2=%ld(%d) ir=%lu "
-        "swing=%.0f gate=%.0f n=%d med=%.0f lo=%.0f hi=%.0f %s\n",
+        "n=%d med=%.0f lo=%.0f hi=%.0f %s\n",
         b.heartRate, b.heartRateValid,
         (long)b.heartRateMaxim, b.heartRateMaximValid,
         (long)b.spo2, b.spo2Valid, (unsigned long)b.irMean,
-        swing, dc * BEAT_MIN_PERFUSION, intervals, medianMs, loMs, hiMs,
+        intervals, medianMs, loMs, hiMs,
         b.settled ? "" : "settling");
   }
 }

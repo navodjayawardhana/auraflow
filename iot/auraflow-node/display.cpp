@@ -197,7 +197,20 @@ void drawSearching(const DisplayState& s) {
 }
 
 void drawBiometrics(const DisplayState& s) {
-  const bool haveAny = s.haveBio && (s.bio.heartRateValid || s.bio.spo2Valid);
+  /*
+   * Either estimator will do, and the label says which.
+   *
+   * The node computes two rates from one signal and this screen only ever read the first,
+   * so a session where the streaming estimator does not resolve — which is most of them on
+   * this hardware — showed `--` here while the phone, which falls back, showed a number.
+   * The node's own display contradicting the app about the node's own sensor is the worst
+   * of the three ways that could have gone.
+   */
+  const bool haveStreamed = s.bio.heartRateValid;
+  const bool haveReference = s.bio.heartRateMaximValid;
+  const bool haveHr = haveStreamed || haveReference;
+
+  const bool haveAny = s.haveBio && (haveHr || s.bio.spo2Valid);
   if (!haveAny) {
     drawSearching(s);
     return;
@@ -206,14 +219,16 @@ void drawBiometrics(const DisplayState& s) {
   heartBeatOn = !heartBeatOn;
   // Centred on the hero's own middle rather than sitting at its cap height, the way the
   // app centres its icon against the number instead of against the line box.
-  drawHeart(0, ROW_VALUE + 12 - 4, s.bio.heartRateValid ? heartBeatOn : false);
+  drawHeart(0, ROW_VALUE + 12 - 4, haveHr ? heartBeatOn : false);
 
   // Whole bpm even though the payload carries a decimal: three-times type is eighteen
   // pixels a character, and "72.4" costs the width of a reading that has nothing to hide.
   // The decimal is for the evaluation, not for a glance across a desk.
   char hr[8];
-  if (s.bio.heartRateValid) {
+  if (haveStreamed) {
     snprintf(hr, sizeof(hr), "%ld", (long)lroundf(s.bio.heartRate));
+  } else if (haveReference) {
+    snprintf(hr, sizeof(hr), "%ld", (long)s.bio.heartRateMaxim);
   } else {
     strcpy(hr, "--");
   }
@@ -230,7 +245,11 @@ void drawBiometrics(const DisplayState& s) {
   drawRightSized(spo2, ROW_VALUE_2, 2);
 
   // Both labels on one baseline under their own values — the alignment that was missing.
-  drawTracked(HERO_X, ROW_LABEL, "BPM");
+  //
+  // The tilde is the same mark the app puts on a figure it did not measure directly. Here it
+  // means the reference algorithm answered and the streaming one did not, so the number is
+  // true to within the few bpm that method can express — worth one character to say.
+  drawTracked(HERO_X, ROW_LABEL, haveStreamed ? "BPM" : "~BPM");
   drawTrackedRight("SPO2", ROW_LABEL);
 }
 
