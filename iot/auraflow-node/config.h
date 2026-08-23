@@ -62,6 +62,23 @@ constexpr uint8_t ADDR_MAX30102 = 0x57;  // fixed in silicon, not strappable
 // button first.
 constexpr unsigned long SENSOR_RETRY_MS = 2000;
 
+// How long the link may go without a single sample before it stops believing in the
+// sensor. This is the one number that turns a silent failure into a reported one.
+//
+// A sensor that answered once used to be trusted forever, and every symptom of losing it
+// mid-session was silence: the last reading froze, the drop counter stayed at zero, the
+// measured rate stayed at 25 Hz and `pulse_sensor` kept publishing true. Nothing the node
+// said was false, and nothing it said was the truth either.
+//
+// The floor is the longest gap a *healthy* link can show. The driver's ring holds four
+// samples — 160 ms — and a pass that takes longer than that already trips the drain-gap
+// detector, which drains and carries on; three ring depths leaves room for a die
+// temperature conversion (~50 ms) or a slow display frame to land inside one pass without
+// ever being mistaken for a dead bus. The ceiling is the publish cadence: at 480 ms the
+// loss reaches the OLED within one 500 ms refresh and the broker on the next frame, so
+// nobody watching either one sees a stale reading presented as a live one.
+constexpr unsigned long SENSOR_LIVENESS_MS = 480;   // 12 sample periods
+
 // ---- OLED (SSD1306 128x64, 7-pin SPI module) -------------------------------
 // The module that arrived is the 7-pin `GND VDD SCK SDA RES DC CS` variant —
 // SPI, not the 4-pin I2C one the first revision of this node assumed. Hardware
@@ -160,14 +177,25 @@ constexpr unsigned long DRAIN_BUDGET_MS =
     (unsigned long)(FIFO_DRIVER_DEPTH * 1000.0f / SAMPLE_RATE_NOMINAL_HZ);   // 160 ms
 
 // ---- sample clock ----------------------------------------------------------
-// How long to watch before believing a measured sample period. The driver hands samples
-// over in bursts, so a short span measures the burst pattern; over five seconds that
+// The span each measurement of the sample period is taken over. The driver hands samples
+// over in bursts, so a short window measures the burst pattern; over five seconds that
 // jitter is under a percent of the total.
-constexpr unsigned long CLOCK_MIN_SPAN_MS = 5000;
+//
+// A window rather than a running total since the last restart: a cumulative average is
+// dominated by however long it has already been running, so a loop that starts stalling
+// after ten minutes barely moves it. Re-anchoring means `sample_rate_hz` describes the
+// last five seconds, which is the question anyone reading it is actually asking. The
+// window closes on elapsed time whether or not samples arrived, so a sensor that has gone
+// quiet reports the rate it is now achieving instead of freezing at its last good figure.
+constexpr unsigned long CLOCK_WINDOW_MS = 5000;
 
 // A measured period this far from nominal is not oscillator trim — it is loss, or a
-// stalled loop. Trusting it would bake the fault into every heart rate, so the nominal
-// period stands and the drop detector is left to speak.
+// stalled loop. Such a measurement is still *published*: showing the stalled loop is the
+// whole reason `sample_rate_hz` is on the health topic, and a band that rejected the
+// reading meant the field could only ever report 20–30 Hz and could never reveal the
+// fault it exists for. What the band gates is whether the figure is *trusted* for timing
+// beat intervals, where baking a stall into every heart rate would turn a visible
+// problem into an invisible one.
 constexpr float CLOCK_MAX_DEVIATION = 0.20f;
 
 // ---- beat-interval heart rate ----------------------------------------------
@@ -176,6 +204,69 @@ constexpr float CLOCK_MAX_DEVIATION = 0.20f;
 // 71, 75, 78, 83, 88, 93 and 100 bpm. It cannot express 73. Timing individual beats
 // against the sample clock has no such step; both are published so the evaluation can
 // compare them against each other as well as against the watch.
+
+// Detection is `checkForBeat` from the SparkFun library — a zero-crossing detector
+// wrapped in two filters that were sized for a MAX30105 sampled at 100 Hz. Three things
+// have to be done to the raw reading before it sees it, and each of them was measured
+// against a bit-exact model of heartRate.cpp rather than guessed at.
+//
+// **Interpolation, because the filter is running at a quarter of its design rate.** This
+// node samples at 25 Hz effective — 100 Hz averaged four to one in the sensor's own FIFO,
+// which is what the SpO2 algorithm needs — and at a quarter of the rate the detector's
+// 23-tap low-pass has its corner sitting on the heart rate itself. Its response relative
+// to DC, from the shipped coefficients:
+//
+//        bpm      50    60    75    90   105   115   127
+//   at 100 Hz   0.97  0.96  0.94  0.92  0.89  0.87  0.84
+//   at  25 Hz   0.65  0.53  0.36  0.22  0.11  0.06  0.02
+//
+// The detector then gates on a filtered peak-to-peak amplitude between 20 and 1000 counts,
+// so from about 90 bpm upward the pulse arrives underneath the floor and the beat is
+// simply never seen. Driving one synthetic 115 bpm trace through the whole estimator, the
+// 25 Hz path resolved a rate on 0 frames out of 56 and the 100 Hz path on 56 — and that
+// matches the bench, where the node recorded intervals of 1038–1238 ms, two beats' worth,
+// while the reference algorithm read 83–127 bpm from the same samples.
+//
+// Interpolating each sample in two puts the beat back in the passband without touching the
+// sensor's configuration or the SpO2 window. Two and not four: at four the filter also
+// passes the dicrotic notch, and the same model then reported 115 bpm for a 60 bpm trace —
+// trading a rate that will not resolve for one that is confidently double, which is worse.
+constexpr int BEAT_OVERSAMPLE = 2;
+
+// **A DC follower in front of it, because the library's own cannot climb.**
+// `averageDCEstimator` is a one-pole with a fixed gain of 1/16 per sample, which leaves it
+// fifteen samples behind a rising baseline. A finger settling on this sensor does not step
+// once and stop: the IR reading was measured climbing 80,000 to 182,000 counts over
+// thirteen seconds, and 53,000 to 194,000 across a thirty-five second session without ever
+// levelling — some 7,700 counts a second, against a pulse worth perhaps 1,500. At that
+// slope the estimate sits so far below the signal that the AC never returns through zero,
+// no crossing is ever seen, and the model resolves nothing at all.
+//
+// Subtracting a slow follower of our own first turns that ramp into a constant offset,
+// which is the one thing the library's estimator does handle. It does not need to be
+// lag-free — it needs to hand on a signal whose baseline is still. 0.02 puts the corner at
+// 0.08 Hz, an order of magnitude below the 0.8 Hz of the slowest rate worth reporting, so
+// it cannot follow a beat.
+constexpr float BEAT_DC_ALPHA = 0.02f;
+
+// Where that residual is re-centred before the detector sees it. Mid-scale, because
+// `averageDCEstimator` takes its sample as a `uint16_t` and a negative one would wrap.
+constexpr int32_t BEAT_DC_CENTRE = 32768;
+
+// **And a shift, because the gate is a window rather than a floor.** This sets a perfusion
+// band, not a sensitivity. Modelled across 48–150 bpm, three bits puts a peak-to-peak of
+// 0.5% of DC at the bottom of the gate and 6% at the top — a cold fingertip to a firmly
+// pressed one. Shifting less would buy the cold end by giving up the firm one, where
+// exceeding the gate's 1000 ceiling loses beats on the *strongest* signal available.
+constexpr int BEAT_SAMPLE_SHIFT = 3;
+
+// The three together, run end to end through the model against synthetic traces from 48 to
+// 145 bpm: every rate resolved to within the estimator's own 40 ms quantisation at any
+// perfusion from 0.6% upward, under 15% noise, and through a baseline ramping at the
+// 7,800 counts a second measured off a landing finger — which the raw shifted sample
+// cannot do at any rate at all. What is still not measured is a real fingertip, which is
+// the only thing that can say whether the perfusion band is centred where fingers are.
+
 constexpr int HR_BEAT_WINDOW = 8;    // intervals held for the median
 
 // How many of them it takes to report. Three is a median that still out-votes one bad
@@ -186,35 +277,17 @@ constexpr int HR_BEAT_MIN_INTERVALS = 3;
 // Contact needed before the detector starts looking, in samples: one second.
 //
 // Not the four the window algorithms wait for. Those read the whole buffer and half of it
-// is still no-finger data until then; this one is streaming and gates each cycle on its
-// own perfusion band, so all it needs is for the sensor to be seeing skin. Waiting with
-// them put three seconds in front of every reading and bought nothing.
+// is still no-finger data until then; this one is streaming and carries its own gates, so
+// all it needs is for the sensor to be seeing skin. Waiting with them put three seconds in
+// front of every reading and bought nothing.
+//
+// It cannot be zero either. A finger landing takes the IR reading from about 1,400 to
+// about 150,000, and the first instrumented session measured a swing of 127,424 counts on
+// a DC of 148,677 — 86% of it, which is not a pulse by any definition. One second of
+// contact is enough for the DC follower to be sitting under skin rather than under a step
+// edge, and the intervals from any crossing before that would still be in the median
+// window when the real ones arrived.
 constexpr int BEAT_START_SAMPLES = BIO_STRIDE;
-
-// A fast attack on the DC follower for its first ~1.5 s, then the slow constant above.
-//
-// A ten-second follower started from one sample would take most of a minute to sit
-// properly under a signal, and every cycle until then measures a swing that is mostly
-// baseline error. Converging fast first and then slowing down gives both: a usable
-// estimate within a second or two, and no gain at the pulse frequency thereafter.
-constexpr float    BEAT_DC_FAST_ALPHA   = 0.30f;
-constexpr float    BEAT_DC_FAST_BETA    = 0.01f;
-constexpr uint32_t BEAT_DC_FAST_SAMPLES = 38;
-
-// And a re-seed when the baseline is simply somewhere else.
-//
-// A finger settling onto this sensor does not step once and stop. The IR reading was
-// measured climbing from 80,000 to 182,000 over thirteen seconds — about 7,700 counts a
-// second, against a pulse of some 4,000 counts peak to peak. While that is happening the
-// baseline moves further in one beat than the beat itself does, the AC signal never
-// returns below zero, and a crossing detector sees nothing at all: the instrumented log
-// showed a swing frozen at one value and not a single interval recorded.
-//
-// A ten-second follower crawling from 80,000 to 182,000 would take most of a minute to
-// arrive. But no pulse can move the reading by a fifth of itself, so a residual that
-// large is not signal — the baseline is in the wrong place, and putting it where the
-// signal is costs one cycle instead of thirty seconds of blank screen.
-constexpr float BEAT_DC_RESEED_FRACTION = 0.2f;
 
 // How long an interval may stay in that window.
 //
@@ -225,57 +298,15 @@ constexpr float BEAT_DC_RESEED_FRACTION = 0.2f;
 // any resting rate and short enough that everything in it is the same measurement.
 constexpr unsigned long HR_BEAT_MAX_AGE_MS = 10000;
 
-// The detector's own constants. It is ours rather than the library's `checkForBeat`,
-// which passes its sample through `averageDCEstimator(int32_t*, uint16_t)` and so
-// truncates anything above 65535 before it does arithmetic on it. With a finger on this
-// sensor the raw IR reading is about 195,000; every intermediate value in that detector
-// was garbage, and the first session on this firmware showed exactly that — hr_bpm never
-// resolved once, while the 32-bit reference algorithm reported throughout.
-
-// The baseline tracker: position gain and slope gain.
-//
-// A plain exponential follower cannot do this job. Set it fast enough to keep up with the
-// baseline and it subtracts the beat along with it; set it slow and it runs behind. On
-// this hardware the finger does not settle — the IR reading was measured climbing from
-// 53,000 to 194,000 across a thirty-five second session without ever levelling — and a
-// follower of any single rate ends up sitting thousands of counts below a signal whose
-// pulse is worth about a thousand, so the AC never returns below zero and no crossing is
-// ever seen. The instrumented log showed exactly one interval recorded in 35 seconds.
-//
-// The fix is to estimate the slope as well as the level. A tracker carrying both has no
-// steady-state lag on a ramp — it predicts forwards each step and corrects from what is
-// left — while a heartbeat, whose average slope over a cycle is zero, moves the slope
-// estimate almost not at all. BEAT_DC_ALPHA sets the level correction, BEAT_DC_BETA the
-// slope; beta near alpha squared is the critically damped pairing, which is what stops the
-// tracker ringing at the beat frequency it is supposed to ignore.
-//
-// Alpha at 0.02 puts the level corner near 0.08 Hz, an order of magnitude below the 1 Hz
-// it must not follow, and the slope estimate converges in about three seconds.
-constexpr float BEAT_DC_ALPHA = 0.02f;
-constexpr float BEAT_DC_BETA  = 0.0002f;
-
-// AC smoother, ~160 ms. Takes the sensor's high-frequency noise off without rounding the
-// systolic upstroke, which is what the beat is timed from.
-constexpr float BEAT_SMOOTH_ALPHA = 0.25f;
-
-// Smallest peak-to-peak swing a cycle can have and still be a beat, as a fraction of the
-// DC level. Relative rather than in counts so it survives a change of LED current or a
-// differently perfused finger without being retuned; 0.2% sits well under a healthy
-// perfusion index and well above the sensor's noise floor.
-constexpr float BEAT_MIN_PERFUSION = 0.002f;
-
-// And a ceiling, for the same reason the floor exists. A finger landing on the sensor
-// takes the IR reading from about 1,400 to about 150,000, and no DC follower slow enough
-// to sit through a beat can also keep up with that. The first instrumented session showed
-// a measured swing of 127,424 counts on a DC of 148,677 — 86% of it, which is not a pulse
-// by any definition. A cycle swinging more than this fraction of DC is the finger moving,
-// and counting it as a beat is worse than waiting for the next one.
-constexpr float BEAT_MAX_PERFUSION = 0.15f;
-
 // A dicrotic notch — the small second bump as the aortic valve closes — arrives roughly a
 // third of a cycle after the beat. That clears HR_BEAT_MIN_MS at any realistic rate, so
 // an absolute floor cannot reject it and every interval would come out halved. Rejecting
 // anything shorter than this fraction of the running median does.
+//
+// Note what it cannot do, because it was suspected of it once: the ratio needs a median to
+// take a fraction of, so below HR_BEAT_MIN_INTERVALS the floor is flatly HR_BEAT_MIN_MS.
+// An estimator that never accumulates three intervals has never once applied this rule,
+// and the reason it is not accumulating them is upstream of here.
 constexpr float HR_BEAT_REFRACTORY_RATIO = 0.6f;
 
 // And a ceiling on what that ratio may produce, which is not a detail.
