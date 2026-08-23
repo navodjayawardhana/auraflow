@@ -4,6 +4,11 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Application\Nutrition\UseCase\EstimateMealFromPhotoUseCase;
 use App\Domain\Nutrition\Exception\UnreadableMealPhotoException;
+use App\Domain\Nutrition\Service\NutritionAggregator;
+use App\Domain\Nutrition\ValueObject\DateRange;
+use App\Domain\Nutrition\ValueObject\LoggedMeal;
+use App\Domain\Nutrition\ValueObject\Period;
+use App\Domain\Nutrition\ValueObject\PeriodTotals;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\EstimateMealPhotoRequest;
 use App\Http\Requests\Api\V1\ListMealsRequest;
@@ -19,30 +24,72 @@ final class MealController extends Controller
     public function __construct(
         private readonly OpenFoodFactsClient $foodFacts,
         private readonly EstimateMealFromPhotoUseCase $estimateFromPhoto,
+        private readonly NutritionAggregator $aggregator,
     ) {
     }
 
+    /**
+     * The meals in a window, and what they add up to by day, by week and by month.
+     *
+     * All three groupings come back from one request rather than behind a `group`
+     * parameter. The window is capped at a quarter, so the widest reply is 92 day buckets,
+     * 14 week buckets and 4 month ones — a few kilobytes — and the alternative is three
+     * round trips to draw one screen, or a client that switches tabs and shows a spinner
+     * over totals it already has the meals for.
+     */
     public function index(ListMealsRequest $request): JsonResponse
     {
+        $range = $request->range();
+
         $meals = MealEntry::query()
-            ->where('user_id', $request->user()->id)
-            ->whereDate('eaten_on', $request->string('date')->toString())
-            ->orderBy('eaten_at')
+            ->forUserBetween($request->user()->id, $range->fromIso(), $range->toIso())
             ->get();
+
+        // Out of Eloquent and into the domain before anything is added up. The aggregator
+        // is the part that can be silently wrong, so it works on plain values it can be
+        // tested against by hand rather than on rows fetched by this query.
+        $logged = $meals->map(fn (MealEntry $meal) => $meal->toLoggedMeal())->all();
+        $totals = $this->aggregator->total($logged, $range);
 
         return response()->json([
             'data' => $meals->map($this->toArray(...))->all(),
             'meta' => [
-                'total_kcal' => (int) $meals->sum('kcal'),
-                'protein_g' => (int) $meals->sum('protein_g'),
-                'carbs_g' => (int) $meals->sum('carbs_g'),
-                'fat_g' => (int) $meals->sum('fat_g'),
+                'from' => $range->fromIso(),
+                'to' => $range->toIso(),
+
+                // The day view's four figures, unchanged and unprefixed, because a client
+                // that predates the history screen still reads exactly these.
+                'total_kcal' => $totals->kcal,
+                'protein_g' => $totals->proteinG,
+                'carbs_g' => $totals->carbsG,
+                'fat_g' => $totals->fatG,
                 // Deliberately no "net calories". Energy out is estimated from steps that
                 // are themselves only counted while the app is open, so a net figure
                 // would be a small number computed from two large uncertain ones -- the
                 // most misleading arithmetic a health app can offer.
+
+                // The same sum with its provenance intact: how much of it a manufacturer
+                // declared and how much of it somebody guessed. A client that shows the
+                // total without this has no way to know whether to qualify it.
+                'totals' => $totals->toArray(),
+
+                'days' => $this->bucketsOf($logged, $range, Period::Day),
+                'weeks' => $this->bucketsOf($logged, $range, Period::Week),
+                'months' => $this->bucketsOf($logged, $range, Period::Month),
             ],
         ]);
+    }
+
+    /**
+     * @param  list<LoggedMeal>  $logged
+     * @return list<array<string, mixed>>
+     */
+    private function bucketsOf(array $logged, DateRange $range, Period $period): array
+    {
+        return array_map(
+            static fn (PeriodTotals $bucket): array => $bucket->toArray(),
+            $this->aggregator->summarise($logged, $range, $period),
+        );
     }
 
     public function store(StoreMealRequest $request): JsonResponse
@@ -51,6 +98,11 @@ final class MealController extends Controller
 
         $meal = MealEntry::query()->create([
             'user_id' => $request->user()->id,
+            // The day is taken from the offset the client sent, not from the instant after
+            // it is stored. A meal eaten at half past midnight in Colombo is 19:00 the
+            // previous day in UTC, and filing it under yesterday would move it into the
+            // wrong day, the wrong week and sometimes the wrong month. `eaten_at` keeps the
+            // instant; `eaten_on` keeps the day the eater was living in.
             'eaten_on' => $eatenAt->format('Y-m-d'),
             'eaten_at' => $eatenAt,
             'name' => $request->string('name')->trim()->toString(),
@@ -152,6 +204,11 @@ final class MealController extends Controller
             'fat_g' => $meal->fat_g,
             'portion_g' => $meal->portion_g,
             'eaten_at' => $meal->eaten_at?->toAtomString(),
+            // The day the meal was filed under, sent alongside the instant. The client
+            // groups a history list by this rather than re-deriving a date from the
+            // timestamp, which would put a late supper on the wrong day for anyone whose
+            // offset differs from the one the row was written with.
+            'eaten_on' => $meal->eaten_on?->format('Y-m-d'),
         ];
     }
 }

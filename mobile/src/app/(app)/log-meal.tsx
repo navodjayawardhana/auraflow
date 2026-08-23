@@ -19,7 +19,9 @@ import {
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { DatePickerSheet } from '@/components/date-picker-sheet';
 import { PrimaryButton } from '@/components/primary-button';
+import { TimePickerSheet } from '@/components/time-picker-sheet';
 import {
   Font,
   GradientAxis,
@@ -42,6 +44,8 @@ import {
   type PhotoMealEstimate,
 } from '@/services/meal-photo';
 import { logMeal, lookupBarcode, type FoodProduct } from '@/services/meal-service';
+import { composeEatenAt, isInFuture, nowAsWheelTime } from '@/services/nutrition-history';
+import { shiftIsoDate, todayIsoDate } from '@/services/recovery-service';
 
 /**
  * How sure the model says it is, in words.
@@ -65,11 +69,31 @@ const ConfidenceWording: Record<PhotoConfidence, string> = {
  */
 const CAPTURE_QUALITY = 0.4;
 
+/**
+ * How far back a meal can be logged.
+ *
+ * The same month `log-night.tsx` allows, for the same reason it is offered at all: people
+ * remember yesterday's dinner and last weekend's, and a diary that only accepts what you
+ * are eating right now is a diary with holes in it. Beyond a month the recollection is
+ * worse than the gap it fills.
+ */
+const EARLIEST_DAYS_BACK = 30;
+
 export default function LogMealScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const network = useNetworkState();
   const isOffline = network.isInternetReachable === false;
+
+  const today = todayIsoDate();
+  const earliest = shiftIsoDate(today, -EARLIEST_DAYS_BACK);
+
+  // When it was eaten, which is not the same as when it is being typed in. Opens on now,
+  // so logging a meal as you eat it is still no taps, and backfilling is two.
+  const [eatenOn, setEatenOn] = useState(today);
+  const [eatenTime, setEatenTime] = useState(nowAsWheelTime());
+  const [isPickingDate, setIsPickingDate] = useState(false);
+  const [isPickingTime, setIsPickingTime] = useState(false);
 
   const [barcode, setBarcode] = useState('');
   const [product, setProduct] = useState<FoodProduct | null>(null);
@@ -236,8 +260,28 @@ export default function LogMealScreen() {
     return Number.isFinite(grams) && value.trim() !== '' && grams > 0 ? Math.round(grams) : null;
   };
 
+  function pickDate(iso: string) {
+    if (iso > today || iso < earliest) return;
+
+    setEatenOn(iso);
+    setError(null);
+  }
+
+  /** The stepper is for nudging a day either way; the calendar is for the rest. */
+  function stepDate(days: number) {
+    pickDate(shiftIsoDate(eatenOn, days));
+  }
+
   async function save() {
     setError(null);
+
+    // Checked here rather than left to the 422, because the server's answer names a field
+    // the user cannot see and this one names the wheel they just turned.
+    if (isInFuture(eatenOn, eatenTime)) {
+      setError('That time has not come round yet — pick a moment already past.');
+      return;
+    }
+
     setIsSaving(true);
 
     const typed = {
@@ -285,7 +329,9 @@ export default function LogMealScreen() {
     }
 
     try {
-      await logMeal(payload);
+      // The offset travels with the moment. Without it the server would file a late supper
+      // under the day before for anyone east of Greenwich.
+      await logMeal({ ...payload, eaten_at: composeEatenAt(eatenOn, eatenTime) });
       router.back();
     } catch (e) {
       if (e instanceof ApiError && e.status === 0) {
@@ -301,6 +347,9 @@ export default function LogMealScreen() {
       setIsSaving(false);
     }
   }
+
+  const isEarliest = eatenOn <= earliest;
+  const isLatest = eatenOn >= today;
 
   if (isCameraOpen) {
     return (
@@ -351,11 +400,7 @@ export default function LogMealScreen() {
             <View style={styles.headerText}>
               <Text style={Type.screenTitle}>Log a meal</Text>
               <Text style={Type.meta}>
-                {new Date().toLocaleDateString(undefined, {
-                  weekday: 'long',
-                  day: 'numeric',
-                  month: 'long',
-                })}
+                {eatenOn === today ? 'Something you ate today' : 'A meal from an earlier day'}
               </Text>
             </View>
 
@@ -368,6 +413,74 @@ export default function LogMealScreen() {
               <Feather name="x" size={18} color={AuraColors.content.default} />
             </Pressable>
           </View>
+
+          {/* When, before what. A meal is an event with a time on it, and four of them land
+              on a normal day — so the form asks when rather than assuming the moment the
+              save button was pressed. The same shape as the night log's date row, because
+              backfilling should feel like one thing across the app. */}
+          <Animated.View entering={FadeInUp.duration(360)} style={styles.whenCard}>
+            <View style={styles.dateRow}>
+              <Pressable
+                onPress={() => stepDate(-1)}
+                disabled={isEarliest}
+                accessibilityRole="button"
+                accessibilityLabel="The day before"
+                hitSlop={10}
+                style={[styles.step, isEarliest && styles.stepDisabled]}>
+                <Feather
+                  name="chevron-left"
+                  size={18}
+                  color={isEarliest ? AuraColors.surface.selected : AuraColors.content.default}
+                />
+              </Pressable>
+
+              <Pressable
+                onPress={() => setIsPickingDate(true)}
+                accessibilityRole="button"
+                accessibilityLabel="Pick a different day"
+                style={styles.dateText}>
+                <Text style={Type.eyebrow}>Eaten on</Text>
+                <View style={styles.dateLine}>
+                  <Text style={styles.date}>
+                    {eatenOn === today
+                      ? 'Today'
+                      : new Date(`${eatenOn}T00:00:00`).toLocaleDateString(undefined, {
+                          weekday: 'long',
+                          day: 'numeric',
+                          month: 'long',
+                        })}
+                  </Text>
+                  <Feather name="calendar" size={13} color={AuraColors.content.muted} />
+                </View>
+              </Pressable>
+
+              <Pressable
+                onPress={() => stepDate(1)}
+                disabled={isLatest}
+                accessibilityRole="button"
+                accessibilityLabel="The day after"
+                hitSlop={10}
+                style={[styles.step, isLatest && styles.stepDisabled]}>
+                <Feather
+                  name="chevron-right"
+                  size={18}
+                  color={isLatest ? AuraColors.surface.selected : AuraColors.content.default}
+                />
+              </Pressable>
+            </View>
+
+            <Pressable
+              onPress={() => setIsPickingTime(true)}
+              accessibilityRole="button"
+              accessibilityLabel={`Eaten at ${eatenTime}`}
+              style={styles.timeField}>
+              <View style={styles.timeIcon}>
+                <Feather name="clock" size={15} color={IconTones.brand.color} />
+              </View>
+              <Text style={Type.fieldLabel}>Eaten at</Text>
+              <Text style={styles.timeValue}>{eatenTime}</Text>
+            </Pressable>
+          </Animated.View>
 
           {/* Barcode first: a looked-up figure is a better claim than a guess, so the
               flow leads with it and keeps the estimate as a fallback. */}
@@ -453,7 +566,7 @@ export default function LogMealScreen() {
                 ) : null}
                 <View style={styles.resultText}>
                   <Text style={Type.rowTitle}>What AuraFlow sees</Text>
-                  <Text style={Type.caption}>a guess from the photo · {estimate.model}</Text>
+                  <Text style={Type.caption}>a guess from the photo, not a measurement</Text>
                 </View>
                 <Pressable
                   onPress={clearPhoto}
@@ -518,8 +631,8 @@ export default function LogMealScreen() {
                     lookup is the only figure in AuraFlow that someone actually measured.
                   </Text>
                   <Text style={styles.panelText}>
-                    The photo is sent to AuraFlow&apos;s server, passed to {estimate.model},
-                    and kept for neither. It is never saved to your photos.
+                    The photo is sent to AuraFlow&apos;s server, passed to a vision model,
+                    and kept by neither. It is never saved to your photos.
                   </Text>
                 </View>
               ) : null}
@@ -655,12 +768,30 @@ export default function LogMealScreen() {
         </ScrollView>
 
         <View style={[styles.commit, { paddingBottom: Math.max(insets.bottom, 20) }]}>
-          <PrimaryButton label="Add to today" onPress={save} loading={isSaving} />
+          <PrimaryButton label="Save meal" onPress={save} loading={isSaving} />
           {/* It does not queue. `save` says so on failure, and this line used to promise
               the opposite of what the code beneath it does. */}
           <Text style={styles.commitNote}>Saved straight away — needs a connection</Text>
         </View>
       </KeyboardAvoidingView>
+
+      <DatePickerSheet
+        visible={isPickingDate}
+        value={eatenOn}
+        earliest={earliest}
+        latest={today}
+        onSelect={pickDate}
+        onClose={() => setIsPickingDate(false)}
+      />
+
+      <TimePickerSheet
+        visible={isPickingTime}
+        label="Eaten at"
+        value={eatenTime}
+        fallback={nowAsWheelTime()}
+        onSelect={setEatenTime}
+        onClose={() => setIsPickingTime(false)}
+      />
     </View>
   );
 }
@@ -679,6 +810,47 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     ...Shadows.chip,
+  },
+  whenCard: { ...Surfaces.card, gap: 12 },
+  dateRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  dateText: { flex: 1, alignItems: 'center', gap: 3 },
+  dateLine: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  date: { fontFamily: Font.bold, fontSize: 15, color: AuraColors.content.default },
+  step: {
+    width: 34,
+    height: 34,
+    borderRadius: Radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: AuraColors.surface.sunken,
+  },
+  stepDisabled: { backgroundColor: 'transparent' },
+  timeField: {
+    height: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingLeft: 8,
+    paddingRight: 14,
+    borderRadius: Radius.pill,
+    borderWidth: 1,
+    borderColor: AuraColors.surface.selected,
+    backgroundColor: AuraColors.surface.default,
+  },
+  timeIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: Radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: IconTones.brand.bg,
+  },
+  timeValue: {
+    marginLeft: 'auto',
+    fontFamily: Font.semibold,
+    fontSize: 16,
+    color: AuraColors.content.default,
+    fontVariant: ['tabular-nums'],
   },
   scanRow: {
     flexDirection: 'row',
