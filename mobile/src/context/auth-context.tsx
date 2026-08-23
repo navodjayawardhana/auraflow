@@ -3,6 +3,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import { ApiError, getToken } from '@/services/api-client';
 import * as authService from '@/services/auth-service';
 import { clearNamespace, readCache, writeCache } from '@/services/cache';
+import { forgetPendingReset } from '@/services/pending-reset';
 import type { User } from '@/types';
 
 /**
@@ -19,6 +20,12 @@ interface AuthContextValue {
   signUp: (
     name: string,
     email: string,
+    password: string,
+    passwordConfirmation: string,
+  ) => Promise<void>;
+  completePasswordReset: (
+    email: string,
+    code: string,
     password: string,
     passwordConfirmation: string,
   ) => Promise<void>;
@@ -86,6 +93,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   /**
+   * The end of the forgotten-password flow: the reset itself signs the user in.
+   *
+   * A third way into a session rather than a call to `signIn` with the new password,
+   * because the API already returns a token from the reset — asking for one twice would
+   * mean a second round trip that could fail on a flaky connection and strand somebody
+   * who has just successfully changed their password and no longer has a code.
+   *
+   * The pending-reset marker is dropped here rather than by the screen, so it cannot
+   * survive a completed reset and offer to resume one that is already finished.
+   */
+  async function completePasswordReset(
+    email: string,
+    code: string,
+    password: string,
+    passwordConfirmation: string,
+  ) {
+    const payload = await authService.resetPassword({
+      email,
+      code,
+      password,
+      password_confirmation: passwordConfirmation,
+    });
+
+    await forgetPendingReset();
+    setUser(payload.user);
+    await writeCache(IDENTITY_NAMESPACE, IDENTITY_RESOURCE, payload.user);
+  }
+
+  /**
    * Cached health data must not survive a sign-out. Purged before the token is cleared,
    * so an interrupted sign-out never leaves readable data behind with no session to
    * explain it.
@@ -114,7 +150,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, isRestoring, signIn, signUp, signOut, signOutEverywhere }}>
+      value={{
+        user,
+        isRestoring,
+        signIn,
+        signUp,
+        completePasswordReset,
+        signOut,
+        signOutEverywhere,
+      }}>
       {children}
     </AuthContext.Provider>
   );
