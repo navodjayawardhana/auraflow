@@ -114,6 +114,8 @@ export interface SquatSession {
   elapsedSeconds: number;
   start: () => void;
   stop: () => void;
+  /** Back to the top: no reps, no clock, no leaving the screen. */
+  reset: () => void;
 }
 
 interface Options {
@@ -152,6 +154,19 @@ export function useSquatSession({ camera, onShallowRep }: Options): SquatSession
   const stop = useCallback(() => {
     isRunning.current = false;
     setPhase('finished');
+  }, []);
+
+  /**
+   * The same clearing `start` does, but landing in `ready` rather than `running` — a set
+   * restarted mid-rep should not begin counting from whatever half-squat the user happens
+   * to be standing in when they press it.
+   */
+  const reset = useCallback(() => {
+    isRunning.current = false;
+    setCounter(initialRepCounterState);
+    setLandmarks(null);
+    setElapsedSeconds(0);
+    setPhase('ready');
   }, []);
 
   useEffect(() => {
@@ -241,5 +256,6 @@ export function useSquatSession({ camera, onShallowRep }: Options): SquatSession
     elapsedSeconds,
     start,
     stop,
+    reset,
   };
 }

@@ -69,6 +69,7 @@ describe('prescribeSession', () => {
       available: false,
       score: null,
       reason: 'No sleep logged for last night.',
+      last_known: null,
     });
 
     // Absent is not low: it neither prescribes a set nor refuses one, and it says so.

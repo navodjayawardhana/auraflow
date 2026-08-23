@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ConfirmAction } from '@/components/confirm-action';
 import { PoseSkeleton } from '@/components/pose-skeleton';
 import { PrimaryButton } from '@/components/primary-button';
 import { Font, Layout, Radius, Surfaces, Type } from '@/constants/design';
@@ -15,6 +16,7 @@ import { useSquatSession } from '@/hooks/use-squat-session';
 import { RepCounterThresholds } from '@/ml/rep-counter';
 import { prescribeSession } from '@/ml/session-prescription';
 import { ApiError } from '@/services/api-client';
+import { planGuidedRoutine } from '@/services/guided-routine';
 import { usableHeartRate } from '@/services/iot-payloads';
 import { logExerciseSession, newSessionId } from '@/services/movement-service';
 import { enqueue } from '@/services/outbox';
@@ -48,6 +50,18 @@ export default function MoveScreen() {
 
   const session = useSquatSession({ camera, onShallowRep });
 
+  /**
+   * Both modes run the same session gated the same way; the only difference is whether
+   * anything is watching. So the screen opens on the choice rather than assuming one —
+   * and where the pose runtime is missing, which is what Expo Go is, the choice is simply
+   * shorter rather than the screen being a dead end.
+   */
+  const [mode, setMode] = useState<'choose' | 'camera'>('choose');
+
+  // Only to name today's movement in the offer: the guided session leads a march on a
+  // mobility day, and "follow the guide" should say which guide it means.
+  const guided = planGuidedRoutine(prescription);
+
   useEffect(() => {
     if (session.phase === 'running' && liveHeartRate !== null) {
       heartRates.current.push(liveHeartRate);
@@ -71,6 +85,9 @@ export default function MoveScreen() {
     const beats = heartRates.current;
     const payload = {
       exercise: 'squat' as const,
+      // Every rep here was seen and graded, which is what separates this row from a
+      // guided one holding the same number.
+      source: 'pose' as const,
       total_reps: session.counter.reps,
       good_form_reps: session.counter.goodFormReps,
       duration_seconds: session.elapsedSeconds,
@@ -101,17 +118,46 @@ export default function MoveScreen() {
     }
   }
 
-  if (!session.isPoseAvailable) {
+  if (mode === 'choose') {
     return (
       <View style={[styles.screen, styles.centred, { paddingTop: insets.top }]}>
         <View style={styles.permissionCard}>
-          <Text style={Type.cardTitle}>Not available in Expo Go</Text>
-          <Text style={Type.prose}>
-            Counting squats runs a pose model on the phone itself, and that needs a native
-            runtime Expo Go does not carry. Open AuraFlow from the development build and the
-            session works — nothing else on this screen changes.
+          <Text style={Type.cardTitle}>{prescription.headline}</Text>
+          <Text style={Type.prose}>{prescription.reason}</Text>
+
+          <PrimaryButton
+            label="Follow the guide"
+            onPress={() => router.replace('/move-guided')}
+          />
+          <Text style={styles.optionNote}>
+            An animated figure leads {guided.exercise.repNoun} at a set tempo. No camera, so
+            the reps are assumed rather than counted — the session is saved as guided and
+            carries no form score.
           </Text>
-          <PrimaryButton label="Go back" onPress={() => router.back()} />
+
+          {session.isPoseAvailable ? (
+            <>
+              <PrimaryButton
+                label="Let the camera count"
+                variant="quiet"
+                onPress={() => setMode('camera')}
+              />
+              <Text style={styles.optionNote}>
+                Reads your joints from the camera and grades the depth of every rep. Frames
+                are analysed on this phone and never leave it.
+              </Text>
+            </>
+          ) : (
+            <Text style={styles.optionNote}>
+              Counting reps from the camera runs a pose model on the phone itself, and that
+              needs a native runtime Expo Go does not carry. Open AuraFlow from the
+              development build and that mode appears here too.
+            </Text>
+          )}
+
+          <Pressable onPress={() => router.back()} accessibilityRole="button" hitSlop={10}>
+            <Text style={styles.dismiss}>Not now</Text>
+          </Pressable>
         </View>
       </View>
     );
@@ -136,6 +182,13 @@ export default function MoveScreen() {
         </View>
       </View>
     );
+  }
+
+  /** Same two-tap restart the guided session has; same reason the beats go with it. */
+  function restart() {
+    heartRates.current = [];
+    setSaveState('idle');
+    session.reset();
   }
 
   const { counter } = session;
@@ -231,7 +284,17 @@ export default function MoveScreen() {
             ) : null}
 
             {session.phase === 'running' ? (
-              <PrimaryButton label={`Finish · ${formatDuration(session.elapsedSeconds)}`} onPress={finish} />
+              <>
+                <PrimaryButton
+                  label={`Finish · ${formatDuration(session.elapsedSeconds)}`}
+                  onPress={finish}
+                />
+                <ConfirmAction
+                  label="Start over"
+                  confirmLabel="Tap again — this clears the count"
+                  onConfirm={restart}
+                />
+              </>
             ) : null}
 
             {session.phase === 'finished' ? (
@@ -297,6 +360,9 @@ const styles = StyleSheet.create({
   centred: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: Layout.gutter },
 
   permissionCard: { ...Surfaces.card, gap: 14, width: '100%' },
+  // Sits directly under the button it describes, so the two options can be compared
+  // before either is pressed rather than after.
+  optionNote: { ...Type.prose, fontSize: 12, lineHeight: 17, marginTop: -6 },
   dismiss: { ...Type.meta, textAlign: 'center' },
 
   top: {
