@@ -1,179 +1,126 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback } from 'react';
 
+import { useBle } from '@/context/ble-context';
 import { useIot } from '@/context/iot-context';
-import { connect, scan, type BleConnection, type DiscoveredPeripheral } from '@/services/ble-client';
 import { usableHeartRate, usableSpo2 } from '@/services/iot-payloads';
-import type { LightMode } from '@/types';
+import { mergeVitals, type VitalsSource } from '@/services/vitals-merge';
+import type { BiometricsTelemetry, LightMode } from '@/types';
 
 /**
  * One live reading from the node, whichever way it arrived.
  *
  * The app has two paths to the same hardware and they answer different questions — BLE
  * works in a basement at watch-like latency, MQTT works from anywhere. Screens should not
- * have to know which won, so this hook exposes a single number plus the `source` that
- * produced it, and prefers BLE whenever a BLE link is live. See docs/adr/0007.
- */
-
-/**
- * How long BLE stays "the source" after its last notification before MQTT is allowed to
- * take over.
+ * have to know which won, so this exposes a single frame plus the `source` that produced
+ * it, preferring BLE whenever BLE has something current. See docs/adr/0007.
  *
- * A link at the edge of range connects and drops repeatedly. Without this hold-off the
- * displayed number would flip between two transports reporting the same heart a second
- * apart, which reads as a broken sensor rather than a weak link. Longer than the node's
- * 1.5 s publish interval, shorter than the MQTT staleness window.
+ * Deliberately owns nothing. Both connections live in providers mounted once, and every
+ * value below is derived from them, so calling this from five screens costs five
+ * subscriptions to state that already exists rather than five links to the node. That is
+ * the whole reason the merge is a hook and the transports are not.
  */
-const BLE_HOLD_OFF_MS = 6_000;
 
-export type VitalsSource = 'ble' | 'mqtt' | null;
+export type { VitalsSource };
 
-export type BleStatus = 'idle' | 'scanning' | 'connecting' | 'connected' | 'error';
+/** The lamp as the live transport reports it. `source` is MQTT-only — see below. */
+export interface LiveLamp {
+  mode: LightMode;
+  brightness: number;
+  /**
+   * Who last changed it, where that is known. Null over BLE: the characteristic carries
+   * the lamp's state and not its provenance, and inventing "app" for it would be a claim
+   * rather than a reading — the physical button changes the lamp too.
+   */
+  source: string | null;
+}
 
 export interface LiveVitals {
-  heartRate: number | null;
-  spo2: number | null;
+  /**
+   * The winning transport's latest frame, stale or not. Whole, rather than reduced to two
+   * numbers, because the card built on it needs contact quality and beat progress as much
+   * as it needs a rate — and those have to come from the same frame as the rate, not from
+   * whichever transport happens to be holding them.
+   */
+  frame: BiometricsTelemetry | null;
   /** Exposed, not hidden: "no reading" has a different fix per transport. */
   source: VitalsSource;
+  /** `frame` is too old to present as current. The number below is already null when so. */
+  isStale: boolean;
 
-  bleStatus: BleStatus;
-  bleError: string | null;
-  nearby: DiscoveredPeripheral[];
-  startScan: () => void;
-  stopScan: () => void;
-  connectTo: (deviceId: string) => Promise<void>;
-  disconnectBle: () => Promise<void>;
+  /** The rate to show, or null. Already accounts for staleness and the validity flags. */
+  heartRate: number | null;
+  spo2: number | null;
 
-  /** Goes over BLE when connected, MQTT otherwise. Callers never choose. */
+  /** The node is answering over at least one transport. */
+  isNodeReachable: boolean;
+  /** Nothing is reachable yet, but a transport is still trying. Not the same as offline. */
+  isConnecting: boolean;
+  /** A node is paired at all, over either transport. */
+  hasNode: boolean;
+
+  lamp: LiveLamp | null;
+  /** Goes over BLE when a link is up, MQTT otherwise. Callers never choose. */
   setLight: (mode: LightMode, brightness?: number) => void;
 }
 
 export function useLiveVitals(): LiveVitals {
   const iot = useIot();
+  const ble = useBle();
 
-  const [bleStatus, setBleStatus] = useState<BleStatus>('idle');
-  const [bleError, setBleError] = useState<string | null>(null);
-  const [nearby, setNearby] = useState<DiscoveredPeripheral[]>([]);
-
-  const [bleHeartRate, setBleHeartRate] = useState<number | null>(null);
-  const [bleSpo2, setBleSpo2] = useState<number | null>(null);
-  const [bleLastAt, setBleLastAt] = useState<number | null>(null);
-
-  const connection = useRef<BleConnection | null>(null);
-  const stopScanRef = useRef<(() => void) | null>(null);
-
-  // Recomputed on a timer rather than only on notification, so the source falls back
-  // when BLE goes quiet rather than only when it explicitly disconnects.
-  const [now, setNow] = useState(() => Date.now());
-
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 2_000);
-    return () => clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      stopScanRef.current?.();
-      connection.current?.disconnect();
-    };
-  }, []);
-
-  const startScan = useCallback(() => {
-    setBleError(null);
-    setNearby([]);
-    setBleStatus('scanning');
-
-    stopScanRef.current = scan(
-      (device) => setNearby((found) => (found.some((d) => d.id === device.id) ? found : [...found, device])),
-      (message) => {
-        setBleError(message);
-        setBleStatus('error');
-      },
-    );
-  }, []);
-
-  const stopScan = useCallback(() => {
-    stopScanRef.current?.();
-    stopScanRef.current = null;
-    setBleStatus((s) => (s === 'scanning' ? 'idle' : s));
-  }, []);
-
-  const connectTo = useCallback(
-    async (deviceId: string) => {
-      stopScan();
-      setBleStatus('connecting');
-      setBleError(null);
-
-      try {
-        connection.current = await connect(deviceId, {
-          onHeartRate: (bpm) => {
-            setBleHeartRate(bpm);
-            setBleLastAt(Date.now());
-          },
-          onVitals: (vitals) => {
-            // The validity flags stay the authority, exactly as on the MQTT path.
-            setBleSpo2(usableSpo2(vitals));
-            setBleLastAt(Date.now());
-          },
-          onDisconnect: () => {
-            connection.current = null;
-            setBleStatus('idle');
-            setBleHeartRate(null);
-            setBleSpo2(null);
-          },
-        });
-
-        setBleStatus('connected');
-      } catch (error) {
-        setBleError(error instanceof Error ? error.message : 'Could not connect.');
-        setBleStatus('error');
-      }
-    },
-    [stopScan],
+  // Recomputed rather than memoised: it is a handful of comparisons, and both providers
+  // hand out a fresh context value on every render anyway, so a memo here would miss every
+  // time while implying it did not.
+  const merged = mergeVitals(
+    ble.vitals,
+    { frame: iot.biometrics, receivedAt: iot.biometricsAt },
+    ble.now,
   );
 
-  const disconnectBle = useCallback(async () => {
-    await connection.current?.disconnect();
-    connection.current = null;
-    setBleStatus('idle');
-    setBleHeartRate(null);
-    setBleSpo2(null);
-    setBleLastAt(null);
-  }, []);
+  // Pulled out of the context objects so this closes over two stable functions rather than
+  // over two values that are new on every render. The movement session passes its lamp
+  // callback into an effect's dependencies, and a `setLight` with a fresh identity each
+  // render would restart that effect on every frame of a reading.
+  const { setLight: writeOverBle } = ble;
+  const { setLight: publishOverMqtt } = iot;
 
   const setLight = useCallback(
     (mode: LightMode, brightness?: number) => {
-      if (connection.current !== null) {
-        // Fire and forget, matching the MQTT path's shape. A failed write surfaces as the
-        // lamp not changing, which is the same feedback either way.
-        connection.current.setLight(mode, brightness).catch(() => setBleError('Lamp write failed.'));
-        return;
-      }
+      // Asked rather than inferred from `isConnected`: the link can drop between a render
+      // and a thumb, and the provider is the only thing that knows whether the write went
+      // anywhere. A false answer means fall back, not fail.
+      if (writeOverBle(mode, brightness)) return;
 
-      iot.setLight(mode, brightness);
+      publishOverMqtt(mode, brightness);
     },
-    [iot],
+    [writeOverBle, publishOverMqtt],
   );
 
-  const isBleFresh = bleLastAt !== null && now - bleLastAt < BLE_HOLD_OFF_MS;
-  const isBleLive = bleStatus === 'connected' && isBleFresh && bleHeartRate !== null;
+  const lamp: LiveLamp | null =
+    ble.isConnected && ble.lamp !== null
+      ? { mode: ble.lamp.mode, brightness: ble.lamp.brightness, source: null }
+      : iot.light !== null
+        ? { mode: iot.light.mode, brightness: iot.light.brightness, source: iot.light.source }
+        : null;
 
-  const mqttHeartRate = iot.isBiometricsStale ? null : usableHeartRate(iot.biometrics);
-  const mqttSpo2 = iot.isBiometricsStale ? null : usableSpo2(iot.biometrics);
-
-  const heartRate = isBleLive ? bleHeartRate : mqttHeartRate;
-  const spo2 = isBleLive ? bleSpo2 : mqttSpo2;
+  const isNodeReachable = ble.isConnected || iot.isDeviceOnline;
 
   return {
-    heartRate,
-    spo2,
-    source: heartRate === null ? null : isBleLive ? 'ble' : 'mqtt',
-    bleStatus,
-    bleError,
-    nearby,
-    startScan,
-    stopScan,
-    connectTo,
-    disconnectBle,
+    frame: merged.frame,
+    source: merged.source,
+    isStale: merged.isStale,
+
+    heartRate: merged.isStale ? null : usableHeartRate(merged.frame),
+    spo2: merged.isStale ? null : usableSpo2(merged.frame),
+
+    isNodeReachable,
+    isConnecting:
+      !isNodeReachable &&
+      (iot.status === 'connecting' ||
+        ble.status === 'connecting' ||
+        ble.status === 'reconnecting'),
+    hasNode: iot.selectedDeviceId !== null || ble.connectedId !== null,
+
+    lamp,
     setLight,
   };
 }

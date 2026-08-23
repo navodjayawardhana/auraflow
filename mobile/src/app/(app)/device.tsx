@@ -9,7 +9,9 @@ import { LampControl } from '@/components/lamp-control';
 import { LiveBiometricsCard } from '@/components/live-biometrics-card';
 import { Font, Layout, Surfaces, Type } from '@/constants/design';
 import { AuraColors } from '@/constants/theme';
+import { useBle } from '@/context/ble-context';
 import { useIot } from '@/context/iot-context';
+import { useLiveVitals } from '@/hooks/use-live-vitals';
 
 function formatUptime(seconds: number): string {
   const hours = Math.floor(seconds / 3600);
@@ -36,11 +38,28 @@ function Row({ label, value }: { label: string; value: string }) {
 
 export default function DeviceScreen() {
   const insets = useSafeAreaInsets();
-  const { status, isDeviceOnline, device, selectedDeviceId, forgetDevice } = useIot();
+  const { device, selectedDeviceId, forgetDevice } = useIot();
+  const ble = useBle();
+  const { isNodeReachable, isConnecting, source, hasNode } = useLiveVitals();
   const [isPairing, setIsPairing] = useState(false);
 
-  const showPicker = selectedDeviceId === null || isPairing;
-  const isConnected = isDeviceOnline && status === 'connected';
+  const showPicker = !hasNode || isPairing;
+
+  /**
+   * The one place the transport is named rather than merged away.
+   *
+   * `useLiveVitals` exists so no screen has to care which radio delivered a number, and
+   * none of them do — but "no reading" has a different fix depending on which path was
+   * meant to carry it, and this is the screen someone opens to find that out.
+   */
+  const overBluetooth = source === 'ble';
+
+  async function forget() {
+    // Both, or the node is only half forgotten: dropping the broker pairing while a BLE
+    // link stayed up would leave readings arriving from a device the user just removed.
+    await ble.disconnect();
+    await forgetDevice();
+  }
 
   return (
     <View style={styles.screen}>
@@ -50,21 +69,33 @@ export default function DeviceScreen() {
         <View style={styles.header}>
           <View style={styles.headerText}>
             <Text style={Type.screenTitle}>Device</Text>
-            <Text style={Type.meta}>{selectedDeviceId ?? 'No node connected'}</Text>
+            <Text style={Type.meta}>
+              {overBluetooth
+                ? `${selectedDeviceId ?? 'Nearby node'} · over Bluetooth`
+                : (selectedDeviceId ?? 'No node connected')}
+            </Text>
           </View>
 
-          {selectedDeviceId ? (
+          {hasNode ? (
             <View style={styles.pill}>
               <View
                 style={[
                   styles.pillDot,
-                  { backgroundColor: isConnected ? AuraColors.success : AuraColors.content.muted },
+                  {
+                    backgroundColor: isNodeReachable
+                      ? AuraColors.success
+                      : AuraColors.content.muted,
+                  },
                 ]}
               />
               <Text style={styles.pillLabel}>
-                {isConnected ? 'Connected' : status === 'connecting' ? 'Connecting' : 'Offline'}
+                {isNodeReachable ? 'Connected' : isConnecting ? 'Connecting' : 'Offline'}
               </Text>
-              <Feather name="wifi" size={12} color={AuraColors.content.muted} />
+              <Feather
+                name={ble.isConnected ? 'bluetooth' : 'wifi'}
+                size={12}
+                color={AuraColors.content.muted}
+              />
             </View>
           ) : null}
         </View>
@@ -72,7 +103,7 @@ export default function DeviceScreen() {
         {showPicker ? (
           <>
             <DevicePicker />
-            {selectedDeviceId ? (
+            {hasNode ? (
               <Pressable
                 onPress={() => setIsPairing(false)}
                 accessibilityRole="button"
@@ -116,9 +147,13 @@ export default function DeviceScreen() {
                 </>
               ) : (
                 // The node reports its health every 30 s, so this is genuinely empty for
-                // up to half a minute after connecting. Saying so beats a blank card.
+                // up to half a minute after connecting. Saying so beats a blank card — and
+                // over Bluetooth alone it is empty permanently, because every figure here
+                // is a fact about the node's network rather than about the node.
                 <Text style={Type.caption}>
-                  Waiting for the node&apos;s next health report — it sends one every 30 seconds.
+                  {overBluetooth
+                    ? 'Diagnostics travel over Wi-Fi, so they are unavailable on a Bluetooth-only link. The reading above is not.'
+                    : "Waiting for the node's next health report — it sends one every 30 seconds."}
                 </Text>
               )}
             </Animated.View>
@@ -134,7 +169,7 @@ export default function DeviceScreen() {
               </Pressable>
 
               <Pressable
-                onPress={forgetDevice}
+                onPress={forget}
                 accessibilityRole="button"
                 accessibilityLabel="Forget this node"
                 style={styles.action}>
