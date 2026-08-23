@@ -2,7 +2,11 @@ import { apiGet, apiPost } from '@/services/api-client';
 
 export interface DailyBrief {
   date: string;
-  status: 'pending' | 'ready' | 'failed';
+  /**
+   * `waiting` is not a failure: the day has nothing worth briefing on yet, and it clears
+   * itself as soon as anything is logged. The server retries it on its own.
+   */
+  status: 'pending' | 'ready' | 'failed' | 'waiting';
   body: string | null;
   /** Which model wrote it — advice from a since-replaced model should be identifiable. */
   model: string | null;

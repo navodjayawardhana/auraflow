@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\ChatController;
 use App\Http\Controllers\Api\V1\DailyBriefController;
 use App\Http\Controllers\Api\V1\ExerciseSessionController;
 use App\Http\Controllers\Api\V1\HealthSnapshotController;
+use App\Http\Controllers\Api\V1\InsightsController;
 use App\Http\Controllers\Api\V1\MealController;
 use App\Http\Controllers\Api\V1\PlanController;
 use App\Http\Controllers\Api\V1\ProfileController;
@@ -28,6 +29,25 @@ Route::prefix('v1')->group(function () {
     Route::post('/login', [AuthController::class, 'login'])
         ->middleware('throttle:20,1')
         ->name('auth.login');
+
+    /*
+     * Forgotten passwords. A six-digit code typed into the app, not an emailed link --
+     * the app is demonstrated in Expo Go, which owns the URL scheme, so a link would have
+     * to carry a machine-specific `exp://` address that breaks on every restart and on
+     * every change of build type. See Domain\Auth\ValueObject\ResetCode.
+     *
+     * Both are public, so both carry the same two layers as login: a coarse per-IP limit
+     * here to blunt a flood, and a per-email-and-IP limiter inside the form request for
+     * the reasoning spelled out above -- email alone would let anyone lock a known user
+     * out of their own recovery, IP alone would let one host work through a list.
+     */
+    Route::post('/password/forgot', [AuthController::class, 'forgotPassword'])
+        ->middleware('throttle:10,1')
+        ->name('password.forgot');
+
+    Route::post('/password/reset', [AuthController::class, 'resetPassword'])
+        ->middleware('throttle:20,1')
+        ->name('password.reset');
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout'])->name('auth.logout');
@@ -66,6 +86,11 @@ Route::prefix('v1')->group(function () {
 
         Route::get('/health-snapshots', [HealthSnapshotController::class, 'index'])
             ->name('health-snapshots.index');
+
+        // A fortnight of every signal the insights screen draws, in one reply. It exists
+        // because the alternative shape of that screen is a request per day for the
+        // recovery score alone, plus one each for snapshots and meals.
+        Route::get('/insights', [InsightsController::class, 'show'])->name('insights.show');
 
         // Proxied so the provider key stays server-side; throttled because it is the one
         // route that costs us money per call.

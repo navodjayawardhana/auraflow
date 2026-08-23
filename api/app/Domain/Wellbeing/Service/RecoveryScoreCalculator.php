@@ -51,7 +51,7 @@ final class RecoveryScoreCalculator
     private const AUTONOMIC_POINTS_PER_SD = 20.0;
 
     public function calculate(
-        SleepSummary $sleep,
+        ?SleepSummary $sleep,
         ?RestingHeartRate $restingHeartRate,
         ?RestingHeartRateBaseline $baseline,
         ?float $personalSleepNeedHours = null,
@@ -107,9 +107,17 @@ final class RecoveryScoreCalculator
 
     /**
      * 0-100 from hours slept, asymmetric around the personal need.
+     *
+     * Null when no night was recorded. A night nobody logged is a component that cannot be
+     * computed, which is the same shape as a missing baseline -- the caller drops it and
+     * reweights around what is left, rather than the whole score being refused.
      */
-    public function durationScore(SleepSummary $sleep, float $needHours): float
+    public function durationScore(?SleepSummary $sleep, float $needHours): ?float
     {
+        if ($sleep === null) {
+            return null;
+        }
+
         $deficit = $needHours - $sleep->hours();
 
         $penalty = $deficit > 0
@@ -125,9 +133,9 @@ final class RecoveryScoreCalculator
      * Centred at 50 so "typical for you" sits mid-scale rather than reading as a pass
      * mark, leaving room for a genuinely restorative night to score above it.
      */
-    public function architectureScore(SleepSummary $sleep, float $baselineDeep, float $baselineRem): ?float
+    public function architectureScore(?SleepSummary $sleep, float $baselineDeep, float $baselineRem): ?float
     {
-        if (! $sleep->hasStageBreakdown()) {
+        if ($sleep === null || ! $sleep->hasStageBreakdown()) {
             return null;
         }
 

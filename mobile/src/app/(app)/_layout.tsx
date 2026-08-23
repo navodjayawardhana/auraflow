@@ -25,7 +25,7 @@ const ACTIONS: QuickAction[] = [
   {
     key: 'move',
     title: 'Movement session',
-    subtitle: 'Camera counts your reps, gated on today’s recovery',
+    subtitle: 'Follow the guide or let the camera count — gated on today’s recovery',
     icon: 'video',
     tone: 'brand',
     isPrimary: true,
@@ -66,7 +66,15 @@ const ACTIONS: QuickAction[] = [
  * All four are `href: null` and reached by `router.push`, so they are already places you
  * leave by their own close button rather than by switching tab.
  */
-const SCREENS_WITHOUT_NAV_BAR = new Set(['move', 'log-night', 'log-meal', 'assistant']);
+const SCREENS_WITHOUT_NAV_BAR = new Set([
+  'move',
+  // The guided figure is the full height of the screen and the count sits on the bottom
+  // edge, so the bar would cover the same thing it covers over the camera.
+  'move-guided',
+  'log-night',
+  'log-meal',
+  'assistant',
+]);
 
 export default function AppLayout() {
   return (
@@ -131,6 +139,7 @@ function AppShell() {
         <Tabs.Screen name="plan-history" options={{ href: null }} />
         <Tabs.Screen name="assistant" options={{ href: null }} />
         <Tabs.Screen name="move" options={{ href: null }} />
+        <Tabs.Screen name="move-guided" options={{ href: null }} />
       </Tabs>
 
       {hidesNavBar ? null : (

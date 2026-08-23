@@ -109,6 +109,76 @@ class DailyBriefEndpointTest extends TestCase
         $this->assertDatabaseCount('daily_briefs', 1);
     }
 
+    public function test_should_retry_a_brief_left_pending_by_a_job_that_never_ran(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user, 'sanctum')->getJson('/api/v1/briefs/'.self::DATE)->assertOk();
+        Queue::assertPushed(GenerateDailyBrief::class, 1);
+
+        // The worker was not running. Age the row past the point where "still working" is a
+        // credible explanation.
+        DailyBrief::query()->first()->forceFill([
+            'updated_at' => now()->subMinutes(10),
+        ])->saveQuietly();
+
+        $this->actingAs($user, 'sanctum')->getJson('/api/v1/briefs/'.self::DATE)->assertOk();
+
+        Queue::assertPushed(GenerateDailyBrief::class, 2);
+        $this->assertDatabaseCount('daily_briefs', 1);
+    }
+
+    public function test_should_not_queue_a_second_job_while_the_first_is_still_plausible(): void
+    {
+        // The client polls every few seconds. Without the row's clock moving first, each
+        // poll past the threshold would queue another job for the same day.
+        $user = User::factory()->create();
+
+        $this->actingAs($user, 'sanctum')->getJson('/api/v1/briefs/'.self::DATE)->assertOk();
+        $this->actingAs($user, 'sanctum')->getJson('/api/v1/briefs/'.self::DATE)->assertOk();
+        $this->actingAs($user, 'sanctum')->getJson('/api/v1/briefs/'.self::DATE)->assertOk();
+
+        Queue::assertPushed(GenerateDailyBrief::class, 1);
+    }
+
+    public function test_should_retry_a_day_that_had_nothing_to_say_earlier(): void
+    {
+        // The case that sent someone looking for a bug: a briefing that failed at breakfast
+        // for want of data stayed failed all day, long after they had logged a night. It is
+        // `waiting`, not `failed`, and waiting is retried.
+        $user = User::factory()->create();
+
+        $this->actingAs($user, 'sanctum')->getJson('/api/v1/briefs/'.self::DATE)->assertOk();
+
+        DailyBrief::query()->first()->forceFill([
+            'status' => DailyBrief::STATUS_WAITING,
+            'updated_at' => now()->subMinutes(10),
+        ])->saveQuietly();
+
+        $this->actingAs($user, 'sanctum')->getJson('/api/v1/briefs/'.self::DATE)->assertOk();
+
+        Queue::assertPushed(GenerateDailyBrief::class, 2);
+    }
+
+    public function test_should_leave_a_genuine_failure_alone(): void
+    {
+        // A failure is over. Retrying it every couple of minutes for the rest of the day
+        // would be the app arguing with itself, and the card offers a button for the case
+        // where the user disagrees.
+        $user = User::factory()->create();
+
+        $this->actingAs($user, 'sanctum')->getJson('/api/v1/briefs/'.self::DATE)->assertOk();
+
+        DailyBrief::query()->first()->forceFill([
+            'status' => DailyBrief::STATUS_FAILED,
+            'updated_at' => now()->subMinutes(10),
+        ])->saveQuietly();
+
+        $this->actingAs($user, 'sanctum')->getJson('/api/v1/briefs/'.self::DATE)->assertOk();
+
+        Queue::assertPushed(GenerateDailyBrief::class, 1);
+    }
+
     public function test_should_keep_one_users_brief_out_of_anothers(): void
     {
         $mine = User::factory()->create();

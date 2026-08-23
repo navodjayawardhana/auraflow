@@ -15,12 +15,14 @@ final class RecoveryScoreResult
         public readonly int $componentsUsed,
         public readonly bool $illnessWarning,
         public readonly ?string $unavailableReason = null,
+        /** Only ever set alongside an unavailable result -- see LastKnownScore. */
+        public readonly ?LastKnownScore $lastKnown = null,
     ) {
     }
 
-    public static function unavailable(string $date, string $reason): self
+    public static function unavailable(string $date, string $reason, ?LastKnownScore $lastKnown = null): self
     {
-        return new self($date, null, true, 0, false, $reason);
+        return new self($date, null, true, 0, false, $reason, $lastKnown);
     }
 
     public function isAvailable(): bool

@@ -3,6 +3,7 @@
 namespace Tests\Unit\Application\Wellbeing\UseCase;
 
 use App\Application\Wellbeing\DTO\CalculateRecoveryScoreRequest;
+use App\Application\Wellbeing\Service\RecoveryScoreSeriesReader;
 use App\Application\Wellbeing\Service\TrailingWindowReader;
 use App\Application\Wellbeing\UseCase\CalculateRecoveryScoreUseCase;
 use App\Domain\Planning\Model\WellbeingPlan;
@@ -32,12 +33,21 @@ class CalculateRecoveryScoreUseCaseTest extends TestCase
     {
         $this->snapshots = new FakeDailyHealthSnapshotRepository();
         $this->plans = new FakeWellbeingPlanRepository();
+        $calculator = new RecoveryScoreCalculator();
+        $trailingWindow = new TrailingWindowReader($this->snapshots);
+
         $this->useCase = new CalculateRecoveryScoreUseCase(
             $this->snapshots,
-            new RecoveryScoreCalculator(),
+            $calculator,
             new IllnessDetector(),
-            new TrailingWindowReader($this->snapshots),
+            $trailingWindow,
             $this->plans,
+            new RecoveryScoreSeriesReader(
+                $this->snapshots,
+                $calculator,
+                $trailingWindow,
+                $this->plans,
+            ),
         );
     }
 
@@ -82,11 +92,74 @@ class CalculateRecoveryScoreUseCaseTest extends TestCase
     }
 
     // Z
-    public function test_should_report_unavailable_when_the_night_has_no_sleep_recorded(): void
+    public function test_should_score_a_night_that_has_only_a_resting_heart_rate(): void
     {
+        // The log-night form lets someone save a resting heart rate on its own, and the use
+        // case used to refuse to score it -- the app accepting the one input the evidence
+        // most favours and then declining to use it. Autonomic carries 0.80 of the weight,
+        // and resting-HR z alone matched the full score's rank correlation against
+        // self-reported readiness (E-015, rho 0.123 either way).
+        $this->givenBaselineHistory();
         $this->givenDay(self::TODAY, null, 60.0);
 
-        $this->assertFalse($this->calculateFor()->isAvailable());
+        $result = $this->calculateFor();
+
+        $this->assertTrue($result->isAvailable());
+        // Established rather than provisional: provisional means the autonomic component is
+        // the one that is missing, which is the opposite of this case.
+        $this->assertFalse($result->provisional);
+        $this->assertSame(1, $result->componentsUsed);
+    }
+
+    public function test_should_report_unavailable_when_a_lone_heart_rate_has_nothing_to_compare_against(): void
+    {
+        // Recorded, but no component survives: no sleep, and one day is not a baseline. The
+        // reason has to name the baseline rather than the sleep, or it sends the user off to
+        // fix the wrong thing.
+        $this->givenDay(self::TODAY, null, 60.0);
+
+        $result = $this->calculateFor();
+
+        $this->assertFalse($result->isAvailable());
+        $this->assertStringContainsString('earlier nights', (string) $result->unavailableReason);
+    }
+
+    public function test_should_report_unavailable_when_the_night_holds_nothing_at_all(): void
+    {
+        $this->givenBaselineHistory();
+        $this->givenDay(self::TODAY, null, null);
+
+        $result = $this->calculateFor();
+
+        $this->assertFalse($result->isAvailable());
+        $this->assertStringContainsString('No sleep or resting heart rate', (string) $result->unavailableReason);
+    }
+
+    public function test_should_offer_the_last_day_that_could_be_scored(): void
+    {
+        // A dash says nothing. A dated score from four days ago says what is known and when
+        // it was true, which is the difference between an empty screen and a quiet one.
+        $this->givenBaselineHistory();
+        $this->givenDay(self::TODAY, null, null);
+
+        $result = $this->calculateFor();
+
+        $this->assertFalse($result->isAvailable());
+        $this->assertNotNull($result->lastKnown);
+        // Yesterday, the most recent of the seven the helper laid down -- the most recent
+        // that scores, not the best that does.
+        $this->assertSame(
+            (new DateTimeImmutable(self::TODAY))->modify('-1 day')->format('Y-m-d'),
+            $result->lastKnown->date,
+        );
+        $this->assertGreaterThan(0.0, $result->lastKnown->score);
+    }
+
+    public function test_should_offer_no_last_known_score_when_there_is_no_history(): void
+    {
+        $this->givenDay(self::TODAY, null, null);
+
+        $this->assertNull($this->calculateFor()->lastKnown);
     }
 
     // --- Slice B: cold start ---

@@ -1,17 +1,23 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Pedometer } from 'expo-sensors';
+import { Platform } from 'react-native';
 
 import { todayIsoDate } from '@/services/recovery-service';
 
 /**
- * Steps, counted honestly on Android.
+ * Steps, from the best source each platform offers.
  *
- * `Pedometer.getStepCountAsync` — the one that returns a real daily total — is iOS only.
- * Android offers `watchStepCount`, which reports steps *since the subscription started*
- * and only while the app is foregrounded. So a daily figure here is not "steps you took
- * today"; it is "steps taken while AuraFlow was open". The difference matters enough that
- * the coverage is tracked alongside the count and shown in the UI rather than quietly
- * presented as a complete day.
+ * iOS keeps a pedometer history the app can query for any past window, so it can be asked
+ * what actually happened. Android has no equivalent — `getStepCountAsync` is documented
+ * iOS-only and throws there — leaving `watchStepCount`, which reports steps since the
+ * subscription began and only while the app is foregrounded.
+ *
+ * So the same figure means two different things depending on the phone, and the difference
+ * is not cosmetic: on Android it is "steps taken while AuraFlow was open", which on a day
+ * spent not looking at your phone is a small fraction of the truth. Both paths therefore
+ * report whether the window was fully observed, and everything downstream — the tile's
+ * caption, and the focus model's decision to use the feature at all — reads that rather
+ * than assuming.
  */
 
 const KEY_PREFIX = 'auraflow.steps.v1';
@@ -57,6 +63,23 @@ async function writeDay(userId: string | number, record: DayRecord): Promise<voi
   }
 }
 
+/**
+ * What the platform's own history says, or null where there is no history to ask.
+ *
+ * Wrapped in a try because a refused motion permission surfaces as a throw rather than a
+ * zero, and a throw here means "fall back", never "you did not move".
+ */
+async function queryObservedSteps(from: Date, to: Date): Promise<number | null> {
+  if (Platform.OS !== 'ios') return null;
+
+  try {
+    const result = await Pedometer.getStepCountAsync(from, to);
+    return typeof result?.steps === 'number' ? result.steps : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function isPedometerAvailable(): Promise<boolean> {
   try {
     return await Pedometer.isAvailableAsync();
@@ -82,18 +105,43 @@ export async function recordSteps(
 }
 
 export interface StepSummary {
-  /** Steps counted today while the app was open. */
+  /** Today's steps: every one of them where `isComplete`, otherwise only those witnessed. */
   today: number;
   /** Steps in the trailing 60 minutes — the window the focus model was trained on. */
   lastHour: number;
   /** Minutes of the trailing hour we actually observed. */
   coverageMinutes: number;
+  /**
+   * Whether the platform answered from its own history rather than from what this app
+   * happened to see. The caption on the tile turns on it, because "9,412 steps" and "9,412
+   * steps while you had the app open" are different claims and only one of them is a day.
+   */
+  isComplete: boolean;
 }
 
 export async function summarise(
   userId: string | number,
   now = Date.now(),
 ): Promise<StepSummary> {
+  const startOfDay = new Date(now);
+  startOfDay.setHours(0, 0, 0, 0);
+
+  const [observedToday, observedHour] = await Promise.all([
+    queryObservedSteps(startOfDay, new Date(now)),
+    queryObservedSteps(new Date(now - 60 * BUCKET_MS), new Date(now)),
+  ]);
+
+  if (observedToday !== null && observedHour !== null) {
+    // The operating system watched the whole window, not just the part this app was awake
+    // for, so the coverage is genuinely complete rather than generously rounded.
+    return {
+      today: observedToday,
+      lastHour: observedHour,
+      coverageMinutes: 60,
+      isComplete: true,
+    };
+  }
+
   const record = await readDay(userId, todayIsoDate(new Date(now)));
 
   const currentBucket = Math.floor(now / BUCKET_MS);
@@ -113,7 +161,7 @@ export async function summarise(
     }
   }
 
-  return { today, lastHour, coverageMinutes };
+  return { today, lastHour, coverageMinutes, isComplete: false };
 }
 
 /** Yesterday and older are of no use to the trailing-hour window or today's tile. */

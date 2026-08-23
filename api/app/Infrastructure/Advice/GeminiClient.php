@@ -21,13 +21,17 @@ final class GeminiClient
     private const TEMPERATURE = 0.4;
 
     /**
-     * The prompt asks for under 120 words, which is roughly 160 tokens. The rest of this
-     * budget is headroom for the model's own reasoning: from Gemini 3 onwards thinking
-     * tokens are charged against maxOutputTokens, and they routinely run to ~350 here.
-     * At the old 320 the reasoning consumed the entire allowance and every brief came
-     * back truncated mid-sentence with finishReason MAX_TOKENS.
+     * The prompt asks for under 120 words, which is roughly 160 tokens. Everything above
+     * that is headroom for the model's own reasoning: from Gemini 3 onwards thinking tokens
+     * are charged against maxOutputTokens, and they are not bounded by the answer's length.
+     *
+     * This has now been raised twice for the same reason. At 320 the reasoning consumed the
+     * whole allowance; at 1024, which was set assuming reasoning of around 350 tokens, a
+     * brief still came back with finishReason MAX_TOKENS. The lesson is that the reasoning
+     * budget is not something to estimate tightly -- an unfinished answer is thrown away
+     * entirely, so a generous ceiling costs a fraction of what a wasted call does.
      */
-    private const MAX_OUTPUT_TOKENS = 1024;
+    private const MAX_OUTPUT_TOKENS = 2048;
 
     /**
      * Nothing in a brief about someone's own figures needs deep deliberation, and the

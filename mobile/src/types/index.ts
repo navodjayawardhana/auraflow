@@ -277,12 +277,24 @@ export type PlanOverrideInput = Partial<Record<OverridableField, number>> & {
   client_uuid?: string;
 };
 
+export interface LastKnownScore {
+  date: string;
+  score: number;
+  provisional: boolean;
+}
+
 export type RecoveryReading =
   | {
       date: string;
       available: false;
       score: null;
       reason: string;
+      /**
+       * The most recent day that could be scored, or null when nothing in the last
+       * fortnight could. Never rendered without its date — it describes that night, not
+       * this one.
+       */
+      last_known: LastKnownScore | null;
     }
   | {
       date: string;

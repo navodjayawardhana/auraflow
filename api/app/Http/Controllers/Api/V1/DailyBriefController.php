@@ -17,6 +17,9 @@ use Illuminate\Http\JsonResponse;
  */
 final class DailyBriefController extends Controller
 {
+    /** How long a pending briefing may sit before it is treated as a dropped job. */
+    private const STRANDED_AFTER_SECONDS = 120;
+
     public function show(ShowDailyBriefRequest $request, string $date): JsonResponse
     {
         $userId = $request->user()->id;
@@ -31,6 +34,13 @@ final class DailyBriefController extends Controller
             ]);
 
             GenerateDailyBrief::dispatch($userId, $date);
+        } elseif ($this->isStranded($brief)) {
+            // Touched before dispatching, not after: the client polls this endpoint every
+            // few seconds, and without moving the clock first every one of those polls
+            // would queue another job for the same day.
+            $brief->touch();
+            GenerateDailyBrief::dispatch($userId, $date);
+            $brief->refresh();
         }
 
         return response()->json([
@@ -70,6 +80,37 @@ final class DailyBriefController extends Controller
         GenerateDailyBrief::dispatch($userId, $date);
 
         return response()->json(['data' => ['date' => $date, 'status' => DailyBrief::STATUS_PENDING]], 202);
+    }
+
+    /**
+     * A briefing left pending by a job that never ran.
+     *
+     * Dispatching only on creation meant exactly one attempt, ever. A worker that was not
+     * running -- restarting, crashed, or simply never started in a development environment
+     * -- left the row at `pending` with nothing to retry it, and the client polling this
+     * endpoint would wait for an answer no longer coming. Which is what happened.
+     *
+     * Generation takes seconds, so a couple of minutes is comfortably past "still working"
+     * and safely short of a user staring at a placeholder.
+     */
+    private function isStranded(DailyBrief $brief): bool
+    {
+        if ($brief->updated_at === null) {
+            return false;
+        }
+
+        if (! $brief->updated_at->lt(now()->subSeconds(self::STRANDED_AFTER_SECONDS))) {
+            return false;
+        }
+
+        // `waiting` joins `pending` here for the opposite reason. Pending is retried because
+        // the answer never came; waiting is retried because the question has changed --
+        // a night logged at noon makes a day that had nothing to say at breakfast worth
+        // writing about, and the user should not have to find a button to discover that.
+        //
+        // Cheap to repeat: the job checks the day's data and returns before the model call,
+        // so a genuinely empty day costs a query every couple of minutes and nothing else.
+        return in_array($brief->status, [DailyBrief::STATUS_PENDING, DailyBrief::STATUS_WAITING], true);
     }
 
     /**

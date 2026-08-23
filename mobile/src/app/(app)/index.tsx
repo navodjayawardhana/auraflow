@@ -179,6 +179,17 @@ export default function TodayScreen() {
   const stepsAvailable = steps.status === 'counting';
   const waterMl = tonight?.water_ml ?? null;
 
+  /**
+   * Where you are, at whichever resolution is honest.
+   *
+   * The context wins when there is one, because the user drew that boundary themselves and
+   * "home" says more than the name of the nearest town. The weather provider's place name is
+   * a fallback rather than an equal: it is that provider's guess at the closest settlement,
+   * which is a different kind of claim, and it is absent entirely when the keyless provider
+   * answered -- that one reports on a coordinate, not on a place. No name, no chip.
+   */
+  const place = context?.toLowerCase() ?? weather?.location_name?.toLowerCase() ?? null;
+
   const dateLabel = new Date()
     .toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })
     .toUpperCase();
@@ -211,13 +222,14 @@ export default function TodayScreen() {
                 label={weather.condition.toLowerCase()}
               />
             ) : null}
-            {context ? <Chip icon="map-pin" value="" label={context.toLowerCase()} /> : null}
+            {place !== null ? <Chip icon="map-pin" value="" label={place} /> : null}
           </View>
 
           <View style={styles.rings}>
             <HeroRings
               score={score}
               isProvisional={isProvisional}
+              lastKnown={recovery?.available === false ? recovery.last_known : null}
               stepsProgress={stepsAvailable ? steps.today / targets.stepGoal : null}
               waterProgress={waterMl === null ? null : waterMl / targets.waterMl}
             />
@@ -293,7 +305,9 @@ export default function TodayScreen() {
                   progress={stepsAvailable ? steps.today / targets.stepGoal : undefined}
                   caption={
                     steps.status === 'counting'
-                      ? 'counted while AuraFlow is open'
+                      ? steps.isComplete
+                        ? "today's total, from your phone's own count"
+                        : 'counted while AuraFlow is open'
                       : steps.status === 'denied'
                         ? 'activity permission denied'
                         : steps.status === 'unavailable'

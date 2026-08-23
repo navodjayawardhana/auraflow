@@ -120,7 +120,23 @@ constexpr uint8_t       FADE_STEP         = 6;      // ~0.6 s for a full swing
 // ---- biometrics -----------------------------------------------------------
 constexpr int      BIO_BUFFER      = 100;    // 4 s @ 25 Hz effective
 constexpr int      BIO_STRIDE      = 25;     // recompute once per second
-constexpr uint32_t FINGER_IR_FLOOR = 50000;  // below this, nothing is on the sensor
+// Contact is a Schmitt trigger, not a line.
+//
+// A finger resting still is not a steady IR reading: it shifts, it changes pressure, it
+// lets a little ambient light past. With one threshold and no debounce a single sample of
+// that took `fingerRun` to zero, which dropped `finger` and `settled` and threw away the
+// beat detector's interval history -- a reading that cut out mid-measurement while the
+// finger had never actually left.
+//
+// Arriving is judged strictly and leaving is judged loosely, with a gap between the two so
+// noise cannot cross both.
+constexpr uint32_t FINGER_IR_FLOOR   = 50000;  // above this, a finger has arrived
+constexpr uint32_t FINGER_IR_RELEASE = 35000;  // below this it may have gone -- but not yet
+
+// How long it must stay below the release level before it counts as gone. Eight samples is
+// about a third of a second at the effective rate: far longer than a shift in grip, far
+// shorter than anyone can lift a finger and not notice the number stop.
+constexpr int      FINGER_LOST_SAMPLES = 8;
 
 // The nominal effective rate: 100 Hz from the sensor, averaged four to one in its
 // FIFO. Nominal because it comes from the MAX30102's own oscillator, which is neither

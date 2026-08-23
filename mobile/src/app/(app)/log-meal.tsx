@@ -1,6 +1,5 @@
 import { Feather } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useNetworkState } from 'expo-network';
 import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
@@ -24,7 +23,6 @@ import { PrimaryButton } from '@/components/primary-button';
 import { TimePickerSheet } from '@/components/time-picker-sheet';
 import {
   Font,
-  GradientAxis,
   Layout,
   PlaceholderColor,
   Radius,
@@ -43,7 +41,7 @@ import {
   type PhotoEstimateItem,
   type PhotoMealEstimate,
 } from '@/services/meal-photo';
-import { logMeal, lookupBarcode, type FoodProduct } from '@/services/meal-service';
+import { logMeal } from '@/services/meal-service';
 import { composeEatenAt, isInFuture, nowAsWheelTime } from '@/services/nutrition-history';
 import { shiftIsoDate, todayIsoDate } from '@/services/recovery-service';
 
@@ -95,11 +93,6 @@ export default function LogMealScreen() {
   const [isPickingDate, setIsPickingDate] = useState(false);
   const [isPickingTime, setIsPickingTime] = useState(false);
 
-  const [barcode, setBarcode] = useState('');
-  const [product, setProduct] = useState<FoodProduct | null>(null);
-  const [portion, setPortion] = useState('100');
-  const [isLooking, setIsLooking] = useState(false);
-  const [lookupMissed, setLookupMissed] = useState(false);
 
   const camera = useRef<CameraView | null>(null);
   const [permission, requestPermission] = useCameraPermissions();
@@ -123,31 +116,6 @@ export default function LogMealScreen() {
     setEstimate(null);
     setItems([]);
     setIsPanelOpen(false);
-  }
-
-  async function search() {
-    const code = barcode.trim();
-    if (!/^\d{6,14}$/.test(code)) {
-      setError('A barcode is 6 to 14 digits.');
-      return;
-    }
-
-    setError(null);
-    setLookupMissed(false);
-    setIsLooking(true);
-
-    const found = await lookupBarcode(code);
-
-    if (found !== null) {
-      // A scanned product is a better claim than a photograph of one, and a screen holding
-      // both would have to decide which the save meant. It clears rather than competes.
-      clearPhoto();
-    }
-
-    setProduct(found);
-    // Not an error — most products simply are not in an open, volunteer-edited database.
-    setLookupMissed(found === null);
-    setIsLooking(false);
   }
 
   async function openCamera() {
@@ -204,8 +172,6 @@ export default function LogMealScreen() {
     }
 
     setPhotoUri(photo.uri);
-    setProduct(null);
-    setLookupMissed(false);
     setIsReading(true);
 
     try {
@@ -251,10 +217,6 @@ export default function LogMealScreen() {
     applyItems(next);
   }
 
-  const portionG = Number(portion) || 0;
-  const lookedUpKcal =
-    product !== null ? Math.round((product.kcal_per_100g * portionG) / 100) : null;
-
   const macroOrNothing = (value: string) => {
     const grams = Number(value);
     return Number.isFinite(grams) && value.trim() !== '' && grams > 0 ? Math.round(grams) : null;
@@ -292,25 +254,12 @@ export default function LogMealScreen() {
       fat_g: macroOrNothing(fat),
     };
 
-    const payload =
-      product !== null && lookedUpKcal !== null
-        ? {
-            name: product.brand ? `${product.brand} ${product.name}` : product.name,
-            kcal: lookedUpKcal,
-            source: 'lookup' as const,
-            barcode: product.barcode,
-            portion_g: portionG,
-            ...(product.protein_per_100g !== null
-              ? { protein_g: Math.round((product.protein_per_100g * portionG) / 100) }
-              : {}),
-            ...(product.carbs_per_100g !== null
-              ? { carbs_g: Math.round((product.carbs_per_100g * portionG) / 100) }
-              : {}),
-            ...(product.fat_per_100g !== null
-              ? { fat_g: Math.round((product.fat_per_100g * portionG) / 100) }
-              : {}),
-          }
-        : {
+    /*
+     * One shape now. The barcode field is gone from this screen, so nothing here can
+     * produce a `lookup` row -- the endpoint, the source and the history that reads it all
+     * remain, ready for the camera scan that replaces the field.
+     */
+    const payload = {
             name: typed.name,
             kcal: typed.kcal,
             // The row remembers a model started this, even after the user has corrected
@@ -482,49 +431,9 @@ export default function LogMealScreen() {
             </Pressable>
           </Animated.View>
 
-          {/* Barcode first: a looked-up figure is a better claim than a guess, so the
-              flow leads with it and keeps the estimate as a fallback. */}
-          <Animated.View entering={FadeInUp.duration(400)}>
-            <View style={styles.scanRow}>
-              <LinearGradient
-                colors={[AuraColors.brand.default, AuraColors.accent.default]}
-                start={GradientAxis.deg120.start}
-                end={GradientAxis.deg120.end}
-                style={StyleSheet.absoluteFill}
-              />
-              <View style={styles.scanIcon}>
-                <Feather name="maximize" size={22} color="#ffffff" />
-              </View>
-              <View style={styles.scanText}>
-                <Text style={styles.scanTitle}>Look up a barcode</Text>
-                <Text style={styles.scanSubtitle}>
-                  Type the digits under the barcode — scanning arrives with the camera build
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.barcodeRow}>
-              <TextInput
-                value={barcode}
-                onChangeText={setBarcode}
-                placeholder="5000168001234"
-                placeholderTextColor={PlaceholderColor}
-                keyboardType="number-pad"
-                style={styles.barcodeInput}
-              />
-              <Pressable
-                onPress={search}
-                disabled={isLooking}
-                accessibilityRole="button"
-                accessibilityLabel="Look up barcode"
-                style={styles.searchButton}>
-                <Feather name="search" size={18} color="#ffffff" />
-              </Pressable>
-            </View>
-          </Animated.View>
-
-          {/* Second, not first. It reads a photograph with no scale in it, so it belongs
-              below the barcode and above the blank form. */}
+          {/* The photograph leads now that the barcode field is gone from this screen. It
+              reads a picture with no scale in it, so the disclosure below it does the work
+              the barcode's provenance used to. */}
           {estimate === null ? (
             <Animated.View entering={FadeInUp.delay(60).duration(400)}>
               <Pressable
@@ -639,49 +548,7 @@ export default function LogMealScreen() {
             </Animated.View>
           ) : null}
 
-          {product !== null ? (
-            <Animated.View entering={FadeInUp.duration(300)} style={styles.card}>
-              <View style={styles.resultRow}>
-                <View style={[styles.resultIcon, { backgroundColor: IconTones.success.bg }]}>
-                  <Feather name="check-circle" size={17} color={IconTones.success.color} />
-                </View>
-                <View style={styles.resultText}>
-                  <Text style={Type.rowTitle}>
-                    {product.brand ? `${product.brand} ${product.name}` : product.name}
-                  </Text>
-                  <Text style={Type.caption}>{product.source} · per 100 g</Text>
-                </View>
-                <View style={styles.resultValue}>
-                  <Text style={styles.resultKcal}>{product.kcal_per_100g}</Text>
-                  <Text style={Type.caption}>kcal</Text>
-                </View>
-              </View>
-
-              <View style={styles.portionRow}>
-                <Text style={Type.fieldLabel}>Portion</Text>
-                <View style={styles.portionInputWrap}>
-                  <TextInput
-                    value={portion}
-                    onChangeText={setPortion}
-                    keyboardType="number-pad"
-                    style={styles.portionInput}
-                  />
-                  <Text style={Type.caption}>g</Text>
-                </View>
-                <Text style={styles.portionTotal}>{lookedUpKcal} kcal</Text>
-              </View>
-
-              <View style={styles.noteBlock}>
-                <Feather name="info" size={12} color={AuraColors.content.muted} />
-                <Text style={styles.noteText}>
-                  Figures come from Open Food Facts, an open database edited by its users.
-                </Text>
-              </View>
-            </Animated.View>
-          ) : null}
-
-          {product === null && (
-            <Animated.View entering={FadeInUp.delay(80).duration(400)} style={styles.card}>
+          <Animated.View entering={FadeInUp.delay(80).duration(400)} style={styles.card}>
               <View style={styles.estimateHead}>
                 <View
                   style={[
@@ -696,11 +563,7 @@ export default function LogMealScreen() {
                 </View>
                 <View style={styles.resultText}>
                   <Text style={styles.estimateTitle}>
-                    {estimate !== null
-                      ? 'Correct anything that looks wrong'
-                      : lookupMissed
-                        ? 'Not in the database'
-                        : 'Or enter it yourself'}
+                    {estimate !== null ? 'Correct anything that looks wrong' : 'Enter it yourself'}
                   </Text>
                   <Text style={Type.caption}>
                     {estimate !== null
@@ -761,8 +624,7 @@ export default function LogMealScreen() {
                   ))}
                 </View>
               ) : null}
-            </Animated.View>
-          )}
+          </Animated.View>
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
         </ScrollView>
@@ -852,50 +714,6 @@ const styles = StyleSheet.create({
     color: AuraColors.content.default,
     fontVariant: ['tabular-nums'],
   },
-  scanRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    padding: 16,
-    borderRadius: Radius.row,
-    overflow: 'hidden',
-    ...Shadows.cta,
-  },
-  scanIcon: {
-    width: 46,
-    height: 46,
-    borderRadius: Radius.iconLarge,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scanText: { flex: 1, gap: 3 },
-  scanTitle: { fontFamily: Font.bold, fontSize: 15, color: '#ffffff' },
-  scanSubtitle: {
-    fontFamily: Font.regular,
-    fontSize: 11,
-    lineHeight: 16,
-    color: 'rgba(255,255,255,0.84)',
-  },
-  barcodeRow: { flexDirection: 'row', gap: 10, marginTop: 12 },
-  barcodeInput: {
-    flex: 1,
-    height: 48,
-    paddingHorizontal: 16,
-    borderRadius: 999,
-    backgroundColor: AuraColors.surface.default,
-    borderWidth: 1,
-    borderColor: AuraColors.surface.selected,
-    ...Type.input,
-  },
-  searchButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 999,
-    backgroundColor: AuraColors.brand.default,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   photoCta: { ...Surfaces.card, flexDirection: 'row', alignItems: 'center', gap: 12 },
   photoCtaDim: { opacity: 0.55 },
   card: { ...Surfaces.card, gap: 12 },
@@ -909,13 +727,6 @@ const styles = StyleSheet.create({
   },
   thumb: { width: 46, height: 46, borderRadius: Radius.iconMedium },
   resultText: { flex: 1, gap: 2 },
-  resultValue: { alignItems: 'flex-end' },
-  resultKcal: {
-    fontFamily: Font.bold,
-    fontSize: 15,
-    color: AuraColors.content.default,
-    fontVariant: ['tabular-nums'],
-  },
   itemRow: {
     flexDirection: 'row',
     alignItems: 'center',
