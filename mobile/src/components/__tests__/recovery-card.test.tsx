@@ -14,6 +14,7 @@ const established: RecoveryReading = {
   provisional: false,
   components_used: 3,
   illness_warning: false,
+  resting_hr_source: 'overnight',
 };
 
 describe('RecoveryCard', () => {
@@ -73,6 +74,28 @@ describe('RecoveryCard', () => {
     // Three components, not four — the calculator combines duration, architecture and
     // autonomic signals only.
     expect(screen.getByText(/2 of 3 signals/)).toBeTruthy();
+  });
+
+  it('says nothing about the baseline when the score rests on overnight readings', () => {
+    // The measurement E-015 actually evaluated. A disclosure here would be a caveat about
+    // nothing, and caveats that appear everywhere are read nowhere.
+    render(<RecoveryCard status="loaded" reading={established} onRetry={jest.fn()} />);
+
+    expect(screen.queryByText(/not the version that was tested/)).toBeNull();
+  });
+
+  it('discloses a score measured against seated check-ins', () => {
+    // The one case where the published validation does not describe the number on screen.
+    // Silence here would let ρ 0.123 be read as covering a measurement it never saw.
+    render(
+      <RecoveryCard
+        status="loaded"
+        reading={{ ...established, resting_hr_source: 'seated_spot' }}
+        onRetry={jest.fn()}
+      />,
+    );
+
+    expect(screen.getByText(/not the version that was tested/)).toBeTruthy();
   });
 
   it('surfaces an illness warning alongside the score', () => {

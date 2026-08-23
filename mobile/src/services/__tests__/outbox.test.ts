@@ -38,6 +38,20 @@ function snapshot(date: string): QueuedPayload {
   return { kind: 'health-snapshot', body: { recorded_on: date, water_ml: 500 } };
 }
 
+function steps(date: string, count: number): QueuedPayload {
+  return {
+    kind: 'health-snapshot',
+    body: { recorded_on: date, steps: count, steps_are_complete: false },
+  };
+}
+
+function night(date: string): QueuedPayload {
+  return {
+    kind: 'health-snapshot',
+    body: { recorded_on: date, sleep_minutes: 445, resting_heart_rate: 56 },
+  };
+}
+
 function session(clientUuid: string): QueuedPayload {
   return {
     kind: 'exercise-session',
@@ -69,6 +83,38 @@ describe('enqueue', () => {
     // The endpoint is idempotent per (user, date), so two entries would mean sending
     // conflicting figures for the same night.
     expect(await pendingCount()).toBe(1);
+  });
+
+  it('merges a day rather than replacing it, so one signal cannot erase another', async () => {
+    await enqueue(night('2026-08-22'));
+    await enqueue(steps('2026-08-22', 6100));
+
+    expect(await pendingCount()).toBe(1);
+
+    await flush();
+
+    // Both halves of the day, in one write. Each writer sends only what it knows, and
+    // the endpoint merges — so dropping the earlier entry would lose a night the moment
+    // a walk was synced for the same date offline.
+    expect(mockRecordHealthSnapshot).toHaveBeenCalledWith({
+      recorded_on: '2026-08-22',
+      sleep_minutes: 445,
+      resting_heart_rate: 56,
+      steps: 6100,
+      steps_are_complete: false,
+    });
+  });
+
+  it('lets the later figure win where two writes state the same field', async () => {
+    await enqueue(steps('2026-08-22', 6100));
+    await enqueue(steps('2026-08-22', 9400));
+
+    await flush();
+
+    expect(mockRecordHealthSnapshot).toHaveBeenCalledTimes(1);
+    expect(mockRecordHealthSnapshot).toHaveBeenCalledWith(
+      expect.objectContaining({ steps: 9400 }),
+    );
   });
 
   it('keeps nights for different dates apart', async () => {

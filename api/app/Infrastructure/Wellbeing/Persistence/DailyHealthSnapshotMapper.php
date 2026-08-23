@@ -6,6 +6,7 @@ use App\Domain\Wellbeing\Exception\InvalidHeartRateException;
 use App\Domain\Wellbeing\Exception\InvalidSleepSummaryException;
 use App\Domain\Wellbeing\Model\DailyHealthSnapshot;
 use App\Domain\Wellbeing\ValueObject\RestingHeartRate;
+use App\Domain\Wellbeing\ValueObject\RestingHeartRateSource;
 use App\Domain\Wellbeing\ValueObject\SleepSummary;
 use App\Domain\Wellbeing\ValueObject\UserId;
 use App\Models\HealthSnapshot as EloquentHealthSnapshot;
@@ -21,6 +22,7 @@ final class DailyHealthSnapshotMapper
             self::toSleep($model),
             self::toRestingHeartRate($model),
             $model->steps,
+            $model->steps_are_complete,
             $model->water_ml,
         );
     }
@@ -39,7 +41,9 @@ final class DailyHealthSnapshotMapper
             'deep_sleep_minutes' => $sleep?->deepMinutes() === null ? null : (int) round($sleep->deepMinutes()),
             'rem_sleep_minutes'  => $sleep?->remMinutes() === null ? null : (int) round($sleep->remMinutes()),
             'resting_heart_rate' => $snapshot->restingHeartRate()?->bpm(),
+            'resting_hr_source'  => $snapshot->restingHeartRate()?->source()->value,
             'steps'              => $snapshot->steps(),
+            'steps_are_complete' => $snapshot->stepsAreComplete(),
             'water_ml'           => $snapshot->waterMl(),
         ];
     }
@@ -67,14 +71,30 @@ final class DailyHealthSnapshotMapper
         }
     }
 
+    /**
+     * A rate whose provenance the row does not state is treated as absent, the same way an
+     * out-of-range one is.
+     *
+     * The migration backfilled every row that existed, and the endpoint refuses a rate
+     * without a source, so this is reachable only by something writing to the table
+     * directly. Reading such a row as overnight would be the whole defect back again in one
+     * line -- a seated figure landing in the overnight baseline because a column was empty.
+     * Dropping it costs one day of history; guessing costs the baseline.
+     */
     private static function toRestingHeartRate(EloquentHealthSnapshot $model): ?RestingHeartRate
     {
-        if ($model->resting_heart_rate === null) {
+        if ($model->resting_heart_rate === null || $model->resting_hr_source === null) {
+            return null;
+        }
+
+        $source = RestingHeartRateSource::tryFrom((string) $model->resting_hr_source);
+
+        if ($source === null) {
             return null;
         }
 
         try {
-            return RestingHeartRate::fromBpm((float) $model->resting_heart_rate);
+            return RestingHeartRate::fromBpm((float) $model->resting_heart_rate, $source);
         } catch (InvalidHeartRateException) {
             return null;
         }

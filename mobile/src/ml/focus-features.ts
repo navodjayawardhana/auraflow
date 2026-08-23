@@ -59,12 +59,26 @@ const STEP_COVERAGE_MIN_MINUTES = 40;
  * Today's resting heart rate against the mean of the preceding week. The model was
  * trained on exactly this construction, so it is computed the same way here rather than
  * substituted with something similar.
+ *
+ * With one qualification the training data could not express: every rate in that dataset was
+ * an overnight one, so "the preceding week" was a week of one kind of measurement. Here it
+ * may not be — a user who took a morning check-in on Tuesday and wore a watch the rest of the
+ * week has two series in that window. Differencing across them produces the gap between the
+ * two methods, several bpm of it, dressed as a change in the person. The window is therefore
+ * narrowed to days measured the way today was, which leaves the all-overnight case exactly as
+ * it was trained and withholds the feature rather than fabricating it when there is nothing
+ * comparable to difference against.
  */
 function restingHrDelta(snapshot: HealthSnapshot, history: HealthSnapshot[]): number | undefined {
   if (snapshot.resting_heart_rate === null) return undefined;
 
   const priors = history
-    .filter((h) => h.date < snapshot.date && h.resting_heart_rate !== null)
+    .filter(
+      (h) =>
+        h.date < snapshot.date &&
+        h.resting_heart_rate !== null &&
+        h.resting_hr_source === snapshot.resting_hr_source,
+    )
     .slice(-DELTA_WINDOW_DAYS)
     .map((h) => h.resting_heart_rate as number);
 

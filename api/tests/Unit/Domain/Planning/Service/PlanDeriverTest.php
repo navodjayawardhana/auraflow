@@ -14,6 +14,7 @@ use App\Domain\Profile\Model\UserProfile;
 use App\Domain\Profile\ValueObject\ActivityLevel;
 use App\Domain\Profile\ValueObject\Sex;
 use App\Domain\Wellbeing\ValueObject\RestingHeartRateBaseline;
+use App\Domain\Wellbeing\ValueObject\RestingHeartRateSource;
 use App\Domain\Wellbeing\ValueObject\UserId;
 use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
@@ -69,7 +70,7 @@ class PlanDeriverTest extends TestCase
     {
         return RestingHeartRateBaseline::fromPriorReadings([
             $mean - 3, $mean, $mean + 3, $mean - 1, $mean + 1, $mean,
-        ]);
+        ], RestingHeartRateSource::Overnight);
     }
 
     // --- Slice A: the cold start ---

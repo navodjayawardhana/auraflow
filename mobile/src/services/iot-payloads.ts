@@ -36,6 +36,8 @@ export function isBiometrics(value: unknown): value is BiometricsTelemetry {
   if (value.hr_bpm !== undefined && !isFiniteNumber(value.hr_bpm)) return false;
   if (value.hr_bpm_maxim !== undefined && !isFiniteNumber(value.hr_bpm_maxim)) return false;
   if (value.spo2_pct !== undefined && !isFiniteNumber(value.spo2_pct)) return false;
+  if (value.beats !== undefined && !isFiniteNumber(value.beats)) return false;
+  if (value.beats_needed !== undefined && !isFiniteNumber(value.beats_needed)) return false;
   if (value.settled !== undefined && typeof value.settled !== 'boolean') return false;
   if (value.hr_maxim_valid !== undefined && typeof value.hr_maxim_valid !== 'boolean') {
     return false;
@@ -125,4 +127,20 @@ export function usableSpo2(b: BiometricsTelemetry | null): number | null {
  */
 export function isSettling(b: BiometricsTelemetry | null): boolean {
   return b !== null && b.finger && usableHeartRate(b) === null;
+}
+
+/**
+ * How far along a measurement is, or null when the node does not say.
+ *
+ * Only meaningful while a finger is down and no rate has resolved. Reported as a pair
+ * rather than a fraction so the card can count actual beats -- "2 of 3" is a fact about the
+ * measurement, where a percentage is a progress bar's guess at one.
+ */
+export function beatProgress(
+  b: BiometricsTelemetry | null,
+): { have: number; need: number } | null {
+  if (b === null || b.beats === undefined || b.beats_needed === undefined) return null;
+  if (b.beats_needed <= 0) return null;
+
+  return { have: Math.min(b.beats, b.beats_needed), need: b.beats_needed };
 }

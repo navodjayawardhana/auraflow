@@ -22,6 +22,14 @@ final class DailyContext
         public readonly ?int $remSleepMinutes = null,
         public readonly ?float $restingHeartRate = null,
         public readonly ?int $steps = null,
+        /**
+         * Whether that count is the day or only the witnessed part of it.
+         *
+         * Default null, and null is read as partial: a brief that calls an undercount a
+         * day's walking is the one thing a briefing must not do, and the platform that
+         * can answer for a whole day is the one that has to say so.
+         */
+        public readonly ?bool $stepsAreComplete = null,
         public readonly ?int $waterMl = null,
         public readonly int $waterTargetMl = 2000,
         public readonly ?string $weatherDescription = null,

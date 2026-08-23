@@ -5,6 +5,7 @@ namespace Tests\Unit\Domain\Wellbeing\Service;
 use App\Domain\Wellbeing\Service\RecoveryScoreCalculator;
 use App\Domain\Wellbeing\ValueObject\RestingHeartRate;
 use App\Domain\Wellbeing\ValueObject\RestingHeartRateBaseline;
+use App\Domain\Wellbeing\ValueObject\RestingHeartRateSource;
 use App\Domain\Wellbeing\ValueObject\SleepSummary;
 use PHPUnit\Framework\TestCase;
 
@@ -25,7 +26,7 @@ class RecoveryScoreCalculatorTest extends TestCase
     {
         return RestingHeartRateBaseline::fromPriorReadings([
             $mean - 3, $mean, $mean + 3, $mean - 1, $mean + 1, $mean,
-        ]);
+        ], RestingHeartRateSource::Overnight);
     }
 
     // --- Slice A: duration component ---
@@ -83,7 +84,7 @@ class RecoveryScoreCalculatorTest extends TestCase
     public function test_should_skip_the_autonomic_component_when_no_baseline_exists(): void
     {
         $this->assertNull(
-            $this->calculator->autonomicScore(RestingHeartRate::fromBpm(60.0), null)
+            $this->calculator->autonomicScore(RestingHeartRate::fromBpm(60.0, RestingHeartRateSource::Overnight), null)
         );
     }
 
@@ -97,7 +98,7 @@ class RecoveryScoreCalculatorTest extends TestCase
     public function test_should_place_a_resting_rate_at_baseline_on_mid_scale(): void
     {
         $baseline = $this->steadyBaseline(60.0);
-        $score = $this->calculator->autonomicScore(RestingHeartRate::fromBpm($baseline->mean()), $baseline);
+        $score = $this->calculator->autonomicScore(RestingHeartRate::fromBpm($baseline->mean(), RestingHeartRateSource::Overnight), $baseline);
 
         $this->assertEqualsWithDelta(50.0, $score, 0.001);
     }
@@ -107,15 +108,15 @@ class RecoveryScoreCalculatorTest extends TestCase
     {
         // Expressed in each person's own standard deviations, an absolute threshold
         // would just encode fitness rather than strain.
-        $athlete = RestingHeartRateBaseline::fromPriorReadings([42, 45, 48, 44, 46, 45]);
-        $deskWorker = RestingHeartRateBaseline::fromPriorReadings([67, 70, 73, 69, 71, 70]);
+        $athlete = RestingHeartRateBaseline::fromPriorReadings([42, 45, 48, 44, 46, 45], RestingHeartRateSource::Overnight);
+        $deskWorker = RestingHeartRateBaseline::fromPriorReadings([67, 70, 73, 69, 71, 70], RestingHeartRateSource::Overnight);
 
         $athleteScore = $this->calculator->autonomicScore(
-            RestingHeartRate::fromBpm($athlete->mean() + $athlete->standardDeviation()),
+            RestingHeartRate::fromBpm($athlete->mean() + $athlete->standardDeviation(), RestingHeartRateSource::Overnight),
             $athlete,
         );
         $deskWorkerScore = $this->calculator->autonomicScore(
-            RestingHeartRate::fromBpm($deskWorker->mean() + $deskWorker->standardDeviation()),
+            RestingHeartRate::fromBpm($deskWorker->mean() + $deskWorker->standardDeviation(), RestingHeartRateSource::Overnight),
             $deskWorker,
         );
 
@@ -126,7 +127,7 @@ class RecoveryScoreCalculatorTest extends TestCase
     public function test_should_score_below_mid_scale_when_resting_rate_is_elevated(): void
     {
         $baseline = $this->steadyBaseline(60.0);
-        $score = $this->calculator->autonomicScore(RestingHeartRate::fromBpm(72.0), $baseline);
+        $score = $this->calculator->autonomicScore(RestingHeartRate::fromBpm(72.0, RestingHeartRateSource::Overnight), $baseline);
 
         $this->assertLessThan(50.0, $score);
     }
@@ -160,8 +161,8 @@ class RecoveryScoreCalculatorTest extends TestCase
         $baseline = $this->steadyBaseline(60.0);
         $goodSleep = SleepSummary::of(8.0, 90.0, 120.0);
 
-        $rested = $this->calculator->calculate($goodSleep, RestingHeartRate::fromBpm(54.0), $baseline);
-        $strained = $this->calculator->calculate($goodSleep, RestingHeartRate::fromBpm(70.0), $baseline);
+        $rested = $this->calculator->calculate($goodSleep, RestingHeartRate::fromBpm(54.0, RestingHeartRateSource::Overnight), $baseline);
+        $strained = $this->calculator->calculate($goodSleep, RestingHeartRate::fromBpm(70.0, RestingHeartRateSource::Overnight), $baseline);
 
         // Identical sleep, opposite autonomic signals: the score has to move a long way.
         $this->assertGreaterThan(25.0, $rested->value() - $strained->value());
@@ -184,7 +185,7 @@ class RecoveryScoreCalculatorTest extends TestCase
     {
         $score = $this->calculator->calculate(
             SleepSummary::of(8.0, 65.0, 95.0),
-            RestingHeartRate::fromBpm(58.0),
+            RestingHeartRate::fromBpm(58.0, RestingHeartRateSource::Overnight),
             $this->steadyBaseline(60.0),
         );
 

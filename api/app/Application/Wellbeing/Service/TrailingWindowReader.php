@@ -5,6 +5,7 @@ namespace App\Application\Wellbeing\Service;
 use App\Application\Wellbeing\DTO\TrailingWindow;
 use App\Domain\Wellbeing\Repository\DailyHealthSnapshotRepository;
 use App\Domain\Wellbeing\ValueObject\RestingHeartRateBaseline;
+use App\Domain\Wellbeing\ValueObject\RestingHeartRateSource;
 use App\Domain\Wellbeing\ValueObject\SleepArchitectureBaseline;
 use App\Domain\Wellbeing\ValueObject\UserId;
 use DateTimeImmutable;
@@ -18,6 +19,11 @@ use DateTimeImmutable;
  * (RestingHeartRateBaseline documents the defect this caused in the Python pipeline),
  * and today's step count is a partial day that would drag a weekly median down every
  * morning.
+ *
+ * Two of the three reductions here drop rows rather than accept them on trust, and for the
+ * same reason: a step count that does not say what part of the day it covers, and a resting
+ * rate pooled with a rate taken a different way, are both plausible numbers that are wrong
+ * in a direction nothing downstream can detect.
  *
  * Orchestration only. What a baseline is, and how many days it takes before one can be
  * trusted, are the domain value objects' rules.
@@ -48,13 +54,19 @@ final class TrailingWindowReader
      */
     public function fromSnapshots(array $preceding): TrailingWindow
     {
-        $restingRates = [];
+        // Bucketed by how each reading was taken, never pooled. A person who wore a watch
+        // for nine nights and then switched to the morning check-in for five has two short
+        // series, not one fortnight: the seated mornings sit several bpm above the nights
+        // for reasons that have nothing to do with their recovery, so a single mean would
+        // land between the two and a single deviation would mostly measure the gap.
+        $restingRatesBySource = [];
         $stagedNights = [];
-        $dailySteps = [];
+        $completeDailySteps = [];
 
         foreach ($preceding as $snapshot) {
             if ($snapshot->hasRestingHeartRate()) {
-                $restingRates[] = $snapshot->restingHeartRate()->bpm();
+                $rate = $snapshot->restingHeartRate();
+                $restingRatesBySource[$rate->source()->value][] = $rate->bpm();
             }
 
             $sleep = $snapshot->sleep();
@@ -62,17 +74,30 @@ final class TrailingWindowReader
                 $stagedNights[] = [$sleep->deepMinutes(), $sleep->remMinutes()];
             }
 
-            if ($snapshot->steps() !== null) {
-                $dailySteps[] = $snapshot->steps();
+            if ($snapshot->hasCompleteStepCount()) {
+                $completeDailySteps[] = $snapshot->steps();
+            }
+        }
+
+        $baselines = [];
+
+        foreach ($restingRatesBySource as $source => $rates) {
+            // The minimum applies per source rather than across them. Five seated mornings
+            // are five observations of one thing; five days split three and two are not
+            // enough of either, and the honest answer there is the provisional score the
+            // cold-start path already produces.
+            if (RestingHeartRateBaseline::canBeBuiltFrom($rates)) {
+                $baselines[$source] = RestingHeartRateBaseline::fromPriorReadings(
+                    $rates,
+                    RestingHeartRateSource::from($source),
+                );
             }
         }
 
         return new TrailingWindow(
-            RestingHeartRateBaseline::canBeBuiltFrom($restingRates)
-                ? RestingHeartRateBaseline::fromPriorReadings($restingRates)
-                : null,
+            $baselines,
             SleepArchitectureBaseline::fromPriorNights($stagedNights),
-            $dailySteps,
+            $completeDailySteps,
         );
     }
 }

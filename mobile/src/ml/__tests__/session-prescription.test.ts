@@ -9,6 +9,7 @@ function reading(overrides: Partial<Extract<RecoveryReading, { available: true }
     provisional: false,
     components_used: 3,
     illness_warning: false,
+    resting_hr_source: 'overnight',
     ...overrides,
   };
 }

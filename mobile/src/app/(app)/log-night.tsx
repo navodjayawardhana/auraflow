@@ -22,7 +22,6 @@ import { AuraColors, IconTones } from '@/constants/theme';
 import { useIot } from '@/context/iot-context';
 import { ApiError } from '@/services/api-client';
 import { recordHealthSnapshot } from '@/services/health-snapshot-service';
-import { usableHeartRate } from '@/services/iot-payloads';
 import { enqueue } from '@/services/outbox';
 import { shiftIsoDate, todayIsoDate } from '@/services/recovery-service';
 import { formatDuration, parseTimeOfDay, sleepMinutesBetween } from '@/services/sleep-window';
@@ -94,28 +93,19 @@ export default function LogNightScreen() {
   const [wakeTime, setWakeTime] = useState('');
   const [restingHr, setRestingHr] = useState('');
   const [deepMinutes, setDeepMinutes] = useState('');
-  const [nodeReadingAt, setNodeReadingAt] = useState<string | null>(null);
   const [isPickingDate, setIsPickingDate] = useState(false);
   const [pickingTime, setPickingTime] = useState<'bed' | 'wake' | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { biometrics, isBiometricsStale } = useIot();
-  const nodeHeartRate = isBiometricsStale ? null : usableHeartRate(biometrics);
+  // Only to decide whether the check-in is worth pointing at. The number itself no longer
+  // has a way into this form -- see the panel below.
+  const { selectedDeviceId } = useIot();
 
   const bed = parseTimeOfDay(bedTime);
   const wake = parseTimeOfDay(wakeTime);
   const sleepMinutes = bed !== null && wake !== null ? sleepMinutesBetween(bed, wake) : null;
-
-  function fillFromNode() {
-    if (nodeHeartRate === null) return;
-
-    setRestingHr(String(Math.round(nodeHeartRate)));
-    setNodeReadingAt(
-      new Date().toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }),
-    );
-  }
 
   function pickDate(iso: string) {
     if (iso > today || iso < earliest) return;
@@ -143,7 +133,13 @@ export default function LogNightScreen() {
       recorded_on: recordedOn,
       ...(sleepMinutes !== null && sleepMinutes > 0 ? { sleep_minutes: sleepMinutes } : {}),
       ...(deep !== undefined ? { deep_sleep_minutes: deep } : {}),
-      ...(hr !== undefined ? { resting_heart_rate: hr } : {}),
+      // Every rate this form produces is an overnight one, and it says so rather than
+      // letting the server infer it. That is only true because the node's spot reading was
+      // taken out of here: while both could arrive through this field, no honest value for
+      // this key existed.
+      ...(hr !== undefined
+        ? { resting_heart_rate: hr, resting_hr_source: 'overnight' as const }
+        : {}),
     };
 
     try {
@@ -289,14 +285,10 @@ export default function LogNightScreen() {
             </View>
 
             <TextField
-              label="Resting heart rate (bpm)"
+              label="Overnight resting heart rate (bpm)"
               placeholder="58"
               value={restingHr}
-              onChangeText={(value) => {
-                setRestingHr(value);
-                // Typed over, so it is no longer the node's number.
-                setNodeReadingAt(null);
-              }}
+              onChangeText={setRestingHr}
               error={fieldErrors.resting_heart_rate}
               keyboardType="number-pad"
               icon="heart"
@@ -304,31 +296,35 @@ export default function LogNightScreen() {
             />
 
             {/*
-              Offered, never applied silently.
+              The node's number is not offered here any more.
 
-              The node reads a finger on a pad, so this is a spot reading taken while awake
-              and sitting still. The model was trained on an overnight resting rate, and the
-              autonomic score is a z-score against the user's own baseline — mixing the two
-              kinds of number into one baseline corrupts it. Labelling the difference is the
-              least this can do; deciding is the user's.
+              It used to fill this field from whatever frame was live: a finger on a pad,
+              awake and sitting, written into the same column as an overnight rate. The label
+              said so in words while the data said nothing, and the baseline built from that
+              column averaged the two kinds together -- a mean between two distributions and a
+              deviation made mostly of the gap between them.
+
+              Now the two are separate baselines, so this field means one thing and the
+              seated reading has a door of its own. The check-in is also a better capture than
+              this button ever was: a minute reduced to the lowest sustained rate, rather than
+              whichever estimate happened to be on screen when a thumb landed.
             */}
-            {nodeHeartRate !== null ? (
+            {selectedDeviceId !== null ? (
               <Pressable
-                onPress={fillFromNode}
+                onPress={() => router.push('/morning-checkin')}
                 accessibilityRole="button"
-                accessibilityLabel="Use the reading from your node"
+                accessibilityLabel="Open the morning check-in"
                 style={styles.nodeFill}>
-                <Feather name="activity" size={14} color={AuraColors.brand.default} />
+                <Feather name="sunrise" size={14} color={AuraColors.brand.default} />
                 <View style={styles.nodeText}>
-                  <Text style={styles.nodeLabel}>
-                    Use your node&apos;s reading — {Math.round(nodeHeartRate)} bpm
-                  </Text>
+                  <Text style={styles.nodeLabel}>No wearable? Use the morning check-in</Text>
                   <Text style={Type.caption}>
-                    {nodeReadingAt === null
-                      ? 'A spot reading taken now, not an overnight resting rate'
-                      : `Filled from a spot reading at ${nodeReadingAt} — not an overnight resting rate`}
+                    Your node reads a finger while you are awake and sitting, which is a
+                    different measurement from an overnight rate — so it is kept in its own
+                    baseline rather than typed in here.
                   </Text>
                 </View>
+                <Feather name="chevron-right" size={16} color={AuraColors.content.muted} />
               </Pressable>
             ) : null}
 
@@ -442,7 +438,7 @@ const styles = StyleSheet.create({
   derived: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: -8 },
   nodeFill: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: 8,
     marginTop: -8,
     padding: 10,

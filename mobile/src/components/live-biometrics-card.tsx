@@ -1,12 +1,19 @@
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useEffect, useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { PpgTrace } from '@/components/ppg-trace';
 import { Font, GradientAxis, Radius, Shadows } from '@/constants/design';
 import { AuraColors } from '@/constants/theme';
 import { useIot } from '@/context/iot-context';
-import { isSettling, usableHeartRate, usableSpo2 } from '@/services/iot-payloads';
+import {
+  beatProgress,
+  isSettling,
+  usableHeartRate,
+  usableHeartRateMaxim,
+  usableSpo2,
+} from '@/services/iot-payloads';
 
 /** Below this the optical signal is mostly noise, whatever the algorithm reports. */
 const WEAK_SIGNAL_IR = 100_000;
@@ -37,7 +44,23 @@ function Badge({
 export function LiveBiometricsCard() {
   const { biometrics, isBiometricsStale, isDeviceOnline, status } = useIot();
 
-  const heartRate = usableHeartRate(biometrics);
+  /**
+   * The streaming estimate where there is one, the reference algorithm's where there is not.
+   *
+   * Both come from the same signal and the node publishes both. The streaming one is
+   * preferred because it resolves a real value between beats rather than snapping to the
+   * roughly four-bpm steps the reference method can express at rest -- but preferring it is
+   * not the same as waiting for it. On this sensor it frequently never resolves at all
+   * while the reference one does, and a number a person can act on beats a better number
+   * they never see.
+   *
+   * Which one is on screen is said in the footer, never left to be inferred from how round
+   * it looks.
+   */
+  const streamed = usableHeartRate(biometrics);
+  const reference = usableHeartRateMaxim(biometrics);
+  const heartRate = streamed ?? reference;
+  const isReferenceRate = streamed === null && reference !== null;
   const spo2 = usableSpo2(biometrics);
   const hasFinger = biometrics?.finger === true;
   const weakSignal = hasFinger && (biometrics?.ir_mean ?? 0) < WEAK_SIGNAL_IR;
@@ -47,6 +70,42 @@ export function LiveBiometricsCard() {
   // rather than adjust anything.
   const isMeasuring = isSettling(biometrics);
 
+  // Counting beats off rather than spinning. Six seconds of "measuring" with nothing moving
+  // is indistinguishable from a measurement that has stalled, and the node already knows
+  // the difference -- it just was not saying.
+  const progress = beatProgress(biometrics);
+
+  /**
+   * The last rate resolved during this contact, kept while the finger stays down.
+   *
+   * The estimator reports on three intervals within a ten-second window, so a stretch where
+   * beats are missed ages them out and the rate goes invalid — with the finger still on the
+   * pad. Dropping the number then sends the card back to "measuring", which reads as
+   * starting over rather than as a moment of poor signal, and it is the complaint people
+   * actually have about this sensor.
+   *
+   * So the number is held rather than cleared, and marked as held. A figure from eight
+   * seconds ago labelled as such is far more use than no figure at all; a figure from eight
+   * seconds ago presented as current is the one thing that would not be. It is cleared the
+   * instant contact is, because then it describes nobody.
+   */
+  const held = useRef<number | null>(null);
+
+  // Written in an effect, not during render: a render can be discarded or replayed, and
+  // this is the same hazard the nav bar's shared value had. There is no frame of lag to pay
+  // for it -- on any render where a fresh rate exists the fresh one is shown, so the ref is
+  // only ever read after the effect that filled it has run.
+  useEffect(() => {
+    if (!hasFinger) {
+      held.current = null;
+    } else if (heartRate !== null) {
+      held.current = heartRate;
+    }
+  }, [hasFinger, heartRate]);
+
+  const shown = heartRate ?? held.current;
+  const isReacquiring = hasFinger && heartRate === null && held.current !== null;
+
   // Stale readings are greyed and relabelled rather than left looking current. A vital
   // sign is the one number where "probably still true" is not good enough.
   const isLive = hasFinger && !isBiometricsStale && heartRate !== null;
@@ -54,7 +113,7 @@ export function LiveBiometricsCard() {
   // Whole bpm on the card. The node resolves a decimal and the payload keeps it, because
   // the agreement analysis needs the resolution — but a tenth of a beat per minute
   // flickering on a glanceable number is noise wearing the costume of precision.
-  const displayBpm = heartRate === null ? null : Math.round(heartRate);
+  const displayBpm = shown === null ? null : Math.round(shown);
 
   function footer() {
     if (status === 'connecting') return 'Connecting to your node…';
@@ -64,8 +123,23 @@ export function LiveBiometricsCard() {
     // Ahead of the weak-signal hint deliberately: telling someone to press harder while
     // the node is still filling its window would have them fidgeting through the one
     // stretch that has to stay still.
-    if (isMeasuring) return 'Measuring — hold still for a few seconds';
-    if (heartRate === null) return weakSignal ? 'Press a little more firmly' : 'Finding your pulse';
+    // Re-acquiring is checked before measuring: both have no current rate, but one has
+    // already had one, and telling someone who is mid-measurement that it is starting over
+    // is the thing that makes this sensor feel broken when it is merely working hard.
+    if (isReacquiring) {
+      return weakSignal
+        ? 'Holding the last reading — press a little more firmly'
+        : 'Holding the last reading — finding your pulse again';
+    }
+    if (isMeasuring) {
+      return progress === null
+        ? 'Measuring — hold still for a few seconds'
+        : `Measuring — ${progress.have} of ${progress.need} beats · hold still`;
+    }
+    // Named rather than hidden. The reference method steps in roughly four-bpm increments
+    // at rest, so a reading that sits still for a while is the algorithm's resolution
+    // rather than the heart's, and a person watching it deserves to know which.
+    if (isReferenceRate) return 'Finger on sensor · reference estimate, to the nearest few bpm';
     return 'Finger on sensor · updating every 1.5s';
   }
 

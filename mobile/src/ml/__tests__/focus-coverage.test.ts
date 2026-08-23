@@ -60,6 +60,7 @@ describe('focusCoverage', () => {
             deep_sleep_minutes: 90,
             rem_sleep_minutes: 100,
             resting_heart_rate: 58,
+            resting_hr_source: 'overnight',
             steps: null,
             water_ml: null,
           },

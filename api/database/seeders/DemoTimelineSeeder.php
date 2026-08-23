@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Domain\Wellbeing\ValueObject\RestingHeartRateSource;
 use App\Models\HealthSnapshot;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -54,11 +55,19 @@ class DemoTimelineSeeder extends Seeder
                 'deep_sleep_minutes' => $deepMinutes,
                 'rem_sleep_minutes' => $remMinutes,
                 'resting_heart_rate' => round((float) $night['resting_hr'], 1),
+                // Overnight, because the figure these stand in for is a watch's nightly
+                // estimate. Seeded without a source they would be unreadable, and seeded as
+                // seated they would describe a check-in the demo user never did.
+                'resting_hr_source' => RestingHeartRateSource::Overnight->value,
                 // Activity is derived from the night rather than generated independently:
                 // a well-slept, low-stress day moves more. That correlation is not a
                 // finding -- it is an assumption baked into demo data, and it exists only
                 // so the dashboard has something plausible to draw.
                 'steps' => $this->deriveSteps($night),
+                // Complete, because the source these stand in for is a wrist-worn watch
+                // reporting a day's total. Seeded as a partial day they would be excluded
+                // from the step-goal median and the demo would show a population default.
+                'steps_are_complete' => true,
                 'water_ml' => $this->deriveWater(),
             ]);
         }

@@ -16,6 +16,12 @@ export interface InsightsDay {
   sleep_minutes: number | null;
   resting_heart_rate: number | null;
   steps: number | null;
+  /**
+   * Whether that count is a day, or only the part of one the app was awake for. Null on a
+   * count that arrived without saying, which is read the same way as a partial: only a
+   * day that states it is whole is treated as one.
+   */
+  steps_are_complete: boolean | null;
   water_ml: number | null;
   meal_count: number;
   /** How many of that day's meals are a guess rather than a manufacturer's label. */

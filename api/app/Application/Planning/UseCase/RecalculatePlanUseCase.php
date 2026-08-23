@@ -49,8 +49,10 @@ final class RecalculatePlanUseCase
         $derived = $this->deriver->derive(
             $profile,
             new MeasuredHistory(
-                $window->restingHeartRate,
-                $this->steps->medianDailySteps($window->dailySteps),
+                // Either kind will do here, overnight first. Zones want a resting figure to
+                // subtract, not a like-for-like comparison -- see the window's own note.
+                $window->preferredRestingHeartRate(),
+                $this->steps->medianDailySteps($window->completeDailySteps),
             ),
             $date,
             ($current?->version() ?? 0) + 1,

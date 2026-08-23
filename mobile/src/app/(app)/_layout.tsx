@@ -39,9 +39,16 @@ const ACTIONS: QuickAction[] = [
     tone: 'success',
   },
   {
+    key: 'checkin',
+    title: 'Morning check-in',
+    subtitle: 'A minute on the node for a seated resting rate',
+    icon: 'sunrise',
+    tone: 'vital',
+  },
+  {
     key: 'night',
     title: 'Log last night',
-    subtitle: 'Sleep and resting heart rate',
+    subtitle: 'Sleep, and an overnight resting rate from a wearable',
     icon: 'moon',
     tone: 'stage',
   },
@@ -73,6 +80,8 @@ const SCREENS_WITHOUT_NAV_BAR = new Set([
   'move-guided',
   'log-night',
   'log-meal',
+  // Its Save bar is anchored to the bottom edge like the other two logging screens.
+  'morning-checkin',
   'assistant',
 ]);
 
@@ -109,11 +118,13 @@ function AppShell() {
         ? '/move'
         : key === 'meal'
           ? '/log-meal'
-          : key === 'night'
-            ? '/log-night'
-            : key === 'water'
-              ? '/meals'
-              : null;
+          : key === 'checkin'
+            ? '/morning-checkin'
+            : key === 'night'
+              ? '/log-night'
+              : key === 'water'
+                ? '/meals'
+                : null;
 
     if (destination !== null) router.push(destination as never);
   }
@@ -133,6 +144,7 @@ function AppShell() {
         <Tabs.Screen name="meals" options={{ href: null }} />
         <Tabs.Screen name="log-meal" options={{ href: null }} />
         <Tabs.Screen name="log-night" options={{ href: null }} />
+        <Tabs.Screen name="morning-checkin" options={{ href: null }} />
         <Tabs.Screen name="places" options={{ href: null }} />
         <Tabs.Screen name="body-profile" options={{ href: null }} />
         <Tabs.Screen name="plan" options={{ href: null }} />

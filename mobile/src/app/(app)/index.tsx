@@ -15,9 +15,11 @@ import { HeroRings } from '@/components/hero-rings';
 import { LiveNodeStrip } from '@/components/live-node-strip';
 import { LogoMark } from '@/components/logo-mark';
 import { MetricTile } from '@/components/metric-tile';
+import { MorningCheckinCard } from '@/components/morning-checkin-card';
 import { OfflineBanner } from '@/components/offline-banner';
 import { RecoveryCard } from '@/components/recovery-card';
 import { RingLegend } from '@/components/ring-legend';
+import { SeatedBaselineNote } from '@/components/seated-baseline-note';
 import { SleepStageBar } from '@/components/sleep-stage-bar';
 import {
   Font,
@@ -284,6 +286,24 @@ export default function TodayScreen() {
                 <RecoveryCard status="loaded" reading={recovery} onRetry={refresh} />
               ) : null}
 
+              {/* Above the rings' legend because it is the one thing on this screen that
+                  changes what the top number is made of. */}
+              <MorningCheckinCard
+                restingHeartRate={tonight?.resting_heart_rate ?? null}
+                source={tonight?.resting_hr_source ?? null}
+                hasNode={selectedDeviceId !== null}
+              />
+
+              {/* The score is drawn in the hero, so on an available day no recovery card is
+                  rendered and there is nowhere else this could be said. A score whose
+                  0.80-weighted component rests on seated mornings is outside what E-015
+                  validated, and the app does not get to leave that out. */}
+              {recovery?.available === true && recovery.resting_hr_source === 'seated_spot' ? (
+                <View style={styles.seatedNote}>
+                  <SeatedBaselineNote />
+                </View>
+              ) : null}
+
               <RingLegend
                 steps={stepsAvailable ? steps.today : null}
                 stepGoal={targets.stepGoal}
@@ -340,7 +360,13 @@ export default function TodayScreen() {
                   state={tonight?.resting_heart_rate != null ? 'measured' : 'unavailable'}
                   value={tonight?.resting_heart_rate != null ? String(tonight.resting_heart_rate) : '—'}
                   unit="bpm"
-                  caption="from last night"
+                  // Named rather than assumed. The tile said "from last night" whatever the
+                  // number was, which was wrong for every reading the node ever filled in.
+                  caption={
+                    tonight?.resting_hr_source === 'seated_spot'
+                      ? 'this morning, seated'
+                      : 'from last night'
+                  }
                 />
                 <MetricTile
                   index={3}
@@ -463,6 +489,7 @@ const styles = StyleSheet.create({
   // The wrapper carries the row gap so the grid is evenly spaced in both axes.
   grid: { gap: Layout.gapTiles },
   gridRow: { flexDirection: 'row', gap: Layout.gapTiles },
+  seatedNote: { paddingHorizontal: 4 },
   pending: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   fab: {
     position: 'absolute',

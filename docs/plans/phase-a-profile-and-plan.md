@@ -33,8 +33,18 @@ No invented coefficients. No number without a provenance.
 | Max HR | **Tanaka (2001)**: `208 − 0.7 × age` | Not `220 − age`, which is folklore with a large error term. |
 | HR zones | **Karvonen** (heart-rate reserve) | `((HRmax − HRrest) × intensity) + HRrest`. Uses the app's **measured** resting HR when a 14-day baseline exists — see `RestingHeartRateBaseline`. Fall back to a population resting HR and **say which was used**. |
 | Water | EFSA/IOM adequate intake, scaled by mass, adjusted for ambient temperature | The weather endpoint already exists. |
-| Steps | Measured 7-day median, nudged toward a target | Fall back to 10,000 with the existing "recognisable anchor" caveat until enough history exists. |
+| Steps | Measured 7-day median, nudged toward a target | Fall back to 10,000 with the existing "recognisable anchor" caveat until enough history exists. **Complete days only** — see below. |
 | Sleep need | Age-band guidance (NSF) | Feeds `RecoveryScoreCalculator`'s dormant `$personalSleepNeedHours`. |
+
+**Steps, and what a day means.** `health_snapshots` carries `steps_are_complete` beside
+`steps`, because the same integer means two things: iOS answers a step query from the
+operating system's own pedometer history, so its figure is the day, while Android can only
+report what the app witnessed while foregrounded. `POST /api/v1/health-snapshots` requires
+the flag whenever a count is sent, and `basis.step_goal_source` reaches `measured_7d` only
+on seven days that state they are whole — a Tudor-Locke band chosen from a median of
+undercounts sits below what the person already walks, which is worse than the population
+default it replaces because it looks derived. The vocabulary is unchanged; the bar for
+earning `measured_7d` is not.
 
 **BMI**: report the value and a band, but use **WHO Asian cut-offs (23 / 27.5)** alongside the
 standard ones (25 / 30) and let the profile say which population applies, defaulting to

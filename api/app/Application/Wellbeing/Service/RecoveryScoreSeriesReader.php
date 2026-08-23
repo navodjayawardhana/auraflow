@@ -83,7 +83,11 @@ final class RecoveryScoreSeriesReader
                 $score = $this->calculator->calculate(
                     $snapshot->sleep(),
                     $snapshot->restingHeartRate(),
-                    $window->restingHeartRate,
+                    // Matched to how that day's rate was taken. A user who changed method
+                    // mid-window has each day scored against its own kind of history, so the
+                    // series does not acquire a step at the changeover that belongs to the
+                    // measurement rather than to them.
+                    $window->restingHeartRateFor($snapshot->restingHeartRate()?->source()),
                     $sleepNeed,
                     $window->sleepArchitecture?->deepMinutes(),
                     $window->sleepArchitecture?->remMinutes(),

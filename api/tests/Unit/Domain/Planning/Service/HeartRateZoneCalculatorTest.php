@@ -4,6 +4,7 @@ namespace Tests\Unit\Domain\Planning\Service;
 
 use App\Domain\Planning\Service\HeartRateZoneCalculator;
 use App\Domain\Wellbeing\ValueObject\RestingHeartRateBaseline;
+use App\Domain\Wellbeing\ValueObject\RestingHeartRateSource;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -28,7 +29,7 @@ class HeartRateZoneCalculatorTest extends TestCase
     {
         return RestingHeartRateBaseline::fromPriorReadings([
             $mean - 3, $mean, $mean + 3, $mean - 1, $mean + 1, $mean,
-        ]);
+        ], RestingHeartRateSource::Overnight);
     }
 
     // --- Slice A: no maximum without an age ---

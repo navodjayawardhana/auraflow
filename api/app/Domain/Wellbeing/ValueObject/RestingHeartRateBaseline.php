@@ -12,6 +12,14 @@ use App\Domain\Wellbeing\Exception\InsufficientBaselineHistoryException;
  * illness the baseline climbs with the symptom until the anomaly disappears into it.
  * This was a real defect in the Python pipeline, caught by a test expecting a clean
  * +10 bpm deviation and getting 8.57.
+ *
+ * One source per baseline, always. A mean and standard deviation taken across overnight
+ * and seated readings together describes neither population: the mean lands between two
+ * distributions, and the deviation is inflated by the gap between them rather than by
+ * anything the person's heart did. A z-score against that is a number without a referent,
+ * and it would be *most* wrong on the days a user changed how they measured -- exactly the
+ * days it is being read hardest. So the source is a constructor argument rather than a
+ * label, and the type carries it forward for RestingHeartRate::deviationFrom to check.
  */
 final class RestingHeartRateBaseline
 {
@@ -36,13 +44,18 @@ final class RestingHeartRateBaseline
         private readonly float $mean,
         private readonly float $standardDeviation,
         private readonly int $dayCount,
+        private readonly RestingHeartRateSource $source,
     ) {
     }
 
     /**
-     * @param float[] $priorReadings resting heart rates from days strictly before today
+     * @param  float[]  $priorReadings  resting heart rates from days strictly before today,
+     *                                  every one of them taken the way `$source` says. The
+     *                                  caller owns that filtering because only the caller
+     *                                  can see the rows; passing a mixture here produces a
+     *                                  baseline that lies about itself.
      */
-    public static function fromPriorReadings(array $priorReadings): self
+    public static function fromPriorReadings(array $priorReadings, RestingHeartRateSource $source): self
     {
         $readings = array_values(array_filter($priorReadings, is_finite(...)));
         $count = count($readings);
@@ -61,7 +74,7 @@ final class RestingHeartRateBaseline
             $deviation = self::FALLBACK_STANDARD_DEVIATION;
         }
 
-        return new self(round($mean, 2), round($deviation, 3), count($window));
+        return new self(round($mean, 2), round($deviation, 3), count($window), $source);
     }
 
     public static function canBeBuiltFrom(array $priorReadings): bool
@@ -82,5 +95,17 @@ final class RestingHeartRateBaseline
     public function dayCount(): int
     {
         return $this->dayCount;
+    }
+
+    /**
+     * Which kind of reading this normal is a normal for.
+     *
+     * Read by the deviation check, and surfaced all the way to the client, because a score
+     * built on a seated baseline is outside what E-015 evaluated and the user has to be
+     * told which one they are looking at.
+     */
+    public function source(): RestingHeartRateSource
+    {
+        return $this->source;
     }
 }

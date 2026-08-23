@@ -46,6 +46,7 @@ final class BuildDailyContextUseCase
             remSleepMinutes: $sleep?->remMinutes() === null ? null : (int) round($sleep->remMinutes()),
             restingHeartRate: $snapshot?->restingHeartRate()?->bpm(),
             steps: $snapshot?->steps(),
+            stepsAreComplete: $snapshot?->stepsAreComplete(),
             waterMl: $snapshot?->waterMl(),
         );
     }

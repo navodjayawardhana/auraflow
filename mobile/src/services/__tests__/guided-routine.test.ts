@@ -50,6 +50,7 @@ function reading(overrides: { score?: number; illness_warning?: boolean } = {}):
     provisional: false,
     components_used: 4,
     illness_warning: false,
+    resting_hr_source: 'overnight',
     ...overrides,
   };
 }

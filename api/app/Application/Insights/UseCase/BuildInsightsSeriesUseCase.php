@@ -79,6 +79,7 @@ final class BuildInsightsSeriesUseCase
                 sleepMinutes: $sleep === null ? null : (int) round($sleep->hours() * 60),
                 restingHeartRate: $snapshot?->restingHeartRate()?->bpm(),
                 steps: $snapshot?->steps(),
+                stepsAreComplete: $snapshot?->stepsAreComplete(),
                 waterMl: $snapshot?->waterMl(),
                 mealCount: $totals?->mealCount ?? 0,
                 estimatedMealCount: $totals?->estimatedCount ?? 0,

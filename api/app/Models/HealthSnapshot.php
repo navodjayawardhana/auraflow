@@ -27,7 +27,9 @@ class HealthSnapshot extends Model
         'deep_sleep_minutes',
         'rem_sleep_minutes',
         'resting_heart_rate',
+        'resting_hr_source',
         'steps',
+        'steps_are_complete',
         'water_ml',
     ];
 
@@ -39,7 +41,11 @@ class HealthSnapshot extends Model
             'deep_sleep_minutes' => 'integer',
             'rem_sleep_minutes' => 'integer',
             'resting_heart_rate' => 'float',
+            // Left as a plain string rather than cast to the domain enum. Casting here
+            // would put a Domain type behind a framework base class, which is the coupling
+            // this file exists to avoid -- the mapper does the translation, once.
             'steps' => 'integer',
+            'steps_are_complete' => 'boolean',
             'water_ml' => 'integer',
         ];
     }
