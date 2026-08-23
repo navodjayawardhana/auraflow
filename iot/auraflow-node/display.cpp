@@ -127,15 +127,44 @@ void drawTargetRing(int16_t cx, int16_t cy) {
   oled.drawPixel(cx, cy, SSD1306_WHITE);
 }
 
+// A small "B" for the Bluetooth link, drawn where the signal bars would be on a node
+// that has no network to show.
+//
+// Filled while a phone is subscribed, outlined while the node is advertising and nobody
+// has answered. Those are the two states a person standing in front of the node actually
+// wants distinguished, and on a 128x64 panel at this size a proper Bluetooth rune is
+// four illegible pixels — a letter reads.
+void drawBleIcon(int16_t x, int16_t baseY, bool connected) {
+  oled.setTextSize(1);
+  oled.setTextColor(SSD1306_WHITE);
+  oled.setCursor(x, baseY - 7);
+  oled.print('B');
+
+  if (connected) {
+    // Underscored rather than inverted: inverting a 6x8 glyph on this panel leaves a
+    // black letter in a white box that reads as a fault indicator.
+    oled.drawFastHLine(x, baseY, 5, SSD1306_WHITE);
+  }
+}
+
 // Signal bars replace the old "MQTT -77" text with something readable at a
 // glance from across the room during the demo. Bar count encodes RSSI
 // strength; the dot beside them is solid once MQTT — not just WiFi — is up,
 // since a device that joined WiFi but never reached the broker is a distinct,
 // worth-noticing state on this screen.
+//
+// With no network configured there are no bars to draw and three empty outlines would
+// say "searching" about a radio that was never switched on. The Bluetooth indicator
+// takes the space instead, which on a BLE-only node is the only link there is to report.
 void drawSignalIcon(const DisplayState& s) {
   constexpr int16_t barX = OLED_WIDTH - 12;
   constexpr int16_t baseY = 7;
   const int16_t heights[3] = {2, 4, 6};
+
+  if (!s.networkEnabled) {
+    drawBleIcon(OLED_WIDTH - 6, baseY, s.bleConnected);
+    return;
+  }
 
   int bars = 0;
   if (s.wifiUp) {
@@ -160,6 +189,12 @@ void drawSignalIcon(const DisplayState& s) {
   } else if (s.wifiUp) {
     oled.drawCircle(dotX, baseY - 2, 2, SSD1306_WHITE);
   }
+
+  // Left of the broker dot, so a networked node still says whether a phone is on it.
+  // The vitals a phone is reading come over this link whether or not the broker is up,
+  // and during a demo "is it connected?" is asked about the phone far more often than
+  // about the broker.
+  if (s.bleConnected) drawBleIcon(dotX - 12, baseY, true);
 }
 
 void drawHeader(const DisplayState& s) {
