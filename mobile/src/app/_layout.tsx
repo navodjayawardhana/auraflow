@@ -30,9 +30,19 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { AuraColors } from '@/constants/theme';
 import { AuthProvider, useAuth } from '@/context/auth-context';
+import { useReminderRuntime } from '@/hooks/use-reminder-runtime';
+import { configureNotificationHandler } from '@/services/notification-service';
 /* eslint-enable import/first */
 
 SplashScreen.preventAutoHideAsync();
+
+/**
+ * At module scope, alongside the splash call, because a notification arriving before the
+ * handler is registered is shown with the platform default rather than the one chosen in
+ * `notification-service` — and the one that arrives first is the one delivered during a cold
+ * launch, which is exactly the case worth getting right.
+ */
+configureNotificationHandler();
 
 /**
  * The app is light-only by design. The tokens have no dark variants, so honouring the
@@ -59,6 +69,11 @@ function AuthGate({ fontsReady }: { fontsReady: boolean }) {
   const { user, isRestoring } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+
+  // Here rather than in `(app)/_layout` because both halves of it outlive that group: the
+  // schedule has to be reconciled on a cold launch that lands on the login screen, and a
+  // tapped reminder arrives before any group has mounted.
+  useReminderRuntime();
 
   // One gate, not two: the session restore and the font load both have to finish before
   // anything is worth showing, so they hide the splash together.

@@ -78,6 +78,13 @@
           "cameraPermission": "AuraFlow uses the camera for two things. Counting your squats: those frames are analysed on this phone and never leave it. Photographing a meal: that one photo is sent to AuraFlow to be identified, and is kept by neither.",
           "recordAudioAndroid": false
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#0052ff",
+          "enableBackgroundRemoteNotifications": false
+        }
       ]
     ],
     "experiments": {

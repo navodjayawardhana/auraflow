@@ -1,6 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,6 +21,9 @@ import { useAuth } from '@/context/auth-context';
 import { useContextAwareness } from '@/hooks/use-context-awareness';
 import { usePlan } from '@/hooks/use-plan';
 import { BMI_SCALE_LABELS } from '@/services/body-metrics';
+import { getPermissionStateAsync, type PermissionState } from '@/services/notification-service';
+import { REMINDERS } from '@/services/reminder-schedule';
+import { readSettings } from '@/services/reminder-settings';
 
 function LinkRow({
   icon,
@@ -57,6 +61,21 @@ function LinkRow({
   );
 }
 
+function describeReminders(
+  reminders: Awaited<ReturnType<typeof readSettings>>['reminders'],
+  permission: PermissionState,
+): string {
+  const on = REMINDERS.filter((r) => reminders[r.kind].isEnabled);
+
+  if (on.length === 0) return 'Off — nothing is scheduled';
+
+  // The blocked case leads, because it is the one where the setting and the outcome
+  // disagree. Saying "2 on" over a permission the OS is refusing would be a lie by omission.
+  if (permission !== 'granted') return `${on.length} switched on — but this phone is not allowing them`;
+
+  return on.length === 1 ? `${on[0].label}, on` : `${on.length} reminders on`;
+}
+
 export default function ProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -65,6 +84,37 @@ export default function ProfileScreen() {
   const { plan, profile, targets } = usePlan();
 
   const initial = user?.name?.trim().charAt(0).toUpperCase() ?? '?';
+
+  /**
+   * Read on focus rather than held in a provider, because this row is the only thing on the
+   * screen that can change while the user is away from it — they go to Reminders, turn one
+   * off, and come back. A blocked permission is worth surfacing from here too: it is the one
+   * state where the switches say yes and nothing arrives.
+   */
+  const [reminderDetail, setReminderDetail] = useState('Off — nothing is scheduled');
+
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+
+      (async () => {
+        if (user === null) return;
+
+        const [settings, permission] = await Promise.all([
+          readSettings(user.id),
+          getPermissionStateAsync(),
+        ]);
+
+        if (!isActive) return;
+
+        setReminderDetail(describeReminders(settings.reminders, permission));
+      })();
+
+      return () => {
+        isActive = false;
+      };
+    }, [user]),
+  );
 
   // Each row says what the screen behind it currently holds, so "not filled in" is visible
   // from here rather than only after tapping through to an empty form.
@@ -128,6 +178,13 @@ export default function ProfileScreen() {
                 : `${places.length} tagged · stays on this phone`
             }
             onPress={() => router.push('/places')}
+          />
+          <LinkRow
+            icon="bell"
+            tone="caution"
+            title="Reminders"
+            detail={reminderDetail}
+            onPress={() => router.push('/reminders')}
           />
           <LinkRow
             icon="message-circle"
