@@ -87,6 +87,26 @@ namespace Ble {
 void begin(const char* deviceName) {
   BLEDevice::init(deviceName);
 
+  /*
+   * Raise the local ATT MTU before anything can connect.
+   *
+   * The core defaults to 23 — `BLEDevice.cpp` declares `m_localMTU = 23` and only ever
+   * applies it through `setMTU()`, so a sketch that never calls this negotiates 23 no
+   * matter what the phone asks for. Twenty of those bytes are payload, and both of the
+   * things this service exists to carry are larger: the vitals frame is around 150 bytes
+   * of JSON, and even `{"mode":"focus","brightness":80}` is 32.
+   *
+   * The failure is silent in both directions. A write over the limit is rejected with no
+   * trace on this side, and a notification over it arrives truncated into JSON that fails
+   * to parse and is dropped — which looks exactly like a node that is connected and has
+   * nothing to say. The standard heart-rate characteristic is two bytes and works either
+   * way, so the rate can appear while everything else quietly does not.
+   *
+   * 247 matches what the client requests on connect; the negotiated value is the smaller
+   * of the two, so both sides have to name it.
+   */
+  BLEDevice::setMTU(247);
+
   server = BLEDevice::createServer();
   server->setCallbacks(new ServerCallbacks());
 
@@ -134,8 +154,9 @@ void begin(const char* deviceName) {
   advertising->addServiceUUID(SVC_AURAFLOW);
   advertising->setScanResponse(true);
   // Apple's connection-interval guidance; harmless on Android and avoids a stall on iOS.
+  // The second call set the minimum twice, so the maximum was never advertised at all.
   advertising->setMinPreferred(0x06);
-  advertising->setMinPreferred(0x12);
+  advertising->setMaxPreferred(0x12);
 
   BLEDevice::startAdvertising();
 }
