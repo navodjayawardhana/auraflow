@@ -9,6 +9,49 @@ import { loadPlaces, removePlace, savePlace } from '@/services/places-store';
 export type LocationStatus = 'checking' | 'denied' | 'unavailable' | 'located';
 
 /**
+ * How stale a remembered position may be and still answer "where am I".
+ *
+ * Generous on purpose. The question this feature asks is which of a handful of tagged
+ * places you are standing in, and nobody moves between home and the gym in five minutes
+ * without the next reading catching it.
+ */
+const LAST_KNOWN_MAX_AGE_MS = 5 * 60_000;
+
+/**
+ * How long to wait for a fresh fix before calling it unavailable.
+ *
+ * A GPS lock outdoors is a few seconds; indoors it is often never. Twelve seconds is long
+ * enough that a slow lock still succeeds and short enough that a failed one is a passing
+ * message rather than a screen that never finishes loading.
+ */
+const FIX_TIMEOUT_MS = 12_000;
+
+/**
+ * Rejects if `work` has not settled in time.
+ *
+ * The underlying request is not cancelled — expo-location offers no way to — so it may
+ * still deliver later, into a `setState` this hook has already moved past. That is
+ * harmless: the effect below guards its writes with `cancelled`, and a late fix would set
+ * the same coordinates this one gave up on.
+ */
+function withDeadline<T>(work: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Timed out waiting for a position.')), ms);
+
+    work.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
+/**
  * Where the user is, and what that means to the model.
  *
  * **Foreground only, and on demand.** No background task, no geofence transitions, no
@@ -35,11 +78,33 @@ export function useContextAwareness() {
     }
 
     try {
+      // What the operating system already knows, before asking it to go and find out.
+      // Indoors this is usually the only answer there is, and a fix from the last few
+      // minutes is far inside the tens of metres a place tag cares about.
+      const cached = await Location.getLastKnownPositionAsync({ maxAge: LAST_KNOWN_MAX_AGE_MS });
+
+      if (cached !== null) {
+        setCoordinates({
+          latitude: cached.coords.latitude,
+          longitude: cached.coords.longitude,
+        });
+        setStatus('located');
+        return;
+      }
+
       // Balanced accuracy: a geofence radius is tens of metres, so the extra battery of
       // a high-accuracy fix buys nothing here.
-      const position = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
+      //
+      // Raced against a deadline because `getCurrentPositionAsync` waits for a fix and
+      // has no timeout of its own: indoors, on a weak signal, it neither resolves nor
+      // rejects. The screen then sits on "Finding your position…" for as long as it is
+      // open, which reads as a broken app rather than a building with a thick roof.
+      // Losing the race is a real answer — `unavailable` is a state this hook already
+      // has and the UI already explains.
+      const position = await withDeadline(
+        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+        FIX_TIMEOUT_MS,
+      );
 
       setCoordinates({
         latitude: position.coords.latitude,
