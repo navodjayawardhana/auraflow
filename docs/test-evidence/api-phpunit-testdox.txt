@@ -1,0 +1,548 @@
+PHPUnit 12.5.33 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.4.15
+Configuration: E:\MSC\Emerging Mobile Applications\auraflow\api\phpunit.xml
+
+
+{"endpoint":"GET \/api\/v1\/me","runs":300,"p50_ms":1,"p95_ms":1.9,"p99_ms":2.1}
+Time: 00:43.911, Memory: 74.00 MB
+
+[4mApi Latency (Tests\Feature\Performance\ApiLatency)[0m
+[32m ✔ [0mShould serve an authenticated read within the latency budget
+
+[4mAuthentication (Tests\Feature\Auth\Authentication)[0m
+[32m ✔ [0mShould reject registration with no fields
+[32m ✔ [0mShould reject a password below the minimum length
+[32m ✔ [0mShould reject a duplicate email
+[32m ✔ [0mShould never return the password hash
+[32m ✔ [0mShould register and return a usable token
+[32m ✔ [0mShould reject a wrong password
+[32m ✔ [0mShould not reveal whether an email is registered
+[32m ✔ [0mShould sign in with correct credentials
+[32m ✔ [0mShould lock out after repeated failures
+[32m ✔ [0mShould lock out the correct password too once throttled
+[32m ✔ [0mShould replace the token for a device on re login
+[32m ✔ [0mShould keep other devices signed in when one signs out
+[32m ✔ [0mShould revoke every device on logout everywhere
+[32m ✔ [0mShould reject an unauthenticated request for the profile
+
+[4mBody Mass Index (Tests\Unit\Domain\Profile\ValueObject\BodyMassIndex)[0m
+[32m ✔ [0mShould divide mass by height in metres squared
+[32m ✔ [0mShould call the same low value underweight on both scales
+[32m ✔ [0mShould call a clearly healthy value healthy on both scales
+[32m ✔ [0mShould read a bmi of twenty four differently on the two scales
+[32m ✔ [0mShould read a bmi of twenty eight differently on the two scales
+[32m ✔ [0mShould place each published cut off in the band it opens
+[32m ✔ [0mShould report every scales reading of the same value
+[32m ✔ [0mShould lead with the asian cut offs by default
+
+[4mCalculate Recovery Score Use Case (Tests\Unit\Application\Wellbeing\UseCase\CalculateRecoveryScoreUseCase)[0m
+[32m ✔ [0mShould report unavailable when no snapshot exists for the date
+[32m ✔ [0mShould score a night that has only a resting heart rate
+[32m ✔ [0mShould report unavailable when a lone heart rate has nothing to compare against
+[32m ✔ [0mShould report unavailable when the night holds nothing at all
+[32m ✔ [0mShould offer the last day that could be scored
+[32m ✔ [0mShould offer no last known score when there is no history
+[32m ✔ [0mShould return a provisional score when only one night exists
+[32m ✔ [0mShould stay provisional when history is one day short of the minimum
+[32m ✔ [0mShould become established once enough prior days exist
+[32m ✔ [0mShould exclude today from the baseline it is measured against
+[32m ✔ [0mShould not let one users history build another users baseline
+[32m ✔ [0mShould not warn when no baseline has been established
+[32m ✔ [0mShould not warn when the resting rate is normal for this user
+[32m ✔ [0mShould fall back to the calculators default sleep need when no plan exists
+[32m ✔ [0mShould score the same night against the sleep need the plan derived
+[32m ✔ [0mShould measure sleep architecture against the users own preceding nights
+[32m ✔ [0mShould return an established score for a well recovered day
+
+[4mChat Conversation Endpoint (Tests\Feature\Advice\ChatConversationEndpoint)[0m
+[32m ✔ [0mShould reject unauthenticated conversation routes
+[32m ✔ [0mShould never list another users conversations
+[32m ✔ [0mShould not open another users conversation
+[32m ✔ [0mShould not write into another users conversation
+[32m ✔ [0mShould not delete another users conversation
+[32m ✔ [0mShould start an empty conversation without touching the last one
+[32m ✔ [0mShould not stack blank conversations
+[32m ✔ [0mShould default to the most recently used conversation
+[32m ✔ [0mShould list conversations most recent first with their size
+[32m ✔ [0mShould title a conversation from its opening question
+[32m ✔ [0mShould shorten a long opening question at a word boundary
+[32m ✔ [0mShould keep the first title when the conversation continues
+[32m ✔ [0mShould scope the model history to the current conversation
+[32m ✔ [0mShould replay earlier turns of the same conversation
+[32m ✔ [0mShould clear only the named conversation
+[32m ✔ [0mShould clear the whole history when no conversation is named
+
+[4mChat Endpoint (Tests\Feature\Advice\ChatEndpoint)[0m
+[32m ✔ [0mShould reject an unauthenticated read
+[32m ✔ [0mShould reject an unauthenticated message
+[32m ✔ [0mShould never show another users thread
+[32m ✔ [0mShould only clear the callers own thread
+[32m ✔ [0mShould store both sides of the exchange
+[32m ✔ [0mShould ground the model in todays figures
+[32m ✔ [0mShould never send an identifier to the model
+[32m ✔ [0mShould keep the question when the provider fails
+[32m ✔ [0mShould reject an empty or oversized message
+[32m ✔ [0mShould return the thread oldest first
+
+[4mContext Fingerprint (Tests\Unit\Domain\Advice\ContextFingerprint)[0m
+[32m ✔ [0mShould hold when one glass of water is logged
+[32m ✔ [0mShould hold when a recovery score moves by a point
+[32m ✔ [0mShould hold when a few hundred steps are walked
+[32m ✔ [0mShould hold when a past days score is rederived by a point
+[32m ✔ [0mShould move when the days water crosses a quarter of the target
+[32m ✔ [0mShould move when a night is logged at noon
+[32m ✔ [0mShould move when a first step count arrives
+[32m ✔ [0mShould move when a partial step count becomes a whole day
+[32m ✔ [0mShould move when a score stops being provisional
+[32m ✔ [0mShould move when the illness flag is raised
+[32m ✔ [0mShould move when the resting rate changes kind
+[32m ✔ [0mShould move when a session is logged
+[32m ✔ [0mShould move when the plan changes
+[32m ✔ [0mShould move when the day reaches the evening
+[32m ✔ [0mShould bucket the clock into three
+[32m ✔ [0mShould treat a brief with no stored fingerprint as unknown
+[32m ✔ [0mShould match a fingerprint that has been round tripped through storage
+
+[4mDaily Brief Endpoint (Tests\Feature\Advice\DailyBriefEndpoint)[0m
+[32m ✔ [0mShould reject an unauthenticated refresh
+[32m ✔ [0mShould create a pending brief on first request
+[32m ✔ [0mShould refresh a brief that already exists
+[32m ✔ [0mShould create the brief when refreshing a day that has none
+[32m ✔ [0mShould survive being refreshed twice
+[32m ✔ [0mShould retry a brief left pending by a job that never ran
+[32m ✔ [0mShould not queue a second job while the first is still plausible
+[32m ✔ [0mShould retry a day that had nothing to say earlier
+[32m ✔ [0mShould leave a genuine failure alone
+[32m ✔ [0mShould keep one users brief out of anothers
+
+[4mDaily Brief Prompt Builder (Tests\Unit\Domain\Advice\DailyBriefPromptBuilder)[0m
+[32m ✔ [0mShould forbid diagnosis and treatment
+[32m ✔ [0mShould forbid inventing figures
+[32m ✔ [0mShould forbid claiming causation
+[32m ✔ [0mShould describe a provisional score as provisional
+[32m ✔ [0mShould omit measurements that were not recorded
+[32m ✔ [0mShould include measurements that were recorded
+[32m ✔ [0mShould qualify steps as a floor not a total
+[32m ✔ [0mShould qualify the focus window as a weak suggestion
+[32m ✔ [0mShould ask for calm wording when resting heart rate is elevated
+[32m ✔ [0mShould state plainly when no score exists
+[32m ✔ [0mShould forbid treating a gap in the history as a zero
+[32m ✔ [0mShould forbid explaining one series by another
+[32m ✔ [0mShould forbid pooling measurements of different kinds
+[32m ✔ [0mShould allow counting what it was given but nothing further
+[32m ✔ [0mShould tell the model to say when the answer is not there
+[32m ✔ [0mShould label estimated calories as estimated
+[32m ✔ [0mShould say how each resting heart rate was taken
+[32m ✔ [0mShould not print days on which nothing was recorded
+[32m ✔ [0mShould tell the model what time of day it is
+[32m ✔ [0mShould refuse to brief on an empty day
+
+[4mDaily Brief Rewrite (Tests\Feature\Advice\DailyBriefRewrite)[0m
+[32m ✔ [0mShould record the context a brief was written from
+[32m ✔ [0mShould tell the client a rewrite is in flight
+[32m ✔ [0mShould rewrite when the day has materially moved
+[32m ✔ [0mShould leave settled advice alone when nothing material has changed
+[32m ✔ [0mShould not call the model again inside the rewrite floor
+[32m ✔ [0mShould rewrite once the floor has passed
+[32m ✔ [0mShould honour a refresh the user asked for regardless of the floor
+[32m ✔ [0mShould rewrite a brief that predates the fingerprint column once
+
+[4mEnergy Expenditure Calculator (Tests\Unit\Domain\Planning\Service\EnergyExpenditureCalculator)[0m
+[32m ✔ [0mShould not estimate a basal rate without an age
+[32m ✔ [0mShould not estimate a basal rate when sex is unspecified
+[32m ✔ [0mShould not estimate a basal rate without a height or a mass
+[32m ✔ [0mShould match the published worked example for a man
+[32m ✔ [0mShould match the published worked example for a woman
+[32m ✔ [0mShould separate the two sexes by the published constants
+[32m ✔ [0mShould fall by five kcal for each year of age
+[32m ✔ [0mShould multiply the basal rate by the published activity factor
+[32m ✔ [0mShould rank the five activity levels in ascending order
+[32m ✔ [0mShould keep every activity factor inside the published bands
+[32m ✔ [0mShould offer no active energy goal without a basal rate
+[32m ✔ [0mShould never return a negative active energy goal
+[32m ✔ [0mShould leave the thermic effect of food out of the movement budget
+
+[4mExample (Tests\Feature\Example)[0m
+[32m ✔ [0mThe application returns a successful response
+
+[4mExample (Tests\Unit\Example)[0m
+[32m ✔ [0mThat true is true
+
+[4mExercise Session Endpoint (Tests\Feature\Movement\ExerciseSessionEndpoint)[0m
+[32m ✔ [0mShould reject an unauthenticated write
+[32m ✔ [0mShould reject an unauthenticated read
+[32m ✔ [0mShould store a session
+[32m ✔ [0mShould keep two sessions on the same day as two rows
+[32m ✔ [0mShould accept a session with no heart rate
+[32m ✔ [0mShould accept an ungated session with no score
+[32m ✔ [0mShould not duplicate a session replayed from the offline queue
+[32m ✔ [0mShould let two users reuse the same client uuid
+[32m ✔ [0mShould reject more good form reps than reps
+[32m ✔ [0mShould reject a runaway rep count
+[32m ✔ [0mShould reject a gated session with no score
+[32m ✔ [0mShould reject an ungated session that carries a score
+[32m ✔ [0mShould reject an unknown exercise
+[32m ✔ [0mShould reject a session from the future
+[32m ✔ [0mShould store a guided session with no form count
+[32m ✔ [0mShould reject a guided session that claims reps at depth
+[32m ✔ [0mShould reject a counted session with no form count
+[32m ✔ [0mShould treat a write with no source as a counted one
+[32m ✔ [0mShould accept a march only from a guided session
+[32m ✔ [0mShould reject a march claimed as counted by the camera
+[32m ✔ [0mShould report counted and guided totals separately
+[32m ✔ [0mShould list the callers sessions newest first
+[32m ✔ [0mShould filter to one day when a date is given
+[32m ✔ [0mShould not list another users sessions
+
+[4mGrounding Pack (Tests\Feature\Advice\GroundingPack)[0m
+[32m ✔ [0mShould never put another users rows in the pack
+[32m ✔ [0mShould label an estimated meal as estimated all the way to the model
+[32m ✔ [0mShould carry a seated resting rate into the history as seated
+[32m ✔ [0mShould mark a partial step count as a floor in the history
+[32m ✔ [0mShould say a guided sessions reps were never observed
+[32m ✔ [0mShould still send a pack for a user with no data at all
+[32m ✔ [0mShould never send an identifier even with a full pack
+
+[4mHealth Snapshot Endpoint (Tests\Feature\Wellbeing\HealthSnapshotEndpoint)[0m
+[32m ✔ [0mShould reject an unauthenticated write
+[32m ✔ [0mShould reject an unauthenticated read
+[32m ✔ [0mShould store a night and return it
+[32m ✔ [0mShould update rather than duplicate the same night
+[32m ✔ [0mShould merge a partial write rather than clearing the rest
+[32m ✔ [0mShould store activity metrics
+[32m ✔ [0mShould reject an implausible step count
+[32m ✔ [0mShould accept a heart rate only night
+[32m ✔ [0mShould reject a future night
+[32m ✔ [0mShould reject stages longer than the night
+[32m ✔ [0mShould reject an implausible heart rate
+[32m ✔ [0mShould surface a domain rule as a validation error
+[32m ✔ [0mShould list only the requested window
+[32m ✔ [0mShould not leak another users nights
+[32m ✔ [0mShould reject an inverted window
+[32m ✔ [0mShould reject a window wider than the cap
+
+[4mHeart Rate Zone Calculator (Tests\Unit\Domain\Planning\Service\HeartRateZoneCalculator)[0m
+[32m ✔ [0mShould not predict a maximum heart rate without an age
+[32m ✔ [0mShould offer no zones at all without an age
+[32m ✔ [0mShould predict the maximum by the tanaka regression
+[32m ✔ [0mShould agree with the folklore equation only at forty
+[32m ✔ [0mShould match the published karvonen worked example
+[32m ✔ [0mShould return the resting rate at zero intensity and the maximum at full
+[32m ✔ [0mShould lay the three bands out in ascending contiguous order
+[32m ✔ [0mShould build every band from the same reserve
+[32m ✔ [0mShould prefer the users measured resting rate over the population value
+[32m ✔ [0mShould fall back to the population resting rate rather than refusing
+[32m ✔ [0mShould widen the reserve for a lower resting rate
+
+[4mHydration Goal Calculator (Tests\Unit\Domain\Planning\Service\HydrationGoalCalculator)[0m
+[32m ✔ [0mShould match the published holliday segar worked example
+[32m ✔ [0mShould reach two and a half litres for a seventy kilogram adult
+[32m ✔ [0mShould stay inside the first tier below ten kilograms
+[32m ✔ [0mShould return the apps existing constant for the reference adult
+[32m ✔ [0mShould scale the goal with body mass
+[32m ✔ [0mShould ignore sex once a body mass is known
+[32m ✔ [0mShould fall back to the efsa reference intake when only sex is known
+[32m ✔ [0mShould fall back to the apps own constant when nothing is known
+[32m ✔ [0mShould round to something the tracker can actually log
+
+[4mInsights Endpoint (Tests\Feature\Insights\InsightsEndpoint)[0m
+[32m ✔ [0mShould reject an unauthenticated read
+[32m ✔ [0mShould return a fortnight by default ending today
+[32m ✔ [0mShould reject a window wider than the ceiling
+[32m ✔ [0mShould return unrecorded days as nulls rather than omitting them
+[32m ✔ [0mShould keep a recorded zero distinct from a missing value
+[32m ✔ [0mShould score recovery across the window from one read
+[32m ✔ [0mShould count meals and keep the estimated ones apart
+[32m ✔ [0mShould not leak another users days
+
+[4mMeal Endpoint (Tests\Feature\Nutrition\MealEndpoint)[0m
+[32m ✔ [0mShould reject unauthenticated requests
+[32m ✔ [0mShould not list another users meals
+[32m ✔ [0mShould not delete another users meal
+[32m ✔ [0mShould log a user estimate
+[32m ✔ [0mShould refuse a lookup that carries no barcode
+[32m ✔ [0mShould accept a lookup with its barcode
+[32m ✔ [0mShould reject an implausible calorie figure
+[32m ✔ [0mShould reject a meal eaten in the future
+[32m ✔ [0mShould total the day without offering a net figure
+[32m ✔ [0mShould return a product from open food facts
+[32m ✔ [0mShould report an unknown barcode as not found
+[32m ✔ [0mShould refuse a product with no energy value
+[32m ✔ [0mShould cache a repeated lookup
+
+[4mMeal History Endpoint (Tests\Feature\Nutrition\MealHistoryEndpoint)[0m
+[32m ✔ [0mShould return the meals of a whole week
+[32m ✔ [0mShould split a range spanning a month end into two months
+[32m ✔ [0mShould still answer a single date the way it always has
+[32m ✔ [0mShould refuse a window wider than a quarter
+[32m ✔ [0mShould refuse a range with no end
+[32m ✔ [0mShould refuse a request that names no window at all
+[32m ✔ [0mShould report measured and estimated energy separately
+[32m ✔ [0mShould not leak another users meals into a range total
+[32m ✔ [0mShould file a backfilled meal under the day it was eaten
+[32m ✔ [0mShould take the day from the offset the client sent
+[32m ✔ [0mShould accept several meals on one day
+
+[4mMeal Photo Endpoint (Tests\Feature\Nutrition\MealPhotoEndpoint)[0m
+[32m ✔ [0mShould reject an unauthenticated request
+[32m ✔ [0mShould return the items and a total summed from them
+[32m ✔ [0mShould label the answer as a photo estimate
+[32m ✔ [0mShould report the lowest confidence when the model states none
+[32m ✔ [0mShould write nothing while estimating
+[32m ✔ [0mShould send the image inline on a keyed request
+[32m ✔ [0mShould never return the provider key
+[32m ✔ [0mShould accept a photo sent as a data uri
+[32m ✔ [0mShould require a photo
+[32m ✔ [0mShould refuse something that is not an image
+[32m ✔ [0mShould refuse a photo larger than the ceiling
+[32m ✔ [0mShould report a photo with no food as the photos problem
+[32m ✔ [0mShould report an unreadable reply as the photos problem
+[32m ✔ [0mShould report a provider failure as a degraded dependency
+[32m ✔ [0mShould report unavailable when no key is configured
+[32m ✔ [0mShould save a photo estimate as its own kind of claim
+[32m ✔ [0mShould refuse a photo estimate that carries a barcode
+
+[4mMeal Photo Estimate Parser (Tests\Unit\Domain\Nutrition\MealPhotoEstimateParser)[0m
+[32m ✔ [0mShould read a clean reply
+[32m ✔ [0mShould read a reply wrapped in a markdown fence
+[32m ✔ [0mShould read a reply buried in prose
+[32m ✔ [0mShould accept a bare list of items
+[32m ✔ [0mShould refuse a reply that is not json at all
+[32m ✔ [0mShould refuse a truncated reply
+[32m ✔ [0mShould refuse a reply with no items key
+[32m ✔ [0mShould keep an item that is missing its macros
+[32m ✔ [0mShould sum a macro only over the items that reported it
+[32m ✔ [0mShould accept figures sent as strings
+[32m ✔ [0mShould accept the alternative field names the model reaches for
+[32m ✔ [0mShould drop an item with no calorie figure and keep the rest
+[32m ✔ [0mShould drop an unnamed item
+[32m ✔ [0mShould refuse when every item was unusable
+[32m ✔ [0mShould refuse an empty plate
+[32m ✔ [0mShould drop an implausible item rather than clamp it
+[32m ✔ [0mShould refuse a total the save endpoint would reject
+[32m ✔ [0mShould ignore a negative macro
+[32m ✔ [0mShould cap how many items one plate may have
+[32m ✔ [0mShould flatten a multiline item name
+[32m ✔ [0mShould treat an unstated confidence as the lowest
+[32m ✔ [0mShould treat a word we did not ask for as the lowest
+[32m ✔ [0mShould accept a stated confidence regardless of case
+[32m ✔ [0mShould join the item names into a meal name
+[32m ✔ [0mShould cut a long meal name to what the column accepts
+
+[4mNutrition Aggregator (Tests\Unit\Domain\Nutrition\NutritionAggregator)[0m
+[32m ✔ [0mShould total four meals eaten on the same day
+[32m ✔ [0mShould ignore meals outside the range it was asked about
+[32m ✔ [0mShould return one bucket per day including days with no meals
+[32m ✔ [0mShould report a day with no meals as zero rather than absent
+[32m ✔ [0mShould start a week on monday
+[32m ✔ [0mShould span a week from monday to sunday inclusive
+[32m ✔ [0mShould mark a week the range only partly covers
+[32m ✔ [0mShould split a week that straddles a month end
+[32m ✔ [0mShould bucket by calendar month not a rolling thirty days
+[32m ✔ [0mShould give each month its own length
+[32m ✔ [0mShould walk february without losing or repeating a month
+[32m ✔ [0mShould count a leap day
+[32m ✔ [0mShould split a range spanning a month end into both months
+[32m ✔ [0mShould agree with itself across the three groupings
+[32m ✔ [0mShould keep measured and estimated energy apart in a total
+[32m ✔ [0mShould count a photo estimate as estimated not measured
+[32m ✔ [0mShould call a day of lookups wholly measured
+[32m ✔ [0mShould carry provenance into every bucket not only the grand total
+[32m ✔ [0mShould sum macros over the rows that carry them and say how many
+
+[4mPassword Reset (Tests\Feature\Auth\PasswordReset)[0m
+[32m ✔ [0mShould answer a request for an unknown address identically
+[32m ✔ [0mShould send no mail at all for an unknown address
+[32m ✔ [0mShould store the code hashed rather than in the clear
+[32m ✔ [0mShould refuse a code older than fifteen minutes
+[32m ✔ [0mShould refuse to use the same code twice
+[32m ✔ [0mShould destroy the code after five wrong guesses
+[32m ✔ [0mShould not let a changed capitalisation buy a second budget
+[32m ✔ [0mShould throttle repeated requests for a code
+[32m ✔ [0mShould throttle repeated attempts to spend a code
+[32m ✔ [0mShould not spend the login throttle budget
+[32m ✔ [0mShould revoke every existing token on a successful reset
+[32m ✔ [0mShould reject a new password the registration form would reject
+[32m ✔ [0mShould reject a new password that is not confirmed
+[32m ✔ [0mShould write neither the code nor the password to the log
+[32m ✔ [0mShould never return the code or the password in a response
+[32m ✔ [0mShould reset the password and sign the user in
+[32m ✔ [0mShould stop the old password working after a reset
+[32m ✔ [0mShould let a new code be requested without starting over
+
+[4mPassword Reset Challenge (Tests\Unit\Domain\Auth\PasswordResetChallenge)[0m
+[32m ✔ [0mShould still accept a code on the last second of its life
+[32m ✔ [0mShould refuse a code once past fifteen minutes
+[32m ✔ [0mShould not be exhausted before the fifth failure
+[32m ✔ [0mShould be exhausted on the fifth failure
+[32m ✔ [0mShould carry the attempt count back from storage
+[32m ✔ [0mShould generate a six digit code including leading zeros
+[32m ✔ [0mShould refuse a code that is not six digits
+[32m ✔ [0mShould key an address the same however it is capitalised
+
+[4mPlan Deriver (Tests\Unit\Domain\Planning\Service\PlanDeriver)[0m
+[32m ✔ [0mShould produce a plan for a profile that says nothing
+[32m ✔ [0mShould withhold the two numbers that are health advice
+[32m ✔ [0mShould list every field an empty profile failed to supply
+[32m ✔ [0mShould report no resting rate source when no zones were built
+[32m ✔ [0mShould stop asking for a field once it has been supplied
+[32m ✔ [0mShould derive zones from a date of birth alone
+[32m ✔ [0mShould assume the lowest activity band until told otherwise
+[32m ✔ [0mShould name the measured baseline when one exists
+[32m ✔ [0mShould report a measured resting rate even when it cannot build zones
+[32m ✔ [0mShould name the measured median when a full week exists
+[32m ✔ [0mShould refuse a version below one
+[32m ✔ [0mShould name a formula for every number it derived
+[32m ✔ [0mShould derive every goal for a complete profile
+
+[4mPlan Endpoint (Tests\Feature\Planning\PlanEndpoint)[0m
+[32m ✔ [0mShould reject every unauthenticated plan route
+[32m ✔ [0mShould return null before a plan has ever been derived
+[32m ✔ [0mShould return an empty history before anything exists
+[32m ✔ [0mShould derive a plan from no profile at all
+[32m ✔ [0mShould name a population default for every undeliverable source
+[32m ✔ [0mShould build zones on the population resting rate without history
+[32m ✔ [0mShould prefer the measured fourteen day baseline when it exists
+[32m ✔ [0mShould not build a baseline from another users history
+[32m ✔ [0mShould not mint a version when a recalculation changes nothing
+[32m ✔ [0mShould not mint a version when a full profile recalculates unchanged
+[32m ✔ [0mShould increment the version when a goal is set by hand
+[32m ✔ [0mShould record the defaults as version one when the first action is an edit
+[32m ✔ [0mShould collapse an identical consecutive edit into the same version
+[32m ✔ [0mShould recognise a replayed edit by its client uuid
+[32m ✔ [0mShould reject a goal that cannot be a goal
+[32m ✔ [0mShould not let one user read anothers plan or history
+[32m ✔ [0mShould derive a fully personal plan and read it back
+
+[4mProfile Endpoint (Tests\Feature\Profile\ProfileEndpoint)[0m
+[32m ✔ [0mShould reject an unauthenticated read
+[32m ✔ [0mShould reject an unauthenticated write
+[32m ✔ [0mShould return null rather than a blank profile before anything is saved
+[32m ✔ [0mShould accept a profile with only one field filled in
+[32m ✔ [0mShould reject a height no person has
+[32m ✔ [0mShould reject a date of birth in the future
+[32m ✔ [0mShould reject a sex outside the published set
+[32m ✔ [0mShould leave a field alone when the request omits it
+[32m ✔ [0mShould clear a field sent explicitly as null
+[32m ✔ [0mShould return sex to unspecified when it is cleared
+[32m ✔ [0mShould keep one profile per user however many times it is saved
+[32m ✔ [0mShould report both scales readings of the same body
+[32m ✔ [0mShould let the profile choose which population applies
+[32m ✔ [0mShould not let one user read anothers profile
+[32m ✔ [0mShould save and return a complete profile
+
+[4mRecovery Score (Tests\Unit\Domain\Wellbeing\ValueObject\RecoveryScore)[0m
+[32m ✔ [0mShould accept zero when the user is fully unrecovered
+[32m ✔ [0mShould round to one decimal when given a longer value
+[32m ✔ [0mShould record how many components contributed
+[32m ✔ [0mShould accept the upper bound
+[32m ✔ [0mShould reject a value above one hundred
+[32m ✔ [0mShould reject a negative value
+[32m ✔ [0mShould reject a non finite value
+[32m ✔ [0mShould report itself as provisional when built without the autonomic component
+[32m ✔ [0mShould report itself as established when all signals were available
+[32m ✔ [0mShould refuse to compare a provisional score against an established one
+[32m ✔ [0mShould not consider scores of different kinds equal even at the same value
+[32m ✔ [0mShould compare two established scores by value
+[32m ✔ [0mShould compare two provisional scores by value
+
+[4mRecovery Score Calculator (Tests\Unit\Domain\Wellbeing\Service\RecoveryScoreCalculator)[0m
+[32m ✔ [0mShould award full duration marks when sleep exactly meets the need
+[32m ✔ [0mShould penalise one hour short more than one hour long
+[32m ✔ [0mShould not return a negative duration score for an extreme deficit
+[32m ✔ [0mShould skip the architecture component when stages are unavailable
+[32m ✔ [0mShould place typical restorative sleep at mid scale
+[32m ✔ [0mShould score above mid scale when deep and rem beat the personal baseline
+[32m ✔ [0mShould skip the autonomic component when no baseline exists
+[32m ✔ [0mShould skip the autonomic component when no reading exists
+[32m ✔ [0mShould place a resting rate at baseline on mid scale
+[32m ✔ [0mShould score the same for an athlete and a desk worker equally elevated
+[32m ✔ [0mShould score below mid scale when resting rate is elevated
+[32m ✔ [0mShould return a provisional score when the autonomic component is missing
+[32m ✔ [0mShould weight the autonomic component above the sleep components
+[32m ✔ [0mShould let the autonomic component dominate the combined value
+[32m ✔ [0mShould reject a night with no computable component
+[32m ✔ [0mShould return an established score when every signal is present
+
+[4mRecovery Score Endpoint (Tests\Feature\Wellbeing\RecoveryScoreEndpoint)[0m
+[32m ✔ [0mShould reject an unauthenticated request
+[32m ✔ [0mShould not route a malformed date
+[32m ✔ [0mShould reject a date that is not a real calendar day
+[32m ✔ [0mShould report unavailable rather than missing when there is no data
+[32m ✔ [0mShould report unavailable when the night recorded no sleep
+[32m ✔ [0mShould return a provisional score when the user has no history
+[32m ✔ [0mShould not build a baseline from another users history
+[32m ✔ [0mShould raise a warning when resting rate is elevated against the users own baseline
+[32m ✔ [0mShould return an established score once enough history exists
+
+[4mResting Heart Rate Provenance (Tests\Feature\Wellbeing\RestingHeartRateProvenance)[0m
+[32m ✔ [0mShould refuse a resting rate that does not say how it was taken
+[32m ✔ [0mShould refuse a source with no reading to describe
+[32m ✔ [0mShould refuse a source it does not recognise
+[32m ✔ [0mShould carry the source back out the way it came in
+[32m ✔ [0mShould not let a check in overwrite a nights rate and keep its label
+[32m ✔ [0mShould leave the nights rate alone when only water arrives
+[32m ✔ [0mShould score a seated morning against seated mornings only
+[32m ✔ [0mShould leave an overnight score untouched by seated mornings in the same window
+[32m ✔ [0mShould stay provisional when the seated series is too short
+[32m ✔ [0mShould report which kind of baseline the score rests on
+[32m ✔ [0mShould name the history a new check in user is actually short of
+
+[4mResting Heart Rate Provenance (Tests\Unit\Domain\Wellbeing\ValueObject\RestingHeartRateProvenance)[0m
+[32m ✔ [0mShould score a reading against a baseline of its own kind
+[32m ✔ [0mShould refuse to score a seated reading against an overnight baseline
+[32m ✔ [0mShould refuse the mismatch in the other direction too
+[32m ✔ [0mShould keep the source a baseline was built from
+[32m ✔ [0mShould treat only the overnight kind as covered by the published validation
+
+[4mSleep Need Calculator (Tests\Unit\Domain\Planning\Service\SleepNeedCalculator)[0m
+[32m ✔ [0mShould fall back to the value the app already used for everyone
+[32m ✔ [0mShould publish no range without an age
+[32m ✔ [0mShould give a teenager the eight to ten hour band
+[32m ✔ [0mShould give young adults and adults the seven to nine hour band
+[32m ✔ [0mShould give an older adult the seven to eight hour band
+[32m ✔ [0mShould move bands on the published ages and not a year either side
+[32m ✔ [0mShould publish no range below the youngest band it models
+[32m ✔ [0mShould always return a need inside its own published range
+
+[4mStep Goal Calculator (Tests\Unit\Domain\Planning\Service\StepGoalCalculator)[0m
+[32m ✔ [0mShould have no median for an empty history
+[32m ✔ [0mShould refuse a median one day short of a full week
+[32m ✔ [0mShould fall back to the recognisable anchor with no median
+[32m ✔ [0mShould take the middle value of an odd length week
+[32m ✔ [0mShould not let one extraordinary day move the median
+[32m ✔ [0mShould average the middle pair of an even length window
+[32m ✔ [0mShould ask a sedentary walker for the next boundary not for ten thousand
+[32m ✔ [0mShould walk a user up the published bands one at a time
+[32m ✔ [0mShould treat a median sitting exactly on a boundary as that class achieved
+[32m ✔ [0mShould hold at the top band rather than climbing forever
+[32m ✔ [0mShould derive a goal from a full measured week
+
+[4mStep Provenance (Tests\Feature\Wellbeing\StepProvenance)[0m
+[32m ✔ [0mShould refuse a step count that does not say what it covers
+[32m ✔ [0mShould refuse completeness with no count to describe
+[32m ✔ [0mShould carry completeness back out the way it came in
+[32m ✔ [0mShould update rather than duplicate a day that is synced again
+[32m ✔ [0mShould leave a recorded night alone when only steps arrive
+[32m ✔ [0mShould not let a later count inherit an earlier days completeness
+[32m ✔ [0mShould derive the step goal from a week of complete days
+[32m ✔ [0mShould keep the population default when the week is only witnessed
+[32m ✔ [0mShould hold the default until a full week of complete days exists
+[32m ✔ [0mShould ignore the witnessed days and read only the whole ones
+
+[4mWeather Endpoint (Tests\Feature\Weather\WeatherEndpoint)[0m
+[32m ✔ [0mShould reject an unauthenticated request
+[32m ✔ [0mShould return the narrowed shape rather than the providers
+[32m ✔ [0mShould never expose the provider key
+[32m ✔ [0mShould reject coordinates outside the globe
+[32m ✔ [0mShould not call the fallback while the preferred provider answers
+[32m ✔ [0mShould fall through to the keyless provider when the key is missing
+[32m ✔ [0mShould fall through when the preferred provider fails
+[32m ✔ [0mShould report unavailable only when every provider fails
+[32m ✔ [0mShould not cache a total failure
+[32m ✔ [0mShould serve a second nearby request from cache
+[32m ✔ [0mShould cache the fallback answer too
+
+[30;42mOK (461 tests, 1881 assertions)[0m
+{"tool":"phpunit","result":"passed","tests":461,"passed":461,"assertions":1881,"duration_ms":43915}

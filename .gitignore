@@ -70,3 +70,6 @@ desktop.ini
 
 # Built app binaries — 289 MB of ExecuTorch, fetched from EAS rather than versioned.
 /build/
+
+# Editor / script backups
+*.bak

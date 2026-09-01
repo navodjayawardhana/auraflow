@@ -1,0 +1,201 @@
+
+> mobile@1.0.0 check
+> npm run check:model && npm run typecheck && npm test
+
+
+> mobile@1.0.0 check:model
+> node scripts/check-model-sync.mjs
+
+Focus model in sync (3f986262a8b0…).
+
+> mobile@1.0.0 typecheck
+> tsc --noEmit
+
+
+> mobile@1.0.0 test
+> jest
+
+PASS src/ml/__tests__/focus-coverage.test.ts
+PASS src/config/__tests__/iot.test.ts
+PASS src/services/__tests__/reminder-completion.test.ts
+PASS src/ml/__tests__/focus-model.bench.test.ts
+  ● Console
+
+    console.log
+      {"runs":5000,"median_ms":0.0043,"p95_ms":0.0116,"p99_ms":0.0148,"max_ms":15.5203}
+
+      at Object.log (src/ml/__tests__/focus-model.bench.test.ts:25:13)
+
+PASS src/services/__tests__/outbox.test.ts
+PASS src/services/__tests__/month-grid.test.ts
+PASS src/services/__tests__/step-sync.test.ts
+PASS src/services/__tests__/guided-routine.test.ts
+PASS src/services/__tests__/nutrition-history.test.ts
+PASS src/services/__tests__/reminder-schedule.test.ts
+PASS src/services/__tests__/meal-photo.test.ts
+PASS src/services/__tests__/resting-capture.test.ts
+PASS src/services/__tests__/iot-payloads.test.ts
+PASS src/services/__tests__/plan-targets.test.ts
+PASS src/services/__tests__/recovery-service.test.ts
+PASS src/ml/__tests__/rep-counter.test.ts
+PASS src/services/__tests__/place-classifier.test.ts
+PASS src/services/__tests__/sheet-snap.test.ts
+PASS src/services/__tests__/vitals-merge.test.ts
+PASS src/services/__tests__/plan-provenance.test.ts
+PASS src/services/__tests__/correlation.test.ts
+PASS src/services/__tests__/cache.test.ts
+PASS src/ml/__tests__/focus-model.test.ts
+PASS src/services/__tests__/sleep-window.test.ts
+PASS src/services/__tests__/api-client.test.ts
+  ● Console
+
+    console.log
+      [api] GET http://localhost:8000/api/v1/me
+
+      at log (src/services/api-client.ts:61:13)
+
+    console.log
+      [api] 401 http://localhost:8000/api/v1/me
+
+      at log (src/services/api-client.ts:75:13)
+
+    console.log
+      [api] error body: { message: 'Unauthenticated.' }
+
+      at log (src/services/api-client.ts:86:15)
+
+    console.log
+      [api] POST http://localhost:8000/api/v1/login
+
+      at log (src/services/api-client.ts:61:13)
+
+    console.log
+      [api] 422 http://localhost:8000/api/v1/login
+
+      at log (src/services/api-client.ts:75:13)
+
+    console.log
+      [api] error body: {
+        message: 'The given data was invalid.',
+        errors: { email: [ 'These credentials do not match our records.' ] }
+      }
+
+      at log (src/services/api-client.ts:86:15)
+
+    console.log
+      [api] POST http://localhost:8000/api/v1/login
+
+      at log (src/services/api-client.ts:61:13)
+
+    console.log
+      [api] 429 http://localhost:8000/api/v1/login
+
+      at log (src/services/api-client.ts:75:13)
+
+    console.log
+      [api] error body: {
+        message: 'Too many attempts.',
+        errors: { email: [ 'Try again later.' ] }
+      }
+
+      at log (src/services/api-client.ts:86:15)
+
+    console.log
+      [api] GET http://localhost:8000/api/v1/me
+
+      at log (src/services/api-client.ts:61:13)
+
+    console.log
+      [api] request failed: http://localhost:8000/api/v1/me TypeError: Network request failed
+          at E:\MSC\Emerging Mobile Applications\auraflow\mobile\src\services\__tests__\api-client.test.ts:62:13
+          at Generator.next (<anonymous>)
+          at asyncGeneratorStep (E:\MSC\Emerging Mobile Applications\auraflow\mobile\node_modules\@babel\runtime\helpers\asyncToGenerator.js:3:17)
+          at _next (E:\MSC\Emerging Mobile Applications\auraflow\mobile\node_modules\@babel\runtime\helpers\asyncToGenerator.js:17:9)
+          at E:\MSC\Emerging Mobile Applications\auraflow\mobile\node_modules\@babel\runtime\helpers\asyncToGenerator.js:22:7
+          at new Promise (<anonymous>)
+          at E:\MSC\Emerging Mobile Applications\auraflow\mobile\node_modules\@babel\runtime\helpers\asyncToGenerator.js:14:12
+          at E:\MSC\Emerging Mobile Applications\auraflow\mobile\node_modules\jest-mock\build\index.js:397:39
+          at E:\MSC\Emerging Mobile Applications\auraflow\mobile\node_modules\jest-mock\build\index.js:404:13
+          at mockConstructor (E:\MSC\Emerging Mobile Applications\auraflow\mobile\node_modules\jest-mock\build\index.js:148:19)
+          at fetch (E:\MSC\Emerging Mobile Applications\auraflow\mobile\src\services\api-client.ts:66:22)
+          at Generator.next (<anonymous>)
+          at asyncGeneratorStep (E:\MSC\Emerging Mobile Applications\auraflow\mobile\node_modules\@babel\runtime\helpers\asyncToGenerator.js:3:17)
+          at _next (E:\MSC\Emerging Mobile Applications\auraflow\mobile\node_modules\@babel\runtime\helpers\asyncToGenerator.js:17:9)
+          at processTicksAndRejections (node:internal/process/task_queues:105:5)
+
+      at log (src/services/api-client.ts:69:15)
+          at Generator.throw (<anonymous>)
+
+    console.log
+      [api] GET http://localhost:8000/api/v1/me
+
+      at log (src/services/api-client.ts:61:13)
+
+    console.log
+      [api] 500 http://localhost:8000/api/v1/me
+
+      at log (src/services/api-client.ts:75:13)
+
+    console.log
+      [api] error body: {}
+
+      at log (src/services/api-client.ts:86:15)
+          at Generator.throw (<anonymous>)
+
+PASS src/services/__tests__/body-metrics.test.ts
+PASS src/services/__tests__/insights-summary.test.ts
+PASS src/ml/__tests__/session-prescription.test.ts
+PASS src/services/__tests__/pending-reset.test.ts
+PASS src/components/__tests__/recovery-card.test.tsx (14.597 s)
+  ● Console
+
+    console.error
+      An update to Icon inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+      at node_modules/react-test-renderer/cjs/react-test-renderer.development.js:11801:19
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:1574:13)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:11800:9)
+      at scheduleUpdateOnFiber (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:10326:9)
+      at Object.enqueueSetState (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14179:14)
+      at Icon.Object.<anonymous>.process.env.NODE_ENV.Component.setState (node_modules/react/cjs/react.development.js:632:20)
+      at Icon.setState (node_modules/@expo/vector-icons/src/createIconSet.tsx:181:31)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.error
+      An update to Icon inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+      at node_modules/react-test-renderer/cjs/react-test-renderer.development.js:11801:19
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:1574:13)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:11800:9)
+      at scheduleUpdateOnFiber (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:10326:9)
+      at Object.enqueueSetState (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14179:14)
+      at Icon.Object.<anonymous>.process.env.NODE_ENV.Component.setState (node_modules/react/cjs/react.development.js:632:20)
+      at Icon.setState (node_modules/@expo/vector-icons/src/createIconSet.tsx:181:31)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+
+Test Suites: 30 passed, 30 total
+Tests:       372 passed, 372 total
+Snapshots:   0 total
+Time:        15.897 s, estimated 27 s
+Ran all test suites.
