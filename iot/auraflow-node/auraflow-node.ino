@@ -79,9 +79,65 @@ unsigned long lastReconnectMs  = 0;
 // credentials.
 constexpr bool WIFI_CONFIGURED = sizeof(WIFI_SSID) > 1;
 
+// Older secrets.h files carry only the one network. Default the alternates so a stale
+// copy still compiles rather than failing on a header nobody thought to update.
+#ifndef WIFI_SSID_2
+#define WIFI_SSID_2 ""
+#define WIFI_PASSWORD_2 ""
+#endif
+#ifndef WIFI_SSID_3
+#define WIFI_SSID_3 ""
+#define WIFI_PASSWORD_3 ""
+#endif
+
+// The networks to try, in order, rotating on each retry.
+//
+// One compiled-in SSID means a node that cannot be re-pointed without a laptop and a
+// cable. That is fine on a bench and useless in a lecture theatre, where the honest
+// list of things that might carry the broker is "the phone hotspot, or the other phone,
+// or whatever the room has". Rotating costs one index and removes the whole class of
+// problem. It is not WiFiMulti: that scans first, and a scan blocks the sensor loop for
+// longer than a sample buffer survives.
+struct WifiCandidate {
+  const char* ssid;
+  const char* password;
+};
+
+const WifiCandidate WIFI_CANDIDATES[] = {
+  { WIFI_SSID,   WIFI_PASSWORD   },
+  { WIFI_SSID_2, WIFI_PASSWORD_2 },
+  { WIFI_SSID_3, WIFI_PASSWORD_3 },
+};
+
 unsigned long lastWifiAttemptMs = 0;
 unsigned long mqttRetryMs       = MQTT_RETRY_MIN_MS;
 bool          wasWifiUp         = false;
+uint8_t       wifiCandidateIx   = 0;
+
+// Issue an association attempt against the next configured network.
+//
+// Skips empty slots, so a secrets.h listing one network behaves exactly as it did
+// before this existed: the same SSID, re-issued every WIFI_RETRY_MS.
+void beginNextWifiCandidate() {
+  constexpr uint8_t count = sizeof(WIFI_CANDIDATES) / sizeof(WIFI_CANDIDATES[0]);
+
+  for (uint8_t tried = 0; tried < count; ++tried) {
+    const WifiCandidate& candidate = WIFI_CANDIDATES[wifiCandidateIx];
+    wifiCandidateIx = (wifiCandidateIx + 1) % count;
+
+    if (candidate.ssid[0] == '\0') continue;
+
+    // The driver refuses a second `begin()` while the first association is still in
+    // flight — "sta is connecting, cannot set config" — so without this the rotation
+    // logs a new SSID and quietly keeps hunting the old one. Radio stays on and the
+    // stored credentials are left alone; this only ends the attempt in progress.
+    WiFi.disconnect(false, false);
+
+    Serial.printf("[wifi] trying \"%s\"\n", candidate.ssid);
+    WiFi.begin(candidate.ssid, candidate.password);
+    return;
+  }
+}
 
 // ---------------------------------------------------------------- publishing
 void publishLightState() {
@@ -355,7 +411,7 @@ void setup() {
   // a node that is already running.
   WiFi.mode(WIFI_STA);
   WiFi.setAutoReconnect(true);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  beginNextWifiCandidate();
   lastWifiAttemptMs = millis();
   Serial.println("[wifi] associating in the background");
   Display::message("AuraFlow", "starting...");
@@ -391,7 +447,9 @@ void serviceNetwork() {
     // node booted.
     if (now - lastWifiAttemptMs > WIFI_RETRY_MS) {
       lastWifiAttemptMs = now;
-      WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+      // The next network, not the same one again: if the hotspot never comes up, the
+      // node works its way round the list instead of waiting on one that is not there.
+      beginNextWifiCandidate();
     }
     return;
   }
@@ -414,7 +472,15 @@ void serviceNetwork() {
   if (lastReconnectMs != 0 && now - lastReconnectMs < mqttRetryMs) return;
   lastReconnectMs = now;
 
-  if (connectMqtt()) {
+  const bool brokerUp = connectMqtt();
+
+  // The one deliberate multi-second block in the loop, and the sensor watchdog reads
+  // silence as a sensor that has stopped answering. Without this the very first connect
+  // declared a link that was answering perfectly lost, 800 ms in, and the OLED read
+  // "no sensor - wiring?" for the rest of the session.
+  Sensors::excuseStall();
+
+  if (brokerUp) {
     mqttRetryMs = MQTT_RETRY_MIN_MS;
   } else {
     // Doubling rather than a flat interval, because a broker that refused one attempt

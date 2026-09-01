@@ -83,6 +83,21 @@ void openI2cBus() {
   pinMode(PIN_SDA, INPUT);
   pinMode(PIN_SCL, INPUT);
 
+  /*
+   * Wire.end() first, and it is the entire recovery path.
+   *
+   * begin() on a bus that is already initialised logs "Bus already started in Master
+   * Mode.", returns true, and skips initPins() altogether — esp32 core 3.3.11,
+   * libraries/Wire/src/Wire.cpp. The pinMode() calls above have just handed SDA and SCL
+   * back to plain GPIO in order to bit-bang the bus clear, so from the second call
+   * onwards the pins were never routed back to the I2C peripheral and every transaction
+   * after that went nowhere.
+   *
+   * The node therefore found the sensor at boot, lost it once, and then failed every
+   * retry for the rest of the session while an i2c scanner flashed onto the same board
+   * read the part at 0x57 perfectly. Clearing the bus was leaving it unusable.
+   */
+  Wire.end();
   Wire.begin(PIN_SDA, PIN_SCL);
   Wire.setClock(400000);
 }
@@ -131,11 +146,13 @@ struct SensorLink {
   unsigned long lastRetryMs  = 0;
   unsigned long lastSampleMs = 0;
   bool          reopened     = false;
+  bool          failureLogged = false;
 
   bool present() const { return state == State::Present; }
 
   void enterPresent() {
     state = State::Present;
+    failureLogged = false;
     // The watchdog measures silence, so it starts counting from the moment the link is
     // believed rather than from boot — otherwise the first pass after Wi-Fi association
     // and the MQTT connect, seconds later, would look exactly like a sensor that stopped
@@ -176,6 +193,15 @@ struct SensorLink {
       // A link that was Present and cannot be reopened is simply absent now. The
       // distinction only ever mattered for reporting the loss, and that has happened.
       state = State::Absent;
+
+      // Once per run of failures rather than once every SENSOR_RETRY_MS. A retry loop
+      // that prints nothing is how a bus left unusable by its own recovery passed for a
+      // sensor nobody had wired up; one that prints every pass is how the log that would
+      // have shown it becomes unreadable.
+      if (!failureLogged) {
+        failureLogged = true;
+        Serial.println("[bio] MAX30102 did not answer the retry — still retrying");
+      }
       return false;
     }
 
@@ -191,6 +217,18 @@ struct SensorLink {
     const bool was = reopened;
     reopened = false;
     return was;
+  }
+
+  /**
+   * A deliberate blocking call has just held the loop off the sensor.
+   *
+   * The watchdog's evidence is silence, and it cannot tell a sensor that stopped
+   * answering from one nobody asked. `SampleStream::excuseGap` already made that
+   * distinction for the drain budget; the link had no equivalent, so the first
+   * `connectMqtt()` — up to four seconds, by design — read as a dead sensor.
+   */
+  void excuseSilence(unsigned long now) {
+    if (state == State::Present) lastSampleMs = now;
   }
 
   /** Fed the count from every read attempt, including the ones that returned nothing. */
@@ -912,6 +950,12 @@ float sampleRateHz() {
 
 uint32_t droppedSamples() {
   return stream.dropped;
+}
+
+void excuseStall() {
+  const unsigned long now = millis();
+  stream.excuseGap(now);
+  sensorLink.excuseSilence(now);
 }
 
 void beatDebug(int& intervals, float& medianMs, float& loMs, float& hiMs) {

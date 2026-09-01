@@ -104,6 +104,14 @@ void beatDebug(int& intervals, float& medianMs, float& loMs, float& hiMs);
 // session means the loop is stalling and the session is thin.
 uint32_t droppedSamples();
 
+// Tell the sensor watchdogs that the loop has just spent a while somewhere else on
+// purpose. Both of them measure elapsed time as evidence — the drain budget to count lost
+// samples, the link's liveness timer to declare the sensor gone — and neither can see the
+// difference between a sensor that went quiet and a loop that never asked. Call it
+// immediately after a deliberate blocking call, not speculatively: an unearned excuse
+// hides exactly the stall these numbers exist to expose.
+void excuseStall();
+
 // MAX30102 die temperature — a diagnostic, NOT a biometric. See the header
 // note above before putting this number anywhere near the report.
 //
