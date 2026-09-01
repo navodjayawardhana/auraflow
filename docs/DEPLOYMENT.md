@@ -5,17 +5,22 @@ console or CloudShell; nothing here depends on a laptop that happens to be onlin
 
 ## What exists
 
+> Instance id, Elastic IP and security group id are written as `<INSTANCE_ID>`,
+> `<ELASTIC_IP>` and `<SECURITY_GROUP_ID>` here. The repository is public; the real
+> values are an SSH target and the rule that admits it, and they belong in the AWS
+> console rather than in a file anyone can read.
+
 | | |
 |---|---|
-| Instance | `i-06b6b14aa9068c52c` — t3.micro, Ubuntu 24.04, ap-southeast-2 |
-| Elastic IP | `13.210.213.72` |
-| Security group | `sg-0cab86a95f0f52d75` |
+| Instance | `<INSTANCE_ID>` — t3.micro, Ubuntu 24.04, ap-southeast-2 |
+| Elastic IP | `<ELASTIC_IP>` |
+| Security group | `<SECURITY_GROUP_ID>` |
 | Domain | `labourlynk.com` and `api.labourlynk.com`, both A records at Namecheap |
 | Certificate | Let's Encrypt, both names, renews itself |
 | Key pair | `auraflow-deploy` (ed25519). The private half is on the deploy machine only — AWS was given the public half, so it never held the secret. |
 
 ```
-ssh -i ~/.ssh/auraflow-aws ubuntu@13.210.213.72
+ssh -i ~/.ssh/auraflow-aws ubuntu@<ELASTIC_IP>
 ```
 
 ### The stack
@@ -55,9 +60,9 @@ tar czf /tmp/api.tgz \
   --exclude='storage/framework/cache/data/*' --exclude='storage/framework/sessions/*' \
   --exclude='storage/framework/views/*' --exclude=.env --exclude=.phpunit.result.cache .
 
-ssh -i ~/.ssh/auraflow-aws ubuntu@13.210.213.72 'tar xzf - -C /var/www/auraflow' < /tmp/api.tgz
+ssh -i ~/.ssh/auraflow-aws ubuntu@<ELASTIC_IP> 'tar xzf - -C /var/www/auraflow' < /tmp/api.tgz
 
-ssh -i ~/.ssh/auraflow-aws ubuntu@13.210.213.72 'cd /var/www/auraflow \
+ssh -i ~/.ssh/auraflow-aws ubuntu@<ELASTIC_IP> 'cd /var/www/auraflow \
   && composer install --no-dev --optimize-autoloader --no-interaction \
   && php artisan migrate --force \
   && php artisan config:cache && php artisan route:cache && php artisan event:cache \

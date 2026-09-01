@@ -12,7 +12,7 @@ by exporting what the artisan path produced.
 ## A · On the server (preferred, when you have SSH)
 
 ```sh
-ssh -i ~/.ssh/auraflow-aws ubuntu@13.210.213.72
+ssh -i ~/.ssh/auraflow-aws ubuntu@<ELASTIC_IP>
 cd /var/www/auraflow
 php artisan auraflow:seed-demo test@example.com
 ```
@@ -28,7 +28,7 @@ Idempotent: nights upsert on the day, meals key on (day, name), sessions on
 
 > ⚠️ **The security group admits SSH from one address.** If `ssh` times out, the
 > instance is fine (check `https://labourlynk.com` — it answers 200); your public IP
-> has changed. Add it to `sg-0cab86a95f0f52d75` inbound on port 22, or use EC2
+> has changed. Add it to `<SECURITY_GROUP_ID>` inbound on port 22, or use EC2
 > Instance Connect / CloudShell from the AWS console.
 
 ## B · Over the public API (works from anywhere)
